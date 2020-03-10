@@ -24,15 +24,15 @@
 
 
 		<os-maven-plugin.version>1.6.2</os-maven-plugin.version>
-		<maven-enforcer-plugin.version>1.4.1</maven-enforcer-plugin.version>
+		<maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
 
 		<!-- gRPC properties -->
-		<grpc.version>1.18.0</grpc.version>
-		<protobuf.version>3.5.1</protobuf.version>
-		<protoc.version>3.5.1-1</protoc.version>
-		<!-- tcnative - tomcat native -->
-		<!--netty.tcnative.version>2.0.7.Final</netty.tcnative.version-->
+		<grpc.version>1.27.2</grpc.version>
+		<protobuf.version>3.11.0</protobuf.version>
+		<protoc.version>3.11.0</protoc.version>
 		<protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
+		<error_prone_annotations.version>2.3.4</error_prone_annotations.version>
+		<javax.annotation-api.version>1.3.2</javax.annotation-api.version>
 	</properties>
 
 	<dependencies>
@@ -62,6 +62,16 @@
 			<groupId>com.google.protobuf</groupId>
 			<artifactId>protobuf-java-util</artifactId>
 			<version>${protobuf.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.errorprone</groupId>
+			<artifactId>error_prone_annotations</artifactId>
+			<version>${error_prone_annotations.version}</version>
+		</dependency>
+		<dependency>
+		    <groupId>javax.annotation</groupId>
+		    <artifactId>javax.annotation-api</artifactId>
+		    <version>${javax.annotation-api.version}</version>
 		</dependency>
 	</dependencies>
 

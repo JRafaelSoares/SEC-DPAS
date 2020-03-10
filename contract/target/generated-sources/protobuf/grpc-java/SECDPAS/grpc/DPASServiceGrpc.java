@@ -21,7 +21,7 @@ import static io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall;
  * </pre>
  */
 @javax.annotation.Generated(
-    value = "by gRPC proto compiler (version 1.18.0)",
+    value = "by gRPC proto compiler (version 1.27.2)",
     comments = "Source: Contract.proto")
 public final class DPASServiceGrpc {
 
@@ -44,29 +44,35 @@ public final class DPASServiceGrpc {
     if ((getGreetingMethod = DPASServiceGrpc.getGreetingMethod) == null) {
       synchronized (DPASServiceGrpc.class) {
         if ((getGreetingMethod = DPASServiceGrpc.getGreetingMethod) == null) {
-          DPASServiceGrpc.getGreetingMethod = getGreetingMethod = 
+          DPASServiceGrpc.getGreetingMethod = getGreetingMethod =
               io.grpc.MethodDescriptor.<SECDPAS.grpc.Contract.HelloRequest, SECDPAS.grpc.Contract.HelloResponse>newBuilder()
               .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
-              .setFullMethodName(generateFullMethodName(
-                  "SECDPAS.grpc.DPASService", "greeting"))
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "greeting"))
               .setSampledToLocalTracing(true)
               .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
                   SECDPAS.grpc.Contract.HelloRequest.getDefaultInstance()))
               .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
                   SECDPAS.grpc.Contract.HelloResponse.getDefaultInstance()))
-                  .setSchemaDescriptor(new DPASServiceMethodDescriptorSupplier("greeting"))
-                  .build();
-          }
+              .setSchemaDescriptor(new DPASServiceMethodDescriptorSupplier("greeting"))
+              .build();
         }
-     }
-     return getGreetingMethod;
+      }
+    }
+    return getGreetingMethod;
   }
 
   /**
    * Creates a new async stub that supports all call types for the service
    */
   public static DPASServiceStub newStub(io.grpc.Channel channel) {
-    return new DPASServiceStub(channel);
+    io.grpc.stub.AbstractStub.StubFactory<DPASServiceStub> factory =
+      new io.grpc.stub.AbstractStub.StubFactory<DPASServiceStub>() {
+        @java.lang.Override
+        public DPASServiceStub newStub(io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
+          return new DPASServiceStub(channel, callOptions);
+        }
+      };
+    return DPASServiceStub.newStub(factory, channel);
   }
 
   /**
@@ -74,7 +80,14 @@ public final class DPASServiceGrpc {
    */
   public static DPASServiceBlockingStub newBlockingStub(
       io.grpc.Channel channel) {
-    return new DPASServiceBlockingStub(channel);
+    io.grpc.stub.AbstractStub.StubFactory<DPASServiceBlockingStub> factory =
+      new io.grpc.stub.AbstractStub.StubFactory<DPASServiceBlockingStub>() {
+        @java.lang.Override
+        public DPASServiceBlockingStub newStub(io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
+          return new DPASServiceBlockingStub(channel, callOptions);
+        }
+      };
+    return DPASServiceBlockingStub.newStub(factory, channel);
   }
 
   /**
@@ -82,7 +95,14 @@ public final class DPASServiceGrpc {
    */
   public static DPASServiceFutureStub newFutureStub(
       io.grpc.Channel channel) {
-    return new DPASServiceFutureStub(channel);
+    io.grpc.stub.AbstractStub.StubFactory<DPASServiceFutureStub> factory =
+      new io.grpc.stub.AbstractStub.StubFactory<DPASServiceFutureStub>() {
+        @java.lang.Override
+        public DPASServiceFutureStub newStub(io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
+          return new DPASServiceFutureStub(channel, callOptions);
+        }
+      };
+    return DPASServiceFutureStub.newStub(factory, channel);
   }
 
   /**
@@ -120,19 +140,15 @@ public final class DPASServiceGrpc {
    * Defining a Service, a Service can have multiple RPC operations
    * </pre>
    */
-  public static final class DPASServiceStub extends io.grpc.stub.AbstractStub<DPASServiceStub> {
-    private DPASServiceStub(io.grpc.Channel channel) {
-      super(channel);
-    }
-
-    private DPASServiceStub(io.grpc.Channel channel,
-        io.grpc.CallOptions callOptions) {
+  public static final class DPASServiceStub extends io.grpc.stub.AbstractAsyncStub<DPASServiceStub> {
+    private DPASServiceStub(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
       super(channel, callOptions);
     }
 
     @java.lang.Override
-    protected DPASServiceStub build(io.grpc.Channel channel,
-        io.grpc.CallOptions callOptions) {
+    protected DPASServiceStub build(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
       return new DPASServiceStub(channel, callOptions);
     }
 
@@ -153,19 +169,15 @@ public final class DPASServiceGrpc {
    * Defining a Service, a Service can have multiple RPC operations
    * </pre>
    */
-  public static final class DPASServiceBlockingStub extends io.grpc.stub.AbstractStub<DPASServiceBlockingStub> {
-    private DPASServiceBlockingStub(io.grpc.Channel channel) {
-      super(channel);
-    }
-
-    private DPASServiceBlockingStub(io.grpc.Channel channel,
-        io.grpc.CallOptions callOptions) {
+  public static final class DPASServiceBlockingStub extends io.grpc.stub.AbstractBlockingStub<DPASServiceBlockingStub> {
+    private DPASServiceBlockingStub(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
       super(channel, callOptions);
     }
 
     @java.lang.Override
-    protected DPASServiceBlockingStub build(io.grpc.Channel channel,
-        io.grpc.CallOptions callOptions) {
+    protected DPASServiceBlockingStub build(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
       return new DPASServiceBlockingStub(channel, callOptions);
     }
 
@@ -185,19 +197,15 @@ public final class DPASServiceGrpc {
    * Defining a Service, a Service can have multiple RPC operations
    * </pre>
    */
-  public static final class DPASServiceFutureStub extends io.grpc.stub.AbstractStub<DPASServiceFutureStub> {
-    private DPASServiceFutureStub(io.grpc.Channel channel) {
-      super(channel);
-    }
-
-    private DPASServiceFutureStub(io.grpc.Channel channel,
-        io.grpc.CallOptions callOptions) {
+  public static final class DPASServiceFutureStub extends io.grpc.stub.AbstractFutureStub<DPASServiceFutureStub> {
+    private DPASServiceFutureStub(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
       super(channel, callOptions);
     }
 
     @java.lang.Override
-    protected DPASServiceFutureStub build(io.grpc.Channel channel,
-        io.grpc.CallOptions callOptions) {
+    protected DPASServiceFutureStub build(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
       return new DPASServiceFutureStub(channel, callOptions);
     }
 

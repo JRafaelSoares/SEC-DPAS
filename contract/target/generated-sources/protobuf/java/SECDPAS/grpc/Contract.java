@@ -26,6 +26,7 @@ public final class Contract {
      * </pre>
      *
      * <code>string name = 1;</code>
+     * @return The name.
      */
     java.lang.String getName();
     /**
@@ -36,6 +37,7 @@ public final class Contract {
      * </pre>
      *
      * <code>string name = 1;</code>
+     * @return The bytes for name.
      */
     com.google.protobuf.ByteString
         getNameBytes();
@@ -46,6 +48,7 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @return A list containing the hobbies.
      */
     java.util.List<java.lang.String>
         getHobbiesList();
@@ -55,6 +58,7 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @return The count of hobbies.
      */
     int getHobbiesCount();
     /**
@@ -63,6 +67,8 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @param index The index of the element to return.
+     * @return The hobbies at the given index.
      */
     java.lang.String getHobbies(int index);
     /**
@@ -71,6 +77,8 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the hobbies at the given index.
      */
     com.google.protobuf.ByteString
         getHobbiesBytes(int index);
@@ -90,6 +98,13 @@ public final class Contract {
     private HelloRequest() {
       name_ = "";
       hobbies_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+    }
+
+    @java.lang.Override
+    @SuppressWarnings({"unused"})
+    protected java.lang.Object newInstance(
+        UnusedPrivateParameter unused) {
+      return new HelloRequest();
     }
 
     @java.lang.Override
@@ -116,13 +131,6 @@ public final class Contract {
             case 0:
               done = true;
               break;
-            default: {
-              if (!parseUnknownFieldProto3(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
-              }
-              break;
-            }
             case 10: {
               java.lang.String s = input.readStringRequireUtf8();
 
@@ -131,11 +139,18 @@ public final class Contract {
             }
             case 18: {
               java.lang.String s = input.readStringRequireUtf8();
-              if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+              if (!((mutable_bitField0_ & 0x00000001) != 0)) {
                 hobbies_ = new com.google.protobuf.LazyStringArrayList();
-                mutable_bitField0_ |= 0x00000002;
+                mutable_bitField0_ |= 0x00000001;
               }
               hobbies_.add(s);
+              break;
+            }
+            default: {
+              if (!parseUnknownField(
+                  input, unknownFields, extensionRegistry, tag)) {
+                done = true;
+              }
               break;
             }
           }
@@ -146,7 +161,7 @@ public final class Contract {
         throw new com.google.protobuf.InvalidProtocolBufferException(
             e).setUnfinishedMessage(this);
       } finally {
-        if (((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+        if (((mutable_bitField0_ & 0x00000001) != 0)) {
           hobbies_ = hobbies_.getUnmodifiableView();
         }
         this.unknownFields = unknownFields.build();
@@ -158,6 +173,7 @@ public final class Contract {
       return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloRequest_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloRequest_fieldAccessorTable
@@ -165,7 +181,6 @@ public final class Contract {
               SECDPAS.grpc.Contract.HelloRequest.class, SECDPAS.grpc.Contract.HelloRequest.Builder.class);
     }
 
-    private int bitField0_;
     public static final int NAME_FIELD_NUMBER = 1;
     private volatile java.lang.Object name_;
     /**
@@ -176,6 +191,7 @@ public final class Contract {
      * </pre>
      *
      * <code>string name = 1;</code>
+     * @return The name.
      */
     public java.lang.String getName() {
       java.lang.Object ref = name_;
@@ -197,6 +213,7 @@ public final class Contract {
      * </pre>
      *
      * <code>string name = 1;</code>
+     * @return The bytes for name.
      */
     public com.google.protobuf.ByteString
         getNameBytes() {
@@ -220,6 +237,7 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @return A list containing the hobbies.
      */
     public com.google.protobuf.ProtocolStringList
         getHobbiesList() {
@@ -231,6 +249,7 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @return The count of hobbies.
      */
     public int getHobbiesCount() {
       return hobbies_.size();
@@ -241,6 +260,8 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @param index The index of the element to return.
+     * @return The hobbies at the given index.
      */
     public java.lang.String getHobbies(int index) {
       return hobbies_.get(index);
@@ -251,6 +272,8 @@ public final class Contract {
      * </pre>
      *
      * <code>repeated string hobbies = 2;</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the hobbies at the given index.
      */
     public com.google.protobuf.ByteString
         getHobbiesBytes(int index) {
@@ -258,6 +281,7 @@ public final class Contract {
     }
 
     private byte memoizedIsInitialized = -1;
+    @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized == 1) return true;
@@ -267,6 +291,7 @@ public final class Contract {
       return true;
     }
 
+    @java.lang.Override
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       if (!getNameBytes().isEmpty()) {
@@ -278,6 +303,7 @@ public final class Contract {
       unknownFields.writeTo(output);
     }
 
+    @java.lang.Override
     public int getSerializedSize() {
       int size = memoizedSize;
       if (size != -1) return size;
@@ -309,13 +335,12 @@ public final class Contract {
       }
       SECDPAS.grpc.Contract.HelloRequest other = (SECDPAS.grpc.Contract.HelloRequest) obj;
 
-      boolean result = true;
-      result = result && getName()
-          .equals(other.getName());
-      result = result && getHobbiesList()
-          .equals(other.getHobbiesList());
-      result = result && unknownFields.equals(other.unknownFields);
-      return result;
+      if (!getName()
+          .equals(other.getName())) return false;
+      if (!getHobbiesList()
+          .equals(other.getHobbiesList())) return false;
+      if (!unknownFields.equals(other.unknownFields)) return false;
+      return true;
     }
 
     @java.lang.Override
@@ -406,6 +431,7 @@ public final class Contract {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
+    @java.lang.Override
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
@@ -413,6 +439,7 @@ public final class Contract {
     public static Builder newBuilder(SECDPAS.grpc.Contract.HelloRequest prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+    @java.lang.Override
     public Builder toBuilder() {
       return this == DEFAULT_INSTANCE
           ? new Builder() : new Builder().mergeFrom(this);
@@ -436,6 +463,7 @@ public final class Contract {
         return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloRequest_descriptor;
       }
 
+      @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
         return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloRequest_fieldAccessorTable
@@ -458,24 +486,28 @@ public final class Contract {
                 .alwaysUseFieldBuilders) {
         }
       }
+      @java.lang.Override
       public Builder clear() {
         super.clear();
         name_ = "";
 
         hobbies_ = com.google.protobuf.LazyStringArrayList.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
 
+      @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
         return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloRequest_descriptor;
       }
 
+      @java.lang.Override
       public SECDPAS.grpc.Contract.HelloRequest getDefaultInstanceForType() {
         return SECDPAS.grpc.Contract.HelloRequest.getDefaultInstance();
       }
 
+      @java.lang.Override
       public SECDPAS.grpc.Contract.HelloRequest build() {
         SECDPAS.grpc.Contract.HelloRequest result = buildPartial();
         if (!result.isInitialized()) {
@@ -484,47 +516,53 @@ public final class Contract {
         return result;
       }
 
+      @java.lang.Override
       public SECDPAS.grpc.Contract.HelloRequest buildPartial() {
         SECDPAS.grpc.Contract.HelloRequest result = new SECDPAS.grpc.Contract.HelloRequest(this);
         int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
         result.name_ = name_;
-        if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        if (((bitField0_ & 0x00000001) != 0)) {
           hobbies_ = hobbies_.getUnmodifiableView();
-          bitField0_ = (bitField0_ & ~0x00000002);
+          bitField0_ = (bitField0_ & ~0x00000001);
         }
         result.hobbies_ = hobbies_;
-        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
 
+      @java.lang.Override
       public Builder clone() {
-        return (Builder) super.clone();
+        return super.clone();
       }
+      @java.lang.Override
       public Builder setField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
           java.lang.Object value) {
-        return (Builder) super.setField(field, value);
+        return super.setField(field, value);
       }
+      @java.lang.Override
       public Builder clearField(
           com.google.protobuf.Descriptors.FieldDescriptor field) {
-        return (Builder) super.clearField(field);
+        return super.clearField(field);
       }
+      @java.lang.Override
       public Builder clearOneof(
           com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-        return (Builder) super.clearOneof(oneof);
+        return super.clearOneof(oneof);
       }
+      @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
           int index, java.lang.Object value) {
-        return (Builder) super.setRepeatedField(field, index, value);
+        return super.setRepeatedField(field, index, value);
       }
+      @java.lang.Override
       public Builder addRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
           java.lang.Object value) {
-        return (Builder) super.addRepeatedField(field, value);
+        return super.addRepeatedField(field, value);
       }
+      @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof SECDPAS.grpc.Contract.HelloRequest) {
           return mergeFrom((SECDPAS.grpc.Contract.HelloRequest)other);
@@ -543,7 +581,7 @@ public final class Contract {
         if (!other.hobbies_.isEmpty()) {
           if (hobbies_.isEmpty()) {
             hobbies_ = other.hobbies_;
-            bitField0_ = (bitField0_ & ~0x00000002);
+            bitField0_ = (bitField0_ & ~0x00000001);
           } else {
             ensureHobbiesIsMutable();
             hobbies_.addAll(other.hobbies_);
@@ -555,10 +593,12 @@ public final class Contract {
         return this;
       }
 
+      @java.lang.Override
       public final boolean isInitialized() {
         return true;
       }
 
+      @java.lang.Override
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -587,6 +627,7 @@ public final class Contract {
        * </pre>
        *
        * <code>string name = 1;</code>
+       * @return The name.
        */
       public java.lang.String getName() {
         java.lang.Object ref = name_;
@@ -608,6 +649,7 @@ public final class Contract {
        * </pre>
        *
        * <code>string name = 1;</code>
+       * @return The bytes for name.
        */
       public com.google.protobuf.ByteString
           getNameBytes() {
@@ -630,6 +672,8 @@ public final class Contract {
        * </pre>
        *
        * <code>string name = 1;</code>
+       * @param value The name to set.
+       * @return This builder for chaining.
        */
       public Builder setName(
           java.lang.String value) {
@@ -649,6 +693,7 @@ public final class Contract {
        * </pre>
        *
        * <code>string name = 1;</code>
+       * @return This builder for chaining.
        */
       public Builder clearName() {
         
@@ -664,6 +709,8 @@ public final class Contract {
        * </pre>
        *
        * <code>string name = 1;</code>
+       * @param value The bytes for name to set.
+       * @return This builder for chaining.
        */
       public Builder setNameBytes(
           com.google.protobuf.ByteString value) {
@@ -679,9 +726,9 @@ public final class Contract {
 
       private com.google.protobuf.LazyStringList hobbies_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       private void ensureHobbiesIsMutable() {
-        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+        if (!((bitField0_ & 0x00000001) != 0)) {
           hobbies_ = new com.google.protobuf.LazyStringArrayList(hobbies_);
-          bitField0_ |= 0x00000002;
+          bitField0_ |= 0x00000001;
          }
       }
       /**
@@ -690,6 +737,7 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @return A list containing the hobbies.
        */
       public com.google.protobuf.ProtocolStringList
           getHobbiesList() {
@@ -701,6 +749,7 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @return The count of hobbies.
        */
       public int getHobbiesCount() {
         return hobbies_.size();
@@ -711,6 +760,8 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @param index The index of the element to return.
+       * @return The hobbies at the given index.
        */
       public java.lang.String getHobbies(int index) {
         return hobbies_.get(index);
@@ -721,6 +772,8 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @param index The index of the value to return.
+       * @return The bytes of the hobbies at the given index.
        */
       public com.google.protobuf.ByteString
           getHobbiesBytes(int index) {
@@ -732,6 +785,9 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @param index The index to set the value at.
+       * @param value The hobbies to set.
+       * @return This builder for chaining.
        */
       public Builder setHobbies(
           int index, java.lang.String value) {
@@ -749,6 +805,8 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @param value The hobbies to add.
+       * @return This builder for chaining.
        */
       public Builder addHobbies(
           java.lang.String value) {
@@ -766,6 +824,8 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @param values The hobbies to add.
+       * @return This builder for chaining.
        */
       public Builder addAllHobbies(
           java.lang.Iterable<java.lang.String> values) {
@@ -781,10 +841,11 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @return This builder for chaining.
        */
       public Builder clearHobbies() {
         hobbies_ = com.google.protobuf.LazyStringArrayList.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000001);
         onChanged();
         return this;
       }
@@ -794,6 +855,8 @@ public final class Contract {
        * </pre>
        *
        * <code>repeated string hobbies = 2;</code>
+       * @param value The bytes of the hobbies to add.
+       * @return This builder for chaining.
        */
       public Builder addHobbiesBytes(
           com.google.protobuf.ByteString value) {
@@ -806,11 +869,13 @@ public final class Contract {
         onChanged();
         return this;
       }
+      @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
-        return super.setUnknownFieldsProto3(unknownFields);
+        return super.setUnknownFields(unknownFields);
       }
 
+      @java.lang.Override
       public final Builder mergeUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
         return super.mergeUnknownFields(unknownFields);
@@ -832,6 +897,7 @@ public final class Contract {
 
     private static final com.google.protobuf.Parser<HelloRequest>
         PARSER = new com.google.protobuf.AbstractParser<HelloRequest>() {
+      @java.lang.Override
       public HelloRequest parsePartialFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -849,6 +915,7 @@ public final class Contract {
       return PARSER;
     }
 
+    @java.lang.Override
     public SECDPAS.grpc.Contract.HelloRequest getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
@@ -861,10 +928,12 @@ public final class Contract {
 
     /**
      * <code>string greeting = 1;</code>
+     * @return The greeting.
      */
     java.lang.String getGreeting();
     /**
      * <code>string greeting = 1;</code>
+     * @return The bytes for greeting.
      */
     com.google.protobuf.ByteString
         getGreetingBytes();
@@ -886,6 +955,13 @@ public final class Contract {
     }
 
     @java.lang.Override
+    @SuppressWarnings({"unused"})
+    protected java.lang.Object newInstance(
+        UnusedPrivateParameter unused) {
+      return new HelloResponse();
+    }
+
+    @java.lang.Override
     public final com.google.protobuf.UnknownFieldSet
     getUnknownFields() {
       return this.unknownFields;
@@ -898,7 +974,6 @@ public final class Contract {
       if (extensionRegistry == null) {
         throw new java.lang.NullPointerException();
       }
-      int mutable_bitField0_ = 0;
       com.google.protobuf.UnknownFieldSet.Builder unknownFields =
           com.google.protobuf.UnknownFieldSet.newBuilder();
       try {
@@ -909,17 +984,17 @@ public final class Contract {
             case 0:
               done = true;
               break;
-            default: {
-              if (!parseUnknownFieldProto3(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
-              }
-              break;
-            }
             case 10: {
               java.lang.String s = input.readStringRequireUtf8();
 
               greeting_ = s;
+              break;
+            }
+            default: {
+              if (!parseUnknownField(
+                  input, unknownFields, extensionRegistry, tag)) {
+                done = true;
+              }
               break;
             }
           }
@@ -939,6 +1014,7 @@ public final class Contract {
       return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloResponse_descriptor;
     }
 
+    @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
       return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloResponse_fieldAccessorTable
@@ -950,6 +1026,7 @@ public final class Contract {
     private volatile java.lang.Object greeting_;
     /**
      * <code>string greeting = 1;</code>
+     * @return The greeting.
      */
     public java.lang.String getGreeting() {
       java.lang.Object ref = greeting_;
@@ -965,6 +1042,7 @@ public final class Contract {
     }
     /**
      * <code>string greeting = 1;</code>
+     * @return The bytes for greeting.
      */
     public com.google.protobuf.ByteString
         getGreetingBytes() {
@@ -981,6 +1059,7 @@ public final class Contract {
     }
 
     private byte memoizedIsInitialized = -1;
+    @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized == 1) return true;
@@ -990,6 +1069,7 @@ public final class Contract {
       return true;
     }
 
+    @java.lang.Override
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       if (!getGreetingBytes().isEmpty()) {
@@ -998,6 +1078,7 @@ public final class Contract {
       unknownFields.writeTo(output);
     }
 
+    @java.lang.Override
     public int getSerializedSize() {
       int size = memoizedSize;
       if (size != -1) return size;
@@ -1021,11 +1102,10 @@ public final class Contract {
       }
       SECDPAS.grpc.Contract.HelloResponse other = (SECDPAS.grpc.Contract.HelloResponse) obj;
 
-      boolean result = true;
-      result = result && getGreeting()
-          .equals(other.getGreeting());
-      result = result && unknownFields.equals(other.unknownFields);
-      return result;
+      if (!getGreeting()
+          .equals(other.getGreeting())) return false;
+      if (!unknownFields.equals(other.unknownFields)) return false;
+      return true;
     }
 
     @java.lang.Override
@@ -1112,6 +1192,7 @@ public final class Contract {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
+    @java.lang.Override
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
@@ -1119,6 +1200,7 @@ public final class Contract {
     public static Builder newBuilder(SECDPAS.grpc.Contract.HelloResponse prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+    @java.lang.Override
     public Builder toBuilder() {
       return this == DEFAULT_INSTANCE
           ? new Builder() : new Builder().mergeFrom(this);
@@ -1142,6 +1224,7 @@ public final class Contract {
         return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloResponse_descriptor;
       }
 
+      @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
         return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloResponse_fieldAccessorTable
@@ -1164,6 +1247,7 @@ public final class Contract {
                 .alwaysUseFieldBuilders) {
         }
       }
+      @java.lang.Override
       public Builder clear() {
         super.clear();
         greeting_ = "";
@@ -1171,15 +1255,18 @@ public final class Contract {
         return this;
       }
 
+      @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
         return SECDPAS.grpc.Contract.internal_static_SECDPAS_grpc_HelloResponse_descriptor;
       }
 
+      @java.lang.Override
       public SECDPAS.grpc.Contract.HelloResponse getDefaultInstanceForType() {
         return SECDPAS.grpc.Contract.HelloResponse.getDefaultInstance();
       }
 
+      @java.lang.Override
       public SECDPAS.grpc.Contract.HelloResponse build() {
         SECDPAS.grpc.Contract.HelloResponse result = buildPartial();
         if (!result.isInitialized()) {
@@ -1188,6 +1275,7 @@ public final class Contract {
         return result;
       }
 
+      @java.lang.Override
       public SECDPAS.grpc.Contract.HelloResponse buildPartial() {
         SECDPAS.grpc.Contract.HelloResponse result = new SECDPAS.grpc.Contract.HelloResponse(this);
         result.greeting_ = greeting_;
@@ -1195,32 +1283,39 @@ public final class Contract {
         return result;
       }
 
+      @java.lang.Override
       public Builder clone() {
-        return (Builder) super.clone();
+        return super.clone();
       }
+      @java.lang.Override
       public Builder setField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
           java.lang.Object value) {
-        return (Builder) super.setField(field, value);
+        return super.setField(field, value);
       }
+      @java.lang.Override
       public Builder clearField(
           com.google.protobuf.Descriptors.FieldDescriptor field) {
-        return (Builder) super.clearField(field);
+        return super.clearField(field);
       }
+      @java.lang.Override
       public Builder clearOneof(
           com.google.protobuf.Descriptors.OneofDescriptor oneof) {
-        return (Builder) super.clearOneof(oneof);
+        return super.clearOneof(oneof);
       }
+      @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
           int index, java.lang.Object value) {
-        return (Builder) super.setRepeatedField(field, index, value);
+        return super.setRepeatedField(field, index, value);
       }
+      @java.lang.Override
       public Builder addRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
           java.lang.Object value) {
-        return (Builder) super.addRepeatedField(field, value);
+        return super.addRepeatedField(field, value);
       }
+      @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof SECDPAS.grpc.Contract.HelloResponse) {
           return mergeFrom((SECDPAS.grpc.Contract.HelloResponse)other);
@@ -1241,10 +1336,12 @@ public final class Contract {
         return this;
       }
 
+      @java.lang.Override
       public final boolean isInitialized() {
         return true;
       }
 
+      @java.lang.Override
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -1266,6 +1363,7 @@ public final class Contract {
       private java.lang.Object greeting_ = "";
       /**
        * <code>string greeting = 1;</code>
+       * @return The greeting.
        */
       public java.lang.String getGreeting() {
         java.lang.Object ref = greeting_;
@@ -1281,6 +1379,7 @@ public final class Contract {
       }
       /**
        * <code>string greeting = 1;</code>
+       * @return The bytes for greeting.
        */
       public com.google.protobuf.ByteString
           getGreetingBytes() {
@@ -1297,6 +1396,8 @@ public final class Contract {
       }
       /**
        * <code>string greeting = 1;</code>
+       * @param value The greeting to set.
+       * @return This builder for chaining.
        */
       public Builder setGreeting(
           java.lang.String value) {
@@ -1310,6 +1411,7 @@ public final class Contract {
       }
       /**
        * <code>string greeting = 1;</code>
+       * @return This builder for chaining.
        */
       public Builder clearGreeting() {
         
@@ -1319,6 +1421,8 @@ public final class Contract {
       }
       /**
        * <code>string greeting = 1;</code>
+       * @param value The bytes for greeting to set.
+       * @return This builder for chaining.
        */
       public Builder setGreetingBytes(
           com.google.protobuf.ByteString value) {
@@ -1331,11 +1435,13 @@ public final class Contract {
         onChanged();
         return this;
       }
+      @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
-        return super.setUnknownFieldsProto3(unknownFields);
+        return super.setUnknownFields(unknownFields);
       }
 
+      @java.lang.Override
       public final Builder mergeUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
         return super.mergeUnknownFields(unknownFields);
@@ -1357,6 +1463,7 @@ public final class Contract {
 
     private static final com.google.protobuf.Parser<HelloResponse>
         PARSER = new com.google.protobuf.AbstractParser<HelloResponse>() {
+      @java.lang.Override
       public HelloResponse parsePartialFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -1374,6 +1481,7 @@ public final class Contract {
       return PARSER;
     }
 
+    @java.lang.Override
     public SECDPAS.grpc.Contract.HelloResponse getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
@@ -1406,18 +1514,10 @@ public final class Contract {
       "Request\032\033.SECDPAS.grpc.HelloResponseb\006pr" +
       "oto3"
     };
-    com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
-        new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
-          public com.google.protobuf.ExtensionRegistry assignDescriptors(
-              com.google.protobuf.Descriptors.FileDescriptor root) {
-            descriptor = root;
-            return null;
-          }
-        };
-    com.google.protobuf.Descriptors.FileDescriptor
+    descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
-        }, assigner);
+        });
     internal_static_SECDPAS_grpc_HelloRequest_descriptor =
       getDescriptor().getMessageTypes().get(0);
     internal_static_SECDPAS_grpc_HelloRequest_fieldAccessorTable = new
