@@ -18,7 +18,7 @@
         <mainclass>pt.ulisboa.tecnico.SECDPAS.DPASServer</mainclass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
-        <client.port>8081</client.port>
+        <client.port>8080</client.port>
     </properties>
 
     <dependencies>

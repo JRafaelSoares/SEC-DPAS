@@ -1,0 +1,67 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<!-- http://maven.apache.org/pom.html#Quick_Overview -->
+
+	<parent>
+		<groupId>pt.ulisboa.tecnico.SECDPAS</groupId>
+		<artifactId>secdpas</artifactId>
+		<version>1.0</version>
+	</parent>
+
+	<artifactId>dpas-client</artifactId>
+	<packaging>jar</packaging>
+
+	<name>${project.artifactId}</name>
+
+	<properties>
+		<!-- compiler properties -->
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
+
+		<!-- application properties -->
+		<mainclass>pt.ulisboa.tecnico.SECDPAS.DPASClient</mainclass>
+
+		<server.host>localhost</server.host>
+		<server.port>8080</server.port>
+	</properties>
+
+	<dependencies>
+		<!-- contract brings gRPC dependencies with it -->
+		<dependency>
+			<groupId>SECDPAS.grpc</groupId>
+			<artifactId>contract</artifactId>
+			<version>1.0</version>
+		</dependency>
+		<!-- JUnit -->
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- Plugin that provides two goals to execute system and Java programs --> 
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>${exec-maven-plugin.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>java</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<!-- to prevent deprecation warning: -->
+					<killAfter>-1</killAfter>
+					<mainClass>${mainclass}</mainClass>
+					<arguments>
+						<argument>${server.host}</argument>
+						<argument>${server.port}</argument>
+					</arguments>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

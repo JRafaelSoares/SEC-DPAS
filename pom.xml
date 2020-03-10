@@ -20,6 +20,7 @@
     <modules>
         <module>dpas-server</module>
         <module>contract</module>
+        <module>dpas-client</module>
     </modules>
 
     <build>
