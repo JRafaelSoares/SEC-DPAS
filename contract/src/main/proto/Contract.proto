@@ -1,10 +1,11 @@
 //
+
 syntax = "proto3";
+import "google/protobuf/empty.proto";
 package SECDPAS.grpc;
 
 // Request payload
 
-//INCSService messages
 
 message HelloRequest {
     // Each message attribute is strongly typed.
@@ -24,8 +25,43 @@ message HelloResponse {
     string greeting = 1;
 }
 
+//Register
+
+message RegisterRequest {
+    //Class PublicKey
+    bytes publicKey = 1;
+}
+
+// Post(General)
+
+message PostRequest {
+    //PublicKey
+    bytes publicKey = 1;
+    //Char[256]
+    string message = 2;
+    //Array Announcements
+    bytes announcements = 3;
+}
+
+message ReadRequest {
+    //PublicKey
+    bytes publicKey = 1;
+    //Number of posts to see
+    int32 number = 2;
+}
+
+message ReadResponse {
+    //Array of announcements
+    bytes announcements = 1;
+}
+
 // Defining a Service, a Service can have multiple RPC operations
 service DPASService {
     // Define a RPC operation
     rpc greeting(HelloRequest) returns (HelloResponse);
+    rpc register(RegisterRequest) returns (google.protobuf.Empty);
+    rpc post(PostRequest) returns (google.protobuf.Empty);
+    rpc postGeneral(PostRequest) returns (google.protobuf.Empty);
+    rpc read(ReadRequest) returns (ReadResponse);
+    rpc readGeneral(ReadRequest) returns (ReadResponse);
 }
