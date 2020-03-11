@@ -5,14 +5,17 @@ import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.protobuf.Empty;
 import io.grpc.stub.StreamObserver;
+import org.apache.commons.lang3.SerializationUtils;
+
+import java.security.PublicKey;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
+	ConcurrentHashMap<PublicKey, CopyOnWriteArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
 
-	public DPASServiceImpl() {
-
-
-	}
+	CopyOnWriteArrayList<Announcement> generalBoard = new CopyOnWriteArrayList<>();
 
 	@Override
 	public void greeting(Contract.HelloRequest request, StreamObserver<Contract.HelloResponse> responseOberserver){
@@ -24,17 +27,50 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Empty> responseObserver) {
-		super.register(request, responseObserver);
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+
+		if(privateBoard.get(userKey) != null){
+			responseObserver.onError(new ClientAlreadyRegistredException("Client is already registered"));
+		}
+		else {
+			privateBoard.put(userKey, new CopyOnWriteArrayList<>());
+		}
+		responseObserver.onNext(Empty.newBuilder().build());
+		responseObserver.onCompleted();
 	}
 
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Empty> responseObserver) {
-		super.post(request, responseObserver);
+		char[] post = request.getMessage().toCharArray();
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+
+		CopyOnWriteArrayList<Announcement> announcementList = privateBoard.get(userKey);
+
+		if(announcementList == null){
+			responseObserver.onError(new ClientNotRegistredException("Client not yet registered"));
+		}
+		//TODO- Announcement can be null, mby test for it? Add try catch?
+		announcementList.add(new Announcement(post, userKey, announcements));
+
+		responseObserver.onNext(Empty.newBuilder().build());
+		responseObserver.onCompleted();
 	}
 
 	@Override
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Empty> responseObserver) {
-		super.postGeneral(request, responseObserver);
+		char[] post = request.getMessage().toCharArray();
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+
+		if(!privateBoard.containsKey(userKey)){
+			responseObserver.onError(new ClientNotRegistredException("Client not yet registered"));
+		}
+		//TODO- Announcement can be null, mby test for it? Add try catch?
+		generalBoard.add(new Announcement(post, userKey, announcements));
+
+		responseObserver.onNext(Empty.newBuilder().build());
+		responseObserver.onCompleted();
 	}
 
 	@Override
