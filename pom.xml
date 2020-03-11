@@ -22,6 +22,7 @@
         <module>dpas-server</module>
         <module>contract</module>
         <module>dpas-client</module>
+        <module>client-library</module>
     </modules>
 
     <build>
