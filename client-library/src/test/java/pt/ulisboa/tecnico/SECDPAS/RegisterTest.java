@@ -9,7 +9,7 @@ import java.security.*;
 
 import static org.junit.Assert.*;
 
-public class AppTest {
+public class RegisterTest {
 
 	private static ClientLibrary lib;
 	private static PublicKey pub1;
@@ -43,17 +43,17 @@ public class AppTest {
 	@Test
 	public void registerCorrectTest(){
 		try{
-			lib.Register(pub1);
+			lib.register(pub1);
 		}catch(pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException e){
 			fail(e.getMessage());
 		}
 	}
 
-	@Test()
+	@Test
 	public void registerClientAlreadyRegisteredTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException{
-		lib.Register(pub2);
+		lib.register(pub2);
 		thrown.expect(pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException.class);
-		lib.Register(pub2);
+		lib.register(pub2);
 	}
 }
 
