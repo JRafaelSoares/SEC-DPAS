@@ -30,13 +30,12 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Empty> responseObserver) {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
-
 		if(this.privateBoard.get(userKey) != null){
 			responseObserver.onError(new ServerAlreadyRegistredException("Client is already registered"));
+			return;
 		}
-		else {
-			this.privateBoard.put(userKey, new CopyOnWriteArrayList<>());
-		}
+		this.privateBoard.put(userKey, new CopyOnWriteArrayList<>());
+
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
 	}
@@ -51,10 +50,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		if(announcementList == null){
 			responseObserver.onError(new ServerNotRegistredException("Client not yet registered"));
+			return;
+		}else{
+			announcementList.add(new Announcement(post, userKey, announcements));
 		}
-		//TODO- Announcement can be null, mby test for it? Add try catch?
-		announcementList.add(new Announcement(post, userKey, announcements));
-
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
 	}
@@ -67,6 +66,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		if(!this.privateBoard.containsKey(userKey)){
 			responseObserver.onError(new ServerNotRegistredException("Client not yet registered"));
+			return;
 		}
 		//TODO- Announcement can be null, mby test for it? Add try catch?
 		this.generalBoard.add(new Announcement(post, userKey, announcements));
@@ -77,13 +77,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void read(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
-		PublicKey userKey = SerializationUtils.deserialize(request.toByteArray());
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		int numPosts = request.getNumber();
 
 		CopyOnWriteArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
 		if(announcementList == null){
 			responseObserver.onError(new ServerNotRegistredException("Client not yet registered"));
+			return;
 		}
 
 		Contract.ReadResponse response;
@@ -91,7 +92,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			//desirializes the array and transforms it to gRPC
 			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(announcementList.toArray()))).build();
 		}
-
 		else{
 			List<Announcement> toSent =  announcementList.subList(announcementList.size()-numPosts, announcementList.size());
 			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(toSent.toArray()))).build();

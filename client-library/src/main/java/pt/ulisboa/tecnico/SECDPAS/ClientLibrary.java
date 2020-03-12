@@ -34,7 +34,7 @@ public class ClientLibrary {
 		this.stub = DPASServiceGrpc.newBlockingStub(channel);
 	}
 
-	public void Register(PublicKey userKey) throws ClientAlreadyRegistredException{
+	public void register(PublicKey userKey) throws ClientAlreadyRegistredException{
 		//Serializes key and changes to ByteString
 		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
 		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
@@ -45,7 +45,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public void Post(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
+	public void post(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
 		try{
 			Empty response = stub.post(getPostRequest(userKey, message, references));
 		} catch (ClientPostTooLongException e){
@@ -55,7 +55,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public void PostGeneral(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
+	public void postGeneral(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
 		try{
 			Empty response = stub.postGeneral(getPostRequest(userKey, message, references));
 		} catch (ClientPostTooLongException e){
