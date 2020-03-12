@@ -7,7 +7,16 @@ import SECDPAS.grpc.DPASServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
+import java.security.PublicKey;
+
 public class DPASClient {
+	public static PublicKey publicKey;
+	public static ClientLibrary lib;
+
+	public DPASClient(PublicKey p){
+		lib = new ClientLibrary();
+		publicKey = p;
+	}
 
 	public static void main(String[] args) throws Exception {
 		System.out.println(DPASClient.class.getSimpleName());
@@ -37,13 +46,13 @@ public class DPASClient {
 		// Here we create a blocking stub, but an async stub,
 		// or an async stub with Future are always possible.
 		DPASServiceGrpc.DPASServiceBlockingStub stub = DPASServiceGrpc.newBlockingStub(channel);
-		Contract.HelloRequest request = Contract.HelloRequest.newBuilder().setName("friend").build();
+		//Contract.HelloRequest request = Contract.HelloRequest.newBuilder().setName("friend").build();
 
 		// Finally, make the call using the stub
-		Contract.HelloResponse response = stub.greeting(request);
+		//Contract.HelloResponse response = stub.greeting(request);
 
 		// HelloResponse has auto-generated toString method that shows its contents
-		System.out.println(response);
+		//System.out.println(response);
 
 		// A Channel should be shutdown before stopping the process.
 		channel.shutdownNow();
