@@ -152,10 +152,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		for (Announcement announcement: this.privateBoard.get(userKey)) {
 			if(announcement.equals(testingAnnouncement)){
+
 				response = Contract.TestsResponse.newBuilder().setTestResult(true).build();
 			}
 		}
-
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
 	}

@@ -6,10 +6,12 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.security.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
-public class PostTest {
+public class PostGeneralTest {
 
 	private static ClientLibrary lib;
 	private static PublicKey pub1;
@@ -36,25 +38,26 @@ public class PostTest {
 			//PrivateKey privateKey = kp.getPrivate();
 
 			lib.register(pub1);
+			lib.register(pub2);
 
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
 		}
 	}
 	@Test
-	public void postCorrectNoAnnouncementsTest(){
+	public void postGeneralCorrectNoAnnouncementsTest(){
 		try{
 			String s = "NoAnnouncement";
-			lib.post(pub1, s.toCharArray());
+			lib.postGeneral(pub1, s.toCharArray());
 			//TO-DO add read to verify
-			assertTrue(lib.postState(pub1, s.toCharArray()));
+			assertTrue(lib.postGeneralState(pub1, s.toCharArray()));
 		}catch(Exception e){
 			fail(e.getCause().getMessage());
 		}
 	}
 
 	@Test
-	public void postCorrectWithAnnouncementsTest(){
+	public void postGeneralCorrectWithAnnouncementsTest(){
 		try{
 			//TO-DO add read to verify
 
@@ -64,34 +67,9 @@ public class PostTest {
 
 			lib.post(pub1, s.toCharArray());
 			s += "2";
-			lib.post(pub1, s.toCharArray(), announcements);
-			assertTrue(lib.postState(pub1, s.toCharArray(), announcements));
+			lib.postGeneral(pub1, s.toCharArray(), announcements);
+			assertTrue(lib.postGeneralState(pub1, s.toCharArray(), announcements));
 		}catch(Exception e){
-			fail(e.getMessage());
-		}
-	}
-
-	@Test
-	public void postClientNotRegistered() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
-		try{
-			thrown.expect(pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException.class);
-			lib.post(pub2, "Post".toCharArray());
-		}catch (ClientPostTooLongException e){
-			fail(e.getMessage());
-		}
-	}
-
-	@Test
-	public void postMessageTooLong() throws pt.ulisboa.tecnico.SECDPAS.ClientPostTooLongException{
-		try{
-			char[] messageTooLong = new char[257];
-			for (int i = 0; i< 257; i++){
-				messageTooLong[i] = 'a';
-			}
-			thrown.expect(pt.ulisboa.tecnico.SECDPAS.ClientPostTooLongException.class);
-			lib.post(pub1, messageTooLong);
-
-		}catch (ClientNotRegistredException e){
 			fail(e.getMessage());
 		}
 	}

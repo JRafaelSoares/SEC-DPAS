@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.SECDPAS;
 
 import java.io.Serializable;
 import java.security.PublicKey;
+import java.util.Arrays;
 
 public class Announcement implements Serializable {
 
@@ -41,8 +42,30 @@ public class Announcement implements Serializable {
             return false;
         }
         else{
+
             Announcement announcement = (Announcement) obj;
-            return (this.post.equals(announcement.post) && this.publicKey.equals(announcement.publicKey) && this.announcements.equals(announcement.announcements));
+
+            if(announcement.getPublicKey() == null && this.publicKey == null){
+                return true;
+            }
+
+            if (announcement.getAnnouncements().length != this.announcements.length){
+                return false;
+            }
+            if(announcement.getAnnouncements().length == 0 && this.announcements.length == 0){
+                return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey));
+            }
+
+            else {
+                boolean equalArray = true;
+                for(int i = 0; i < this.announcements.length; i++){
+                    if(!this.announcements[i].equals(announcement.announcements[i])){
+                        equalArray = false;
+                        break;
+                    }
+                }
+                return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey) && equalArray);
+            }
         }
     }
 }

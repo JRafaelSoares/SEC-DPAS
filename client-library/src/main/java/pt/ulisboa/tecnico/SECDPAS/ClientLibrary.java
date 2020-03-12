@@ -45,6 +45,10 @@ public class ClientLibrary {
 		}
 	}
 
+	public void post(PublicKey userKey, char[] message) throws  ClientPostTooLongException, ClientNotRegistredException{
+		post(userKey, message, new Announcement[0]);
+	}
+
 	public void post(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
 		try{
 			Empty response = stub.post(getPostRequest(userKey, message, references));
@@ -54,6 +58,11 @@ public class ClientLibrary {
 			throw new ClientNotRegistredException(e.getMessage());
 		}
 	}
+
+	public void postGeneral(PublicKey userKey, char[] message) throws ClientPostTooLongException, ClientNotRegistredException{
+		postGeneral(userKey, message, new Announcement[0]);
+	}
+
 
 	public void postGeneral(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
 		try{
@@ -99,7 +108,7 @@ public class ClientLibrary {
 		}
 
 		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
-		String post = message.toString();
+		String post = new String(message);
 		ByteString announcements = ByteString.copyFrom(SerializationUtils.serialize(references));
 
 		return Contract.PostRequest.newBuilder().setPublicKey(publicKey).setMessage(post).setAnnouncements(announcements).build();
@@ -127,6 +136,10 @@ public class ClientLibrary {
 		}
 	}
 
+	public boolean postState(PublicKey userKey, char[] message){
+		return postState(userKey, message, new Announcement[0]);
+	}
+
 	public boolean postGeneralState(PublicKey userKey, char[] message, Announcement[] references){
 		try{
 			Contract.TestsResponse response = stub.postGeneralState(getPostRequest(userKey, message, references));
@@ -135,5 +148,10 @@ public class ClientLibrary {
 			return false;
 		}
 	}
+
+	public boolean postGeneralState(PublicKey userKey, char[] message){
+		return postGeneralState(userKey, message, new Announcement[0]);
+	}
+
 
 }
