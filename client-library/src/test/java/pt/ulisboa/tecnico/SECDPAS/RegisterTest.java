@@ -44,6 +44,7 @@ public class RegisterTest {
 	public void registerCorrectTest(){
 		try{
 			lib.register(pub1);
+			assertTrue(lib.clientRegisteredState(pub1));
 		}catch(pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException e){
 			fail(e.getMessage());
 		}

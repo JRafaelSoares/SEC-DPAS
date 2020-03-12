@@ -55,6 +55,11 @@ message ReadResponse {
     bytes announcements = 1;
 }
 
+//Testing messages
+message TestsResponse {
+    bool testResult = 1;
+}
+
 // Defining a Service, a Service can have multiple RPC operations
 service DPASService {
     // Define a RPC operation
@@ -64,4 +69,10 @@ service DPASService {
     rpc postGeneral(PostRequest) returns (google.protobuf.Empty);
     rpc read(ReadRequest) returns (ReadResponse);
     rpc readGeneral(ReadRequest) returns (ReadResponse);
+
+    //Testing Functions
+    rpc clientRegisteredState(RegisterRequest) returns (TestsResponse);
+    rpc postState(PostRequest) returns (TestsResponse);
+    rpc postGeneralState(PostRequest) returns (TestsResponse);
+
 }

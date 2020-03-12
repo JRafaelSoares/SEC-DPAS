@@ -105,5 +105,35 @@ public class ClientLibrary {
 		return Contract.PostRequest.newBuilder().setPublicKey(publicKey).setMessage(post).setAnnouncements(announcements).build();
 	}
 
+	/********************/
+	/** TEST FUNCTIONS **/
+	/********************/
+
+	public boolean clientRegisteredState(PublicKey userKey){
+		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
+		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
+
+		Contract.TestsResponse response = stub.clientRegisteredState(request);
+
+		return response.getTestResult();
+	}
+
+	public boolean postState(PublicKey userKey, char[] message, Announcement[] references){
+		try{
+			Contract.TestsResponse response = stub.postState(getPostRequest(userKey, message, references));
+			return response.getTestResult();
+		} catch (ClientPostTooLongException e){
+			return false;
+		}
+	}
+
+	public boolean postGeneralState(PublicKey userKey, char[] message, Announcement[] references){
+		try{
+			Contract.TestsResponse response = stub.postGeneralState(getPostRequest(userKey, message, references));
+			return response.getTestResult();
+		} catch (ClientPostTooLongException e){
+			return false;
+		}
+	}
 
 }

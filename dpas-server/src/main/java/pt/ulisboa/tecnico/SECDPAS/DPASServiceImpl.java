@@ -123,4 +123,60 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
 	}
+
+	/**********************/
+	/** TESTING FUNCTION **/
+	/**********************/
+
+	@Override
+	public void clientRegisteredState(Contract.RegisterRequest request, StreamObserver<Contract.TestsResponse> responseObserver) {
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+
+		boolean isUserRegistred = privateBoard.containsKey(userKey);
+
+		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(isUserRegistred).build();
+
+		responseObserver.onNext(response);
+		responseObserver.onCompleted();
+	}
+
+	@Override
+	public void postState(Contract.PostRequest request, StreamObserver<Contract.TestsResponse> responseObserver) {
+		char[] post = request.getMessage().toCharArray();
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements);
+
+		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
+
+		for (Announcement announcement: this.privateBoard.get(userKey)) {
+			if(announcement.equals(testingAnnouncement)){
+				response = Contract.TestsResponse.newBuilder().setTestResult(true).build();
+			}
+		}
+
+		responseObserver.onNext(response);
+		responseObserver.onCompleted();
+	}
+
+	@Override
+	public void postGeneralState(Contract.PostRequest request, StreamObserver<Contract.TestsResponse> responseObserver) {
+		char[] post = request.getMessage().toCharArray();
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements);
+
+		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
+
+		for (Announcement announcement: this.generalBoard) {
+			if(announcement.equals(testingAnnouncement)){
+				response = Contract.TestsResponse.newBuilder().setTestResult(true).build();
+			}
+		}
+
+		responseObserver.onNext(response);
+		responseObserver.onCompleted();
+	}
 }

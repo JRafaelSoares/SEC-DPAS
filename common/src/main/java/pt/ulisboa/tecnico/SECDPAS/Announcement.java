@@ -7,7 +7,7 @@ import java.security.PublicKey;
 public class Announcement implements Serializable {
 
     //Maximum 256 chars
-    transient private char[] post = new char[256];
+    transient private char[] post;
 
     transient private Announcement[] announcements;
 
@@ -35,5 +35,14 @@ public class Announcement implements Serializable {
         return this.publicKey;
     }
 
-
+    @Override
+    public boolean equals(Object obj) {
+        if(obj.getClass() != this.getClass()){
+            return false;
+        }
+        else{
+            Announcement announcement = (Announcement) obj;
+            return (this.post.equals(announcement.post) && this.publicKey.equals(announcement.publicKey) && this.announcements.equals(announcement.announcements));
+        }
+    }
 }
