@@ -34,7 +34,9 @@ public class ClientLibrary {
 		this.stub = DPASServiceGrpc.newBlockingStub(channel);
 	}
 
-	public void register(PublicKey userKey) throws ClientAlreadyRegistredException{
+	public void register(PublicKey userKey) throws ClientAlreadyRegistredException, InvalidArgumentException{
+		checkPublicKey(userKey);
+
 		//Serializes key and changes to ByteString
 		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
 		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
@@ -45,36 +47,47 @@ public class ClientLibrary {
 		}
 	}
 
-	public void post(PublicKey userKey, char[] message) throws  ClientPostTooLongException, ClientNotRegistredException{
+	public void post(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegistredException{
+		checkPublicKey(userKey);
+		checkMessage(message);
+
 		post(userKey, message, new Announcement[0]);
 	}
 
-	public void post(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
+	public void post(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegistredException{
+		checkPublicKey(userKey);
+		checkMessage(message);
+
 		try{
 			Empty response = stub.post(getPostRequest(userKey, message, references));
-		} catch (ClientPostTooLongException e){
-			throw e;
 		} catch (RuntimeException e){
 			throw new ClientNotRegistredException(e.getMessage());
 		}
 	}
 
-	public void postGeneral(PublicKey userKey, char[] message) throws ClientPostTooLongException, ClientNotRegistredException{
+	public void postGeneral(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegistredException{
+		checkPublicKey(userKey);
+		checkMessage(message);
+
 		postGeneral(userKey, message, new Announcement[0]);
 	}
 
 
-	public void postGeneral(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException, ClientNotRegistredException{
+	public void postGeneral(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegistredException{
+		checkPublicKey(userKey);
+		checkMessage(message);
+
 		try{
 			Empty response = stub.postGeneral(getPostRequest(userKey, message, references));
-		} catch (ClientPostTooLongException e){
-			throw e;
 		} catch (RuntimeException e){
 			throw new ClientNotRegistredException(e.getMessage());
 		}
 	}
 
-	public Announcement[] read(PublicKey userKey, int number) throws ClientNotRegistredException{
+	public Announcement[] read(PublicKey userKey, int number) throws ClientNotRegistredException, InvalidArgumentException{
+		checkPublicKey(userKey);
+		checkNumber(number);
+
 		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
 		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(publicKey).setNumber(number).build();
 
@@ -86,7 +99,10 @@ public class ClientLibrary {
 		}
 	}
 
-	public Announcement[] readGeneral(PublicKey userKey, int number) throws ClientNotRegistredException{
+	public Announcement[] readGeneral(PublicKey userKey, int number) throws ClientNotRegistredException, InvalidArgumentException{
+		checkPublicKey(userKey);
+		checkNumber(number);
+
 		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
 		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(publicKey).setNumber(number).build();
 
@@ -102,11 +118,7 @@ public class ClientLibrary {
 	/**** AUX FUNCTIONS ******/
 	/*************************/
 
-	public Contract.PostRequest getPostRequest(PublicKey userKey, char[] message, Announcement[] references) throws ClientPostTooLongException{
-		if(message.length > 256){
-			throw  new ClientPostTooLongException("Post too long, must be smaller than 256 chars");
-		}
-
+	public Contract.PostRequest getPostRequest(PublicKey userKey, char[] message, Announcement[] references){
 		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
 		String post = new String(message);
 		ByteString announcements = ByteString.copyFrom(SerializationUtils.serialize(references));
@@ -129,28 +141,73 @@ public class ClientLibrary {
 
 	public boolean postState(PublicKey userKey, char[] message, Announcement[] references){
 		try{
+			checkPublicKey(userKey);
+			checkMessage(message);
+
 			Contract.TestsResponse response = stub.postState(getPostRequest(userKey, message, references));
 			return response.getTestResult();
-		} catch (ClientPostTooLongException e){
+		} catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
 	public boolean postState(PublicKey userKey, char[] message){
-		return postState(userKey, message, new Announcement[0]);
+		try{
+			checkPublicKey(userKey);
+			checkMessage(message);
+
+			return postState(userKey, message, new Announcement[0]);
+		}catch (InvalidArgumentException e){
+			return false;
+		}
 	}
 
 	public boolean postGeneralState(PublicKey userKey, char[] message, Announcement[] references){
 		try{
+			checkPublicKey(userKey);
+			checkMessage(message);
+
 			Contract.TestsResponse response = stub.postGeneralState(getPostRequest(userKey, message, references));
 			return response.getTestResult();
-		} catch (ClientPostTooLongException e){
+		} catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
 	public boolean postGeneralState(PublicKey userKey, char[] message){
-		return postGeneralState(userKey, message, new Announcement[0]);
+		try{
+			checkPublicKey(userKey);
+			checkMessage(message);
+
+			return postGeneralState(userKey, message, new Announcement[0]);
+		}catch (InvalidArgumentException e){
+			return false;
+		}
+	}
+
+	/*********************/
+	/** CHECK ARGUMENTS **/
+	/*********************/
+
+	private void checkPublicKey(PublicKey key) throws InvalidArgumentException{
+		if(key == null){
+			throw new InvalidArgumentException("Public key can not be null");
+		}
+	}
+
+	private void checkMessage(char[] message) throws InvalidArgumentException{
+		if(message == null){
+			throw new InvalidArgumentException("Public key can not be null");
+		}
+		if(message.length > 255) {
+			throw new InvalidArgumentException("Post too long, must be smaller than 256 chars");
+		}
+	}
+
+	private void checkNumber(int n) throws InvalidArgumentException{
+		if(n < 0){
+			throw new InvalidArgumentException("Number can not be negative");
+		}
 	}
 
 

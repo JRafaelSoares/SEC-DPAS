@@ -6,8 +6,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.security.*;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -38,39 +36,114 @@ public class PostGeneralTest {
 			//PrivateKey privateKey = kp.getPrivate();
 
 			lib.register(pub1);
-			lib.register(pub2);
 
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
 		}
 	}
 	@Test
-	public void postGeneralCorrectNoAnnouncementsTest(){
+	public void postGeneralCorrectNoAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+		String s = "NoAnnouncement";
+		lib.postGeneral(pub1, s.toCharArray());
+
+		assertTrue(lib.postGeneralState(pub1, s.toCharArray()));
+	}
+
+	@Test
+	public void postGeneralCorrectWithAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+		String s1 = "NoAnnouncement";
+		Announcement a = new Announcement(s1.toCharArray(), pub1);
+		Announcement[] announcements = {a};
+
+		lib.postGeneral(pub1, s1.toCharArray());
+
+		String s2 = "WithAnnouncement";
+		lib.postGeneral(pub1, s2.toCharArray(), announcements);
+
+		assertTrue(lib.postGeneralState(pub1, s1.toCharArray()));
+		assertTrue(lib.postGeneralState(pub1, s2.toCharArray(), announcements));
+	}
+
+	@Test
+	public void postGeneralMessageLimitTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+		char[] messageLimit = new char[255];
+		for (int i = 0; i<255; i++){
+			messageLimit[i] = 'a';
+		}
+
+		lib.postGeneral(pub1, messageLimit);
+		assertTrue(lib.postGeneralState(pub1, messageLimit));
+	}
+
+	@Test
+	public void postGeneralMessageEmptyTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+		char[] emptyMessage = new char[0];
+		lib.postGeneral(pub1, emptyMessage);
+
+		assertTrue(lib.postGeneralState(pub1, emptyMessage));
+	}
+
+	@Test
+	public void postGeneralClientNotRegisteredTest() throws InvalidArgumentException {
 		try{
-			String s = "NoAnnouncement";
-			lib.postGeneral(pub1, s.toCharArray());
-			//TO-DO add read to verify
-			assertTrue(lib.postGeneralState(pub1, s.toCharArray()));
-		}catch(Exception e){
-			fail(e.getCause().getMessage());
+			lib.postGeneral(pub2, "Client Not Registered".toCharArray());
+			fail("Exception ClientNotRegisteredException should have been thrown");
+
+		}catch (pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
+			assertFalse(lib.postGeneralState(pub1, "Client Not Registered".toCharArray()));
 		}
 	}
 
 	@Test
-	public void postGeneralCorrectWithAnnouncementsTest(){
+	public void postGeneralMessageTooLongTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+		char[] messageTooLong = new char[256];
+		for (int i = 0; i<256; i++){
+			messageTooLong[i] = 'a';
+		}
+
 		try{
-			//TO-DO add read to verify
+			lib.postGeneral(pub1, messageTooLong);
+			fail("Exception InvalidArgumentException should have been thrown");
 
-			String s = "WithAnnouncement";
-			Announcement a = new Announcement(s.toCharArray(), pub1);
-			Announcement[] announcements = {a};
+		}catch (InvalidArgumentException e){
+			assertFalse(lib.postGeneralState(pub1, messageTooLong));
+		}
+	}
 
-			lib.post(pub1, s.toCharArray());
-			s += "2";
-			lib.postGeneral(pub1, s.toCharArray(), announcements);
-			assertTrue(lib.postGeneralState(pub1, s.toCharArray(), announcements));
-		}catch(Exception e){
-			fail(e.getMessage());
+	@Test
+	public void postGeneralMessageNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException {
+
+		try {
+			lib.postGeneral(pub1, null);
+			fail("Exception InvalidArgumentException should have been thrown");
+
+		} catch (InvalidArgumentException e) {
+			assertFalse(lib.postGeneralState(pub1, null));
+		}
+	}
+
+	@Test
+	public void postGeneralPublicKeyNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+		char[] message = new char[256];
+		message[0] = 'a';
+		try{
+			lib.postGeneral(null, message);
+			fail("Exception InvalidArgumentException should have been thrown");
+
+		}catch (InvalidArgumentException e){
+			assertFalse(lib.postGeneralState(pub1, null));
+		}
+	}
+
+	@Test
+	public void postGeneralPublicKeyMessageNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+
+		try{
+			lib.postGeneral(null, null);
+			fail("Exception InvalidArgumentException should have been thrown");
+
+		}catch (InvalidArgumentException e){
+			assertFalse(lib.postGeneralState(pub1, null));
 		}
 	}
 }

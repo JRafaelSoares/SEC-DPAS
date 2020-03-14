@@ -41,20 +41,22 @@ public class RegisterTest {
 	}
 
 	@Test
-	public void registerCorrectTest(){
-		try{
-			lib.register(pub1);
-			assertTrue(lib.clientRegisteredState(pub1));
-		}catch(pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException e){
-			fail(e.getMessage());
-		}
+	public void registerCorrectTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+		lib.register(pub1);
+		assertTrue(lib.clientRegisteredState(pub1));
 	}
 
 	@Test
-	public void registerClientAlreadyRegisteredTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException{
+	public void registerClientAlreadyRegisteredTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
 		lib.register(pub2);
 		thrown.expect(pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException.class);
 		lib.register(pub2);
+	}
+
+	@Test
+	public void registerNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+		thrown.expect(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException.class);
+		lib.register(null);
 	}
 }
 
