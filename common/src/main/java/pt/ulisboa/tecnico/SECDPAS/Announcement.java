@@ -8,11 +8,11 @@ import java.util.Arrays;
 public class Announcement implements Serializable {
 
     //Maximum 256 chars
-    transient private char[] post;
+    private char[] post;
 
-    transient private Announcement[] announcements;
+    private Announcement[] announcements;
 
-    transient private PublicKey publicKey;
+    private PublicKey publicKey;
 
     public Announcement(char[] post, PublicKey publicKey, Announcement[] announcements){
         this.post = post;

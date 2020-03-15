@@ -9,13 +9,14 @@ import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
-	private ConcurrentHashMap<PublicKey, CopyOnWriteArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<PublicKey, ArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
 
 	private CopyOnWriteArrayList<Announcement> generalBoard = new CopyOnWriteArrayList<>();
 
@@ -34,7 +35,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			responseObserver.onError(new ServerAlreadyRegistredException("Client is already registered"));
 			return;
 		}
-		this.privateBoard.put(userKey, new CopyOnWriteArrayList<>());
+		this.privateBoard.put(userKey, new ArrayList<>());
 
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
@@ -46,7 +47,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		CopyOnWriteArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
+		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
 		if(announcementList == null){
 			responseObserver.onError(new ServerNotRegistredException("Client not yet registered"));
@@ -80,7 +81,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		int numPosts = request.getNumber();
 
-		CopyOnWriteArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
+		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
 		if(announcementList == null){
 			responseObserver.onError(new ServerNotRegistredException("Client not yet registered"));
@@ -94,7 +95,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 		else{
 			List<Announcement> toSent =  announcementList.subList(announcementList.size()-numPosts, announcementList.size());
-			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(toSent.toArray()))).build();
+			Announcement[] announcements = toSent.toArray(new Announcement[0]);
+			byte[] byteAnnouncement = SerializationUtils.serialize(announcements);
+			Announcement[] deserialization = SerializationUtils.deserialize(byteAnnouncement);
+
+			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(announcements))).build();
 		}
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
