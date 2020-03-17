@@ -39,98 +39,131 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readTest(){
-		try{
-			PublicKey key = registerClient();
+	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+		PublicKey key = registerClient();
 
-			String s = "ReadTest";
+		String s1 = "post1";
+		String s2 = "post2";
 
-			lib.post(key, s.toCharArray());
+		lib.post(key, s1.toCharArray());
+		lib.post(key, s2.toCharArray());
 
-			Announcement[] announcement = lib.read(key, 1);
+		Announcement[] announcement = lib.read(key, 1);
+		String readPost = new String(announcement[0].getPost());
 
-			String readPost = new String(announcement[0].getPost());
-			assertEquals(readPost,s);
-		}catch(Exception e){
-			fail(e.getCause().getMessage());
-		}
+		assertEquals(announcement.length, 1);
+		assertEquals(readPost, s2);
 	}
 
 	@Test
-	public void readAllAnnouncementsTest(){
-		try{
-			PublicKey key = registerClient();
+	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+		PublicKey key = registerClient();
 
-			String s = "ReadTest";
-			lib.post(key, s.toCharArray());
+		String s1 = "post1";
+		String s2 = "post2";
 
-			String s1 = s+"1";
-			lib.post(key, s1.toCharArray());
+		lib.post(key, s1.toCharArray());
+		lib.post(key, s2.toCharArray());
 
-			Announcement[] announcement = lib.read(key, 0);
-			System.out.println("Size: " + announcement.length);
+		Announcement[] announcement = lib.read(key, 0);
 
-			String readPost = new String(announcement[0].getPost());
-			String readPost1 = new String(announcement[1].getPost());
+		assertEquals(announcement.length, 2);
 
-			assertEquals(announcement.length, 2);
-			assertEquals(readPost,s);
-			assertEquals(readPost1, s1);
-		}catch(Exception e){
-			fail(e.getCause().getMessage());
-		}
+		String readPost1 = new String(announcement[0].getPost());
+		String readPost2 = new String(announcement[1].getPost());
+
+		assertEquals(readPost1,s1);
+		assertEquals(readPost2, s2);
 	}
 
 	@Test
-	public void readNumberBiggerThanPostsTest(){
-		try{
-			PublicKey key = registerClient();
+	public void readOnlyMyAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+		PublicKey key1 = registerClient();
+		PublicKey key2 = registerClient();
 
-			String s = "ReadTest";
-			lib.post(key, s.toCharArray());
+		String s1 = "post1";
+		String s2 = "post2";
 
-			String s1 = s+"1";
-			lib.post(key, s1.toCharArray());
+		lib.post(key1, s1.toCharArray());
+		lib.post(key2, s2.toCharArray());
 
-			Announcement[] announcement = lib.read(key, 3);
+		Announcement[] announcement = lib.read(key1, 0);
 
-			assertEquals(announcement.length, 2);
-		}catch(Exception e){
-			fail(e.getCause().getMessage());
-		}
+		assertEquals(announcement.length, 1);
+
+		String readPost1 = new String(announcement[0].getPost());
+
+		assertEquals(readPost1,s1);
+	}
+
+	@Test
+	public void readNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException	{
+		PublicKey key = registerClient();
+
+		String s1 = "post1";
+		String s2 = "post2";
+
+		lib.post(key, s1.toCharArray());
+		lib.post(key, s2.toCharArray());
+
+		Announcement[] announcement = lib.read(key, 3);
+
+		assertEquals(announcement.length, 2);
+
+		String readPost1 = new String(announcement[0].getPost());
+		String readPost2 = new String(announcement[1].getPost());
+
+		assertEquals(readPost1,s1);
+		assertEquals(readPost2, s2);
 	}
 
 	@Test
 	public void readInvalidNumberTest() throws ClientNotRegistredException{
+		Announcement[] announcements = null;
 		try{
 			PublicKey key = registerClient();
 
-			lib.read(key, -1);
+			announcements = lib.read(key, -1);
 			fail("Exception InvalidArguments should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException e){
+			assertNull(announcements);
 		}
 	}
 
 	@Test
 	public void readClientNotExistsTest() throws InvalidArgumentException{
+		Announcement[] announcements = null;
 		try{
-			lib.read(pub1, 1);
+			announcements = lib.read(pub1, 1);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
-
+			assertNull(announcements);
 		}
 	}
 
 	@Test
 	public void readAllClientNotExistsTest() throws InvalidArgumentException{
+		Announcement[] announcements = null;
 		try{
-			lib.read(pub1, 0);
+			announcements = lib.read(pub1, 1);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
+			assertNull(announcements);
+		}
+	}
 
+	@Test
+	public void readNullPublicKeyTest() throws ClientNotRegistredException {
+		Announcement[] announcements = null;
+		try{
+			announcements = lib.read(null, 1);
+			fail("Exception InvalidArgumentException should have been thrown");
+
+		}catch(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException e){
+			assertNull(announcements);
 		}
 	}
 
