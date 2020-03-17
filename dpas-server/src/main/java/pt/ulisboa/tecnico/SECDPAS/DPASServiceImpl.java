@@ -91,13 +91,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		Contract.ReadResponse response;
 		if(numPosts == 0 || numPosts > announcementList.size()){
 			//desirializes the array and transforms it to gRPC
-			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(announcementList.toArray()))).build();
+			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(announcementList.toArray(new Announcement[0])))).build();
 		}
 		else{
 			List<Announcement> toSent =  announcementList.subList(announcementList.size()-numPosts, announcementList.size());
 			Announcement[] announcements = toSent.toArray(new Announcement[0]);
-			byte[] byteAnnouncement = SerializationUtils.serialize(announcements);
-			Announcement[] deserialization = SerializationUtils.deserialize(byteAnnouncement);
 
 			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(announcements))).build();
 		}
@@ -107,23 +105,25 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void readGeneral(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
-		PublicKey userKey = SerializationUtils.deserialize(request.toByteArray());
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		int numPosts = request.getNumber();
 
 		if(!this.privateBoard.containsKey(userKey)){
 			responseObserver.onError(new ServerNotRegistredException("Client not yet registered"));
+			return;
 		}
 
 		Contract.ReadResponse response;
 		if(numPosts == 0 || numPosts > this.generalBoard.size()){
 			//desirializes the array and transforms it to gRPC
-			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(this.generalBoard.toArray()))).build();
+			Announcement[] array = this.generalBoard.toArray(new Announcement[0]);
+			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(array))).build();
 		}
 
 		else{
 			//TODO - Check if subList is done correctly
 			List<Announcement> toSent =  this.generalBoard.subList(this.generalBoard.size()-numPosts, this.generalBoard.size());
-			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(toSent.toArray()))).build();
+			response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(SerializationUtils.serialize(toSent.toArray(new Announcement[0] )))).build();
 		}
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
@@ -182,6 +182,22 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		responseObserver.onNext(response);
+		responseObserver.onCompleted();
+	}
+
+	@Override
+	public void cleanPosts(Empty request, StreamObserver<Empty> responseObserver) {
+		this.privateBoard = new ConcurrentHashMap<>();
+
+		responseObserver.onNext(Empty.newBuilder().build());
+		responseObserver.onCompleted();
+	}
+
+	@Override
+	public void cleanGeneralPosts(Empty request, StreamObserver<Empty> responseObserver) {
+		this.generalBoard = new CopyOnWriteArrayList<>();
+
+		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
 	}
 }

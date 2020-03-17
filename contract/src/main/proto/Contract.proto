@@ -74,5 +74,7 @@ service DPASService {
     rpc clientRegisteredState(RegisterRequest) returns (TestsResponse);
     rpc postState(PostRequest) returns (TestsResponse);
     rpc postGeneralState(PostRequest) returns (TestsResponse);
+    rpc cleanPosts(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc cleanGeneralPosts(google.protobuf.Empty) returns (google.protobuf.Empty);
 
 }

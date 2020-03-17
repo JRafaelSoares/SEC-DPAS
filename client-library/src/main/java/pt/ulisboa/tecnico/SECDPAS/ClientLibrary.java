@@ -185,6 +185,14 @@ public class ClientLibrary {
 		}
 	}
 
+	public void cleanPosts(){
+		stub.cleanPosts(Empty.newBuilder().build());
+	}
+
+	public void cleanGeneralPosts(){
+		stub.cleanGeneralPosts(Empty.newBuilder().build());
+	}
+
 	/*********************/
 	/** CHECK ARGUMENTS **/
 	/*********************/

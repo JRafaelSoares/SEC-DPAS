@@ -10,7 +10,7 @@ import java.security.*;
 
 import static org.junit.Assert.*;
 
-public class ReadTest {
+public class ReadGeneralTest {
 
 	private static ClientLibrary lib;
 	private static PublicKey pub1;
@@ -35,7 +35,7 @@ public class ReadTest {
 
 	@AfterClass
 	public static void cleanUp(){
-		lib.cleanPosts();
+		lib.cleanGeneralPosts();
 	}
 
 	@Test
@@ -45,9 +45,9 @@ public class ReadTest {
 
 			String s = "ReadTest";
 
-			lib.post(key, s.toCharArray());
+			lib.postGeneral(key, s.toCharArray());
 
-			Announcement[] announcement = lib.read(key, 1);
+			Announcement[] announcement = lib.readGeneral(key, 1);
 
 			String readPost = new String(announcement[0].getPost());
 			assertEquals(readPost,s);
@@ -62,13 +62,12 @@ public class ReadTest {
 			PublicKey key = registerClient();
 
 			String s = "ReadTest";
-			lib.post(key, s.toCharArray());
+			lib.postGeneral(key, s.toCharArray());
 
 			String s1 = s+"1";
-			lib.post(key, s1.toCharArray());
+			lib.postGeneral(key, s1.toCharArray());
 
-			Announcement[] announcement = lib.read(key, 0);
-			System.out.println("Size: " + announcement.length);
+			Announcement[] announcement = lib.readGeneral(key, 0);
 
 			String readPost = new String(announcement[0].getPost());
 			String readPost1 = new String(announcement[1].getPost());
@@ -84,16 +83,16 @@ public class ReadTest {
 	@Test
 	public void readNumberBiggerThanPostsTest(){
 		try{
+			lib.cleanGeneralPosts();
 			PublicKey key = registerClient();
 
 			String s = "ReadTest";
-			lib.post(key, s.toCharArray());
+			lib.postGeneral(key, s.toCharArray());
 
 			String s1 = s+"1";
-			lib.post(key, s1.toCharArray());
+			lib.postGeneral(key, s1.toCharArray());
 
-			Announcement[] announcement = lib.read(key, 3);
-
+			Announcement[] announcement = lib.readGeneral(key, 3);
 			assertEquals(announcement.length, 2);
 		}catch(Exception e){
 			fail(e.getCause().getMessage());
@@ -105,7 +104,7 @@ public class ReadTest {
 		try{
 			PublicKey key = registerClient();
 
-			lib.read(key, -1);
+			lib.readGeneral(key, -1);
 			fail("Exception InvalidArguments should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException e){
@@ -115,7 +114,7 @@ public class ReadTest {
 	@Test
 	public void readClientNotExistsTest() throws InvalidArgumentException{
 		try{
-			lib.read(pub1, 1);
+			lib.readGeneral(pub1, 1);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
@@ -126,14 +125,13 @@ public class ReadTest {
 	@Test
 	public void readAllClientNotExistsTest() throws InvalidArgumentException{
 		try{
-			lib.read(pub1, 0);
+			lib.readGeneral(pub1, 0);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
 
 		}
 	}
-
 	//Aux function
 	public PublicKey registerClient(){
 		try{

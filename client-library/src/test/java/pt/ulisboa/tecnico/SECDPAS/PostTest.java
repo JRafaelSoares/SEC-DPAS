@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -41,6 +42,13 @@ public class PostTest {
 			System.out.println("Unable to obtain public key for testing");
 		}
 	}
+
+	@AfterClass
+	public static void cleanUp(){
+		lib.cleanPosts();
+	}
+
+
 	@Test
 	public void postCorrectNoAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
 		String s = "NoAnnouncement";
@@ -146,5 +154,6 @@ public class PostTest {
 			assertFalse(lib.postState(pub1, null));
 		}
 	}
+
 }
 
