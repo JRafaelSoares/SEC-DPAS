@@ -2,5 +2,8 @@
 *.class
 contract/target
 dpas-server/target
+dpas-client/target
+common/target
+client-library/target
 .DS_Store
 *.jar
