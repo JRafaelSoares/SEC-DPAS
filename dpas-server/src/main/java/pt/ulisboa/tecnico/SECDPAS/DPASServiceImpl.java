@@ -260,8 +260,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				myReader.close();
 			}
 
-			System.out.println(this.privateBoard.size() + " " + this.generalBoard.size());
-
 		} catch (IOException e) {
 			throw new DatabaseException("Unable to load: " + e.getMessage());
 		}

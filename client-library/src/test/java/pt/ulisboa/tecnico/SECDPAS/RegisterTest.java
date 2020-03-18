@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,6 +39,11 @@ public class RegisterTest {
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
 		}
+	}
+
+	@AfterClass
+	public static void cleanUp(){
+		lib.cleanPosts();
 	}
 
 	@Test

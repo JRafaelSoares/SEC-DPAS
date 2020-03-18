@@ -46,6 +46,7 @@ public class PostGeneralTest {
 	@AfterClass
 	public static void cleanUp(){
 		lib.cleanGeneralPosts();
+		lib.cleanPosts();
 	}
 	@Test
 	public void postGeneralCorrectNoAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {

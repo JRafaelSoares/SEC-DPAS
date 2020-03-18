@@ -36,6 +36,7 @@ public class ReadGeneralTest {
 	@AfterClass
 	public static void cleanUp(){
 		lib.cleanGeneralPosts();
+		lib.cleanPosts();
 	}
 
 	@Test
