@@ -9,8 +9,16 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
-
 import javax.crypto.SecretKey;
+import javax.xml.crypto.Data;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.util.ArrayList;
@@ -23,6 +31,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private ConcurrentHashMap<PublicKey, ArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
 	private CopyOnWriteArrayList<Announcement> generalBoard = new CopyOnWriteArrayList<>();
 	private ConcurrentHashMap<PublicKey, MessageHandler> clientSessions = new ConcurrentHashMap<>();
+
+	private String databasePath;
+
+	public DPASServiceImpl() throws DatabaseException{
+		Path currentRelativePath = Paths.get("");
+		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
+		load();
+	}
 
 	@Override
 	public void setupConnection(Contract.DHRequest request, StreamObserver<Contract.DHResponse> responseObserver){
@@ -383,4 +399,55 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
 	}
+
+	private void save(String file) throws DatabaseException{
+
+		try {
+			FileOutputStream myWriter = new FileOutputStream(this.databasePath + "/" + file + "_try.txt");
+
+			/* write in file */
+			switch (file){
+				case "posts":
+					myWriter.write(SerializationUtils.serialize(privateBoard));
+					break;
+				case "generalPosts":
+					myWriter.write(SerializationUtils.serialize(generalBoard));
+					break;
+			}
+			myWriter.close();
+
+			/* File successfully created, transferring to official file */
+			Path src = Paths.get(this.databasePath + "/" + file + "_try.txt");
+			Path dst = Paths.get(this.databasePath + "/"+ file + ".txt");
+
+			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
+
+		} catch (IOException e) {
+			throw new DatabaseException("Unable to save: " + e.getMessage());
+		}
+
+	}
+
+	private void load() throws DatabaseException{
+
+		try {
+			if(new File(this.databasePath + "/posts.txt").exists()){
+				/* read from file posts */
+				FileInputStream myReader = new FileInputStream(this.databasePath + "/posts.txt");
+				this.privateBoard = SerializationUtils.deserialize(myReader.readAllBytes());
+				myReader.close();
+			}
+			if(new File(this.databasePath + "/generalPosts.txt").exists()) {
+				/* read from file generalPosts */
+				FileInputStream myReader = new FileInputStream(this.databasePath + "/generalPosts.txt");
+				this.generalBoard = SerializationUtils.deserialize(myReader.readAllBytes());
+				myReader.close();
+			}
+
+		} catch (IOException e) {
+			throw new DatabaseException("Unable to load: " + e.getMessage());
+		}
+
+	}
+
 }
