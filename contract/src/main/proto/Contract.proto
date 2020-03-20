@@ -4,32 +4,29 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 package SECDPAS.grpc;
 
-// Request payload
 
+// Diffie-Hellman Connection Setup
 
-message HelloRequest {
-    // Each message attribute is strongly typed.
-    // You also must assign a "tag" number.
-    // Each tag number is unique within the message.
-    string name = 1;
-
-    // This defines a strongly typed list of String
-    repeated string hobbies = 2;
-
-    // There are many more basics types, like Enum, Map
-    // See https://developers.google.com/protocol-buffers/docs/proto3
-    // for more information.
+message DHRequest {
+    bytes publicKey = 1;
+    bytes clientAgreement = 2;
+    bytes freshness = 3;
+    bytes signature = 4;
 }
 
-message HelloResponse {
-    string greeting = 1;
+message DHResponse {
+    bytes serverAgreement = 1;
+    bytes freshness = 2;
+    bytes signature = 3;
 }
 
-//Register
+// Register
 
 message RegisterRequest {
     //Class PublicKey
     bytes publicKey = 1;
+    bytes freshness = 2;
+    bytes signature = 3;
 }
 
 // Post(General)
@@ -41,6 +38,8 @@ message PostRequest {
     string message = 2;
     //Array Announcements
     bytes announcements = 3;
+    bytes freshness = 4;
+    bytes signature = 5;
 }
 
 message ReadRequest {
@@ -48,33 +47,42 @@ message ReadRequest {
     bytes publicKey = 1;
     //Number of posts to see
     int32 number = 2;
+    bytes freshness = 3;
+    bytes signature = 4;
 }
 
 message ReadResponse {
     //Array of announcements
     bytes announcements = 1;
+    bytes freshness = 3;
+    bytes signature = 4;
 }
 
-//Testing messages
+// Testing messages
 message TestsResponse {
     bool testResult = 1;
+}
+
+// Server side ACK
+message ACK {
+    bytes freshness = 1;
+    bytes signature = 2;
 }
 
 // Defining a Service, a Service can have multiple RPC operations
 service DPASService {
     // Define a RPC operation
-    rpc greeting(HelloRequest) returns (HelloResponse);
-    rpc register(RegisterRequest) returns (google.protobuf.Empty);
-    rpc post(PostRequest) returns (google.protobuf.Empty);
-    rpc postGeneral(PostRequest) returns (google.protobuf.Empty);
+    rpc setupConnection(DHRequest) returns (DHResponse);
+    rpc register(RegisterRequest) returns (ACK);
+    rpc post(PostRequest) returns (ACK);
+    rpc postGeneral(PostRequest) returns (ACK);
     rpc read(ReadRequest) returns (ReadResponse);
     rpc readGeneral(ReadRequest) returns (ReadResponse);
 
-    //Testing Functions
+    // Testing Functions
     rpc clientRegisteredState(RegisterRequest) returns (TestsResponse);
     rpc postState(PostRequest) returns (TestsResponse);
     rpc postGeneralState(PostRequest) returns (TestsResponse);
     rpc cleanPosts(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc cleanGeneralPosts(google.protobuf.Empty) returns (google.protobuf.Empty);
-
 }

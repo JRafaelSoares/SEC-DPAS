@@ -14,6 +14,7 @@ public class ReadGeneralTest {
 
 	private static ClientLibrary lib;
 	private static PublicKey pub1;
+	private static PrivateKey priv1;
 	private static PublicKey pub2;
 
 	@Rule
@@ -28,6 +29,7 @@ public class ReadGeneralTest {
 			kpg.initialize(2048);
 			KeyPair kp = kpg.genKeyPair();
 			pub1 = kp.getPublic();
+			priv1 = kp.getPrivate();
 		} catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
 		}
@@ -39,7 +41,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
 		PublicKey key1 = registerClient();
 		PublicKey key2 = registerClient();
 
@@ -58,7 +60,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
 		PublicKey key1 = registerClient();
 		PublicKey key2 = registerClient();
 
@@ -80,7 +82,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void readNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
 		lib.cleanGeneralPosts();
 		PublicKey key1 = registerClient();
 		PublicKey key2 = registerClient();
@@ -102,7 +104,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readInvalidNumberTest() throws ClientNotRegistredException{
+	public void readInvalidNumberTest() throws ClientNotRegisteredException {
 		Announcement[] announcements = null;
 		try{
 			PublicKey key = registerClient();
@@ -122,7 +124,7 @@ public class ReadGeneralTest {
 			announcements = lib.readGeneral(pub1, 1);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
-		}catch(pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
+		}catch(ClientNotRegisteredException e){
 			assertNull(announcements);
 		}
 	}
@@ -134,13 +136,13 @@ public class ReadGeneralTest {
 			announcements = lib.readGeneral(pub1, 0);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
-		}catch(pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
+		}catch(ClientNotRegisteredException e){
 			assertNull(announcements);
 		}
 	}
 
 	@Test
-	public void readNullPublicKeyTest() throws ClientNotRegistredException {
+	public void readNullPublicKeyTest() throws ClientNotRegisteredException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib.readGeneral(null, 1);
@@ -159,8 +161,9 @@ public class ReadGeneralTest {
 			kpg.initialize(2048);
 			KeyPair kp = kpg.genKeyPair();
 			PublicKey pk = kp.getPublic();
+			PrivateKey privateKey = kp.getPrivate();
 
-			lib.register(pk);
+			lib.register(pk, privateKey);
 			return pk;
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");

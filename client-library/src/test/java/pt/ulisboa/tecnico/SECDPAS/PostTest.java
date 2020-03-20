@@ -14,10 +14,12 @@ public class PostTest {
 
 	private static ClientLibrary lib;
 	private static PublicKey pub1;
+	private static PrivateKey priv1;
 	private static PublicKey pub2;
+	private static PrivateKey priv2;
 
 	@Rule
-	public ExpectedException thrown= ExpectedException.none();
+	public ExpectedException thrown = ExpectedException.none();
 
 	@BeforeClass
 	public static void setUp(){
@@ -29,14 +31,15 @@ public class PostTest {
 			kpg.initialize(2048);
 			KeyPair kp = kpg.genKeyPair();
 			pub1 = kp.getPublic();
+			priv1 = kp.getPrivate();
 
 			kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(2048);
 			KeyPair kp2 = kpg.genKeyPair();
 			pub2 = kp2.getPublic();
-			//PrivateKey privateKey = kp.getPrivate();
+			priv2 = kp2.getPrivate();
 
-			lib.register(pub1);
+			lib.register(pub1, priv1);
 
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
@@ -50,7 +53,7 @@ public class PostTest {
 
 
 	@Test
-	public void postCorrectNoAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+	public void postCorrectNoAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		String s = "NoAnnouncement";
 		lib.post(pub1, s.toCharArray());
 
@@ -58,7 +61,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postCorrectWithAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+	public void postCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		String s1 = "NoAnnouncement";
 		Announcement a = new Announcement(s1.toCharArray(), pub1);
 		Announcement[] announcements = {a};
@@ -73,7 +76,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageLimitTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+	public void postMessageLimitTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
@@ -84,7 +87,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageEmptyTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+	public void postMessageEmptyTest() throws ClientNotRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
 		char[] emptyMessage = new char[0];
 		lib.post(pub1, emptyMessage);
 
@@ -97,13 +100,13 @@ public class PostTest {
 			lib.post(pub2, "Client Not Registered".toCharArray());
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
-		}catch (pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
+		}catch (ClientNotRegisteredException e){
 			assertFalse(lib.postState(pub1, "Client Not Registered".toCharArray()));
 		}
 	}
 
 	@Test
-	public void postMessageTooLongTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void postMessageTooLongTest() throws ClientNotRegisteredException {
 		char[] messageTooLong = new char[256];
 		for (int i = 0; i< 256; i++){
 			messageTooLong[i] = 'a';
@@ -119,7 +122,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException {
+	public void postMessageNullTest() throws ClientNotRegisteredException {
 
 		try {
 			lib.post(pub1, null);
@@ -131,7 +134,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postPublicKeyNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void postPublicKeyNullTest() throws ClientNotRegisteredException {
 		char[] message = new char[256];
 		message[0] = 'a';
 		try{
@@ -144,7 +147,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postPublicKeyMessageNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void postPublicKeyMessageNullTest() throws ClientNotRegisteredException {
 
 		try{
 			lib.post(null, null);

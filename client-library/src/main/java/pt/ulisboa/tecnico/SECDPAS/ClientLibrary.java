@@ -4,6 +4,8 @@ package pt.ulisboa.tecnico.SECDPAS;
 import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
 
+import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Ints;
 import com.google.protobuf.Empty;
 
 import com.google.protobuf.ByteString;
@@ -11,7 +13,9 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.lang3.SerializationUtils;
 
+import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SignatureException;
 
 public class ClientLibrary {
 
@@ -21,11 +25,16 @@ public class ClientLibrary {
 
 	private ManagedChannel channel;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
+	private MessageHandler messageHandler;
+
+	private PublicKey userKey;
+	private PrivateKey privateKey;
 
 	public ClientLibrary(String host, int port){
 		this.target = host + ":" + port;
 		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
 		this.stub = DPASServiceGrpc.newBlockingStub(channel);
+		this.messageHandler = new MessageHandler(null);
 	}
 
 	public ClientLibrary(){
@@ -34,38 +43,111 @@ public class ClientLibrary {
 		this.stub = DPASServiceGrpc.newBlockingStub(channel);
 	}
 
-	public void register(PublicKey userKey) throws ClientAlreadyRegistredException, InvalidArgumentException{
+	public void register(PublicKey userKey, PrivateKey privateKey) throws ClientAlreadyRegisteredException, InvalidArgumentException {
 		checkPublicKey(userKey);
+		checkPrivateKey(privateKey);
+
+		this.userKey = userKey;
+		this.privateKey = privateKey;
 
 		//Serializes key and changes to ByteString
-		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
-		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
+		byte[] publicKey = SerializationUtils.serialize(userKey);
+
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
+
+		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 		try{
-			Empty response = stub.register(request);
+			Contract.ACK response = stub.register(request);
+			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
+			//TODO- Distribute server key to clients
+			//SignatureHandler.verifyPublicSignature(response.getFreshness(), response.getSignature(), serverKey);
 		} catch (RuntimeException e){
-			throw new ClientAlreadyRegistredException(e.getMessage());
+			throw new ClientAlreadyRegisteredException(e.getMessage());
+		} catch (MessageNotFreshException e) {
+			System.out.println("Message not fresh");
 		}
 	}
 
-	public void post(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegistredException{
+	private void setupConnection() {
+		// Create Diffie-Hellman agreement
+		DiffieHellmanClient diffieHellmanClient = new DiffieHellmanClient();
+
+		byte[] clientAgreement = null;
+
+		try {
+			clientAgreement = diffieHellmanClient.prepareAgreement();
+		} catch (SignatureException e) {
+			//TODO- Proper exceptions for client side
+			e.printStackTrace();
+		}
+
+		System.out.println("// HERE \\\n\n" + clientAgreement + "\n\n// END \\");
+
+		// Serializes key and changes to ByteString
+		byte[] publicKey = SerializationUtils.serialize(userKey);
+
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, clientAgreement, freshness), privateKey);
+
+		Contract.DHRequest request = Contract.DHRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientAgreement(ByteString.copyFrom(clientAgreement)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
+		Contract.DHResponse response = stub.setupConnection(request);
+
+		byte[] serverAgreement = response.getServerAgreement().toByteArray();
+
+		// First check if message is fresh and if it's signature is valid
+		byte[] serverFreshness = response.getFreshness().toByteArray();
+
+		try {
+			messageHandler.verifyFreshness(serverFreshness);
+		} catch (MessageNotFreshException e) {
+			//TODO- Handle exceptions properly
+			e.printStackTrace();
+		}
+
+		byte[] serverSignature = response.getSignature().toByteArray();
+
+		//TODO- Provide server key to clients
+		//SignatureHandler.verifyPublicSignature(Bytes.concat(serverAgreement, serverFreshness), serverKey);
+
+
+		diffieHellmanClient.execute(response.getServerAgreement().toByteArray());
+
+		messageHandler.resetSignature(diffieHellmanClient.getSharedHMACKey());
+	}
+
+	public void post(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkPublicKey(userKey);
 		checkMessage(message);
 
 		post(userKey, message, new Announcement[0]);
 	}
 
-	public void post(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegistredException{
+	public void post(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkPublicKey(userKey);
 		checkMessage(message);
 
+		if(!messageHandler.isInSession()){
+			setupConnection();
+		}
+
 		try{
-			Empty response = stub.post(getPostRequest(userKey, message, references));
+			System.out.println("\n\n\nBom dia\n\n\n");
+			Contract.ACK response = stub.post(getPostRequest(userKey, message, references));
+			System.out.println("\n\n\nBoa tarde\n\n\n");
+			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
-			throw new ClientNotRegistredException(e.getMessage());
+			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (SignatureNotValidException e) {
+			//TODO- Handle exceptions properly
+			e.printStackTrace();
+		} catch (MessageNotFreshException e) {
+			e.printStackTrace();
 		}
 	}
 
-	public void postGeneral(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegistredException{
+	public void postGeneral(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkPublicKey(userKey);
 		checkMessage(message);
 
@@ -73,44 +155,86 @@ public class ClientLibrary {
 	}
 
 
-	public void postGeneral(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegistredException{
+	public void postGeneral(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkPublicKey(userKey);
 		checkMessage(message);
 
+		if(!messageHandler.isInSession()){
+			setupConnection();
+		}
+
 		try{
-			Empty response = stub.postGeneral(getPostRequest(userKey, message, references));
+			Contract.ACK response = stub.postGeneral(getPostRequest(userKey, message, references));
+			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
-			throw new ClientNotRegistredException(e.getMessage());
+			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (SignatureNotValidException e) {
+			//TODO- Handle exceptions properly
+			e.printStackTrace();
+		} catch (MessageNotFreshException e) {
+			e.printStackTrace();
 		}
 	}
 
-	public Announcement[] read(PublicKey userKey, int number) throws ClientNotRegistredException, InvalidArgumentException{
+	public Announcement[] read(PublicKey userKey, int number) throws ClientNotRegisteredException, InvalidArgumentException {
 		checkPublicKey(userKey);
 		checkNumber(number);
 
-		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
-		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(publicKey).setNumber(number).build();
+		if(!messageHandler.isInSession()){
+			setupConnection();
+		}
+
+		byte[] publicKey = SerializationUtils.serialize(userKey);
+		byte[] numberBytes = Ints.toByteArray(number);
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
+
+		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 		try {
 			Contract.ReadResponse response = stub.read(request);
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
-			throw new ClientNotRegistredException(e.getMessage());
+			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (SignatureNotValidException e) {
+			//TODO- Handle exceptions properly
+			e.printStackTrace();
+			return null;
+		} catch (MessageNotFreshException e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 
-	public Announcement[] readGeneral(PublicKey userKey, int number) throws ClientNotRegistredException, InvalidArgumentException{
+	public Announcement[] readGeneral(PublicKey userKey, int number) throws ClientNotRegisteredException, InvalidArgumentException {
 		checkPublicKey(userKey);
 		checkNumber(number);
 
-		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
-		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(publicKey).setNumber(number).build();
+		if(!messageHandler.isInSession()){
+			setupConnection();
+		}
+
+		byte[] publicKey = SerializationUtils.serialize(userKey);
+		byte[] numberBytes = Ints.toByteArray(number);
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
+
+		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 		try {
 			Contract.ReadResponse response = stub.readGeneral(request);
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
-			throw new ClientNotRegistredException(e.getMessage());
+			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (SignatureNotValidException e) {
+			//TODO- Handle exceptions properly
+			e.printStackTrace();
+			return null;
+		} catch (MessageNotFreshException e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 
@@ -118,19 +242,33 @@ public class ClientLibrary {
 	/**** AUX FUNCTIONS ******/
 	/*************************/
 
-	public Contract.PostRequest getPostRequest(PublicKey userKey, char[] message, Announcement[] references){
-		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
+	public Contract.PostRequest getPostRequest(PublicKey userKey, char[] message, Announcement[] references) {
+		byte[] publicKey = SerializationUtils.serialize(userKey);
 		String post = new String(message);
-		ByteString announcements = ByteString.copyFrom(SerializationUtils.serialize(references));
+		byte[] postBytes = post.getBytes();
+		byte[] announcements = SerializationUtils.serialize(references);
 
-		return Contract.PostRequest.newBuilder().setPublicKey(publicKey).setMessage(post).setAnnouncements(announcements).build();
+		byte[] freshness = messageHandler.getFreshness();
+		System.out.println("\n\n\nAntes\n\n\n");
+		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, postBytes, announcements), freshness);
+		System.out.println("\n\n\nDepois\n\n\n");
+
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+	}
+
+	public Contract.PostRequest getTestPostRequest(PublicKey userKey, char[] message, Announcement[] references) {
+		byte[] publicKey = SerializationUtils.serialize(userKey);
+		String post = new String(message);
+		byte[] announcements = SerializationUtils.serialize(references);
+
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).build();
 	}
 
 	/********************/
 	/** TEST FUNCTIONS **/
 	/********************/
 
-	public boolean clientRegisteredState(PublicKey userKey){
+	public boolean clientRegisteredState(PublicKey userKey) {
 		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
 		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
 
@@ -139,19 +277,19 @@ public class ClientLibrary {
 		return response.getTestResult();
 	}
 
-	public boolean postState(PublicKey userKey, char[] message, Announcement[] references){
+	public boolean postState(PublicKey userKey, char[] message, Announcement[] references) {
 		try{
 			checkPublicKey(userKey);
 			checkMessage(message);
 
-			Contract.TestsResponse response = stub.postState(getPostRequest(userKey, message, references));
+			Contract.TestsResponse response = stub.postState(getTestPostRequest(userKey, message, references));
 			return response.getTestResult();
 		} catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
-	public boolean postState(PublicKey userKey, char[] message){
+	public boolean postState(PublicKey userKey, char[] message) {
 		try{
 			checkPublicKey(userKey);
 			checkMessage(message);
@@ -162,19 +300,19 @@ public class ClientLibrary {
 		}
 	}
 
-	public boolean postGeneralState(PublicKey userKey, char[] message, Announcement[] references){
+	public boolean postGeneralState(PublicKey userKey, char[] message, Announcement[] references) {
 		try{
 			checkPublicKey(userKey);
 			checkMessage(message);
 
-			Contract.TestsResponse response = stub.postGeneralState(getPostRequest(userKey, message, references));
+			Contract.TestsResponse response = stub.postGeneralState(getTestPostRequest(userKey, message, references));
 			return response.getTestResult();
 		} catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
-	public boolean postGeneralState(PublicKey userKey, char[] message){
+	public boolean postGeneralState(PublicKey userKey, char[] message) {
 		try{
 			checkPublicKey(userKey);
 			checkMessage(message);
@@ -197,13 +335,19 @@ public class ClientLibrary {
 	/** CHECK ARGUMENTS **/
 	/*********************/
 
-	private void checkPublicKey(PublicKey key) throws InvalidArgumentException{
+	private void checkPublicKey(PublicKey key) throws InvalidArgumentException {
 		if(key == null){
 			throw new InvalidArgumentException("Public key can not be null");
 		}
 	}
 
-	private void checkMessage(char[] message) throws InvalidArgumentException{
+	private void checkPrivateKey(PrivateKey key) throws InvalidArgumentException {
+		if(key == null){
+			throw new InvalidArgumentException("Private key can not be null");
+		}
+	}
+
+	private void checkMessage(char[] message) throws InvalidArgumentException {
 		if(message == null){
 			throw new InvalidArgumentException("Public key can not be null");
 		}
@@ -212,7 +356,7 @@ public class ClientLibrary {
 		}
 	}
 
-	private void checkNumber(int n) throws InvalidArgumentException{
+	private void checkNumber(int n) throws InvalidArgumentException {
 		if(n < 0){
 			throw new InvalidArgumentException("Number can not be negative");
 		}

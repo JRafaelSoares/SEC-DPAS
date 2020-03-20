@@ -14,10 +14,12 @@ public class PostGeneralTest {
 
 	private static ClientLibrary lib;
 	private static PublicKey pub1;
+	private static PrivateKey priv1;
 	private static PublicKey pub2;
+	private static PrivateKey priv2;
 
 	@Rule
-	public ExpectedException thrown= ExpectedException.none();
+	public ExpectedException thrown = ExpectedException.none();
 
 	@BeforeClass
 	public static void setUp(){
@@ -29,16 +31,18 @@ public class PostGeneralTest {
 			kpg.initialize(2048);
 			KeyPair kp = kpg.genKeyPair();
 			pub1 = kp.getPublic();
+			priv1 = kp.getPrivate();
 
 			kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(2048);
 			KeyPair kp2 = kpg.genKeyPair();
 			pub2 = kp2.getPublic();
-			//PrivateKey privateKey = kp.getPrivate();
+			priv2 = kp2.getPrivate();
 
-			lib.register(pub1);
+			lib.register(pub1, priv1);
 
 		}catch (Exception e){
+			System.out.println("// Exception message: " + e.getMessage());
 			System.out.println("Unable to obtain public key for testing");
 		}
 	}
@@ -48,7 +52,7 @@ public class PostGeneralTest {
 		lib.cleanGeneralPosts();
 	}
 	@Test
-	public void postGeneralCorrectNoAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+	public void postGeneralCorrectNoAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		String s = "NoAnnouncement";
 		lib.postGeneral(pub1, s.toCharArray());
 
@@ -56,7 +60,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralCorrectWithAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+	public void postGeneralCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		String s1 = "NoAnnouncement";
 		Announcement a = new Announcement(s1.toCharArray(), pub1);
 		Announcement[] announcements = {a};
@@ -71,7 +75,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageLimitTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, InvalidArgumentException {
+	public void postGeneralMessageLimitTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
@@ -82,7 +86,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageEmptyTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+	public void postGeneralMessageEmptyTest() throws ClientNotRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
 		char[] emptyMessage = new char[0];
 		lib.postGeneral(pub1, emptyMessage);
 
@@ -95,13 +99,13 @@ public class PostGeneralTest {
 			lib.postGeneral(pub2, "Client Not Registered".toCharArray());
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
-		}catch (pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException e){
+		}catch (ClientNotRegisteredException e){
 			assertFalse(lib.postGeneralState(pub1, "Client Not Registered".toCharArray()));
 		}
 	}
 
 	@Test
-	public void postGeneralMessageTooLongTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void postGeneralMessageTooLongTest() throws ClientNotRegisteredException {
 		char[] messageTooLong = new char[256];
 		for (int i = 0; i<256; i++){
 			messageTooLong[i] = 'a';
@@ -117,7 +121,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException {
+	public void postGeneralMessageNullTest() throws ClientNotRegisteredException {
 
 		try {
 			lib.postGeneral(pub1, null);
@@ -129,7 +133,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralPublicKeyNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void postGeneralPublicKeyNullTest() throws ClientNotRegisteredException {
 		char[] message = new char[256];
 		message[0] = 'a';
 		try{
@@ -142,7 +146,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralPublicKeyMessageNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientNotRegistredException{
+	public void postGeneralPublicKeyMessageNullTest() throws ClientNotRegisteredException {
 
 		try{
 			lib.postGeneral(null, null);

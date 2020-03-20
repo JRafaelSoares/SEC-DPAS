@@ -13,10 +13,12 @@ public class RegisterTest {
 
 	private static ClientLibrary lib;
 	private static PublicKey pub1;
+	private static PrivateKey priv1;
 	private static PublicKey pub2;
+	private static PrivateKey priv2;
 
 	@Rule
-	public ExpectedException thrown= ExpectedException.none();
+	public ExpectedException thrown = ExpectedException.none();
 
 	@BeforeClass
 	public static void setUp(){
@@ -28,12 +30,13 @@ public class RegisterTest {
 			kpg.initialize(2048);
 			KeyPair kp = kpg.genKeyPair();
 			pub1 = kp.getPublic();
+			priv1 = kp.getPrivate();
 
 			kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(2048);
 			KeyPair kp2 = kpg.genKeyPair();
 			pub2 = kp2.getPublic();
-			//PrivateKey privateKey = kp.getPrivate();
+			priv2 = kp2.getPrivate();
 
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
@@ -41,22 +44,22 @@ public class RegisterTest {
 	}
 
 	@Test
-	public void registerCorrectTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
-		lib.register(pub1);
+	public void registerCorrectTest() throws ClientAlreadyRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+		lib.register(pub1, priv1);
 		assertTrue(lib.clientRegisteredState(pub1));
 	}
 
 	@Test
-	public void registerClientAlreadyRegisteredTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
-		lib.register(pub2);
-		thrown.expect(pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException.class);
-		lib.register(pub2);
+	public void registerClientAlreadyRegisteredTest() throws ClientAlreadyRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+		lib.register(pub2, priv2);
+		thrown.expect(ClientAlreadyRegisteredException.class);
+		lib.register(pub2, priv2);
 	}
 
 	@Test
-	public void registerNullTest() throws pt.ulisboa.tecnico.SECDPAS.ClientAlreadyRegistredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+	public void registerNullTest() throws ClientAlreadyRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
 		thrown.expect(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException.class);
-		lib.register(null);
+		lib.register(null, null);
 	}
 }
 
