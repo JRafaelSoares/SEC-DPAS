@@ -74,8 +74,6 @@ public class ClientLibrary {
 			e.printStackTrace();
 		}
 
-		System.out.println("// HERE \\\n\n" + clientAgreement + "\n\n// END \\");
-
 		// Serializes key and changes to ByteString
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 
@@ -84,14 +82,12 @@ public class ClientLibrary {
 
 		Contract.DHRequest request = Contract.DHRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientAgreement(ByteString.copyFrom(clientAgreement)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-		System.out.println("going to stup");
 		Contract.DHResponse response;
 		try{
 			response = stub.setupConnection(request);
 		}catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
 		}
-		System.out.println("DONE stup");
 
 		byte[] serverAgreement = response.getServerAgreement().toByteArray();
 
@@ -130,9 +126,7 @@ public class ClientLibrary {
 		}
 
 		try{
-			System.out.println("\n\n\nBom dia\n\n\n");
 			Contract.ACK response = stub.post(getPostRequest(message, references));
-			System.out.println("\n\n\nBoa tarde\n\n\n");
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
@@ -232,9 +226,7 @@ public class ClientLibrary {
 		byte[] announcements = SerializationUtils.serialize(references);
 
 		byte[] freshness = messageHandler.getFreshness();
-		System.out.println("\n\n\nAntes\n\n\n");
 		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, postBytes, announcements), freshness);
-		System.out.println("\n\n\nDepois\n\n\n");
 
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 	}

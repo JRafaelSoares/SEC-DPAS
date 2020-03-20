@@ -52,8 +52,6 @@ public class DiffieHellmanClient {
             builder.append(String.format("%02x", b));
         }
 
-        System.out.println("Shared secret: " + builder.toString());
-        System.out.println("Length: " + sharedSecret.length);
     }
 
 	// Should be sent over to other party

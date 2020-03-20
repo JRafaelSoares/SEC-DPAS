@@ -15,13 +15,13 @@ public class DPASClient {
 
 
 	public DPASClient(PublicKey p, PrivateKey privateKey){
-		this.lib = new ClientLibrary();
+		//this.lib = new ClientLibrary();
 		this.publicKey = p;
 		this.privateKey = privateKey;
 	}
 
 	public static void main(String[] args) throws Exception {
-		System.out.println(DPASClient.class.getSimpleName());
+/*		System.out.println(DPASClient.class.getSimpleName());
 
 		//Check Arguments
 		if(args.length < 1){
@@ -72,9 +72,9 @@ public class DPASClient {
 					break;
 			}
 		} while(!selectedOption.equals("Exit"));
-
+*/
 	}
-
+/*
 	public void RegisterClient(){
 		try{
 			this.lib.register(publicKey, privateKey);
@@ -90,5 +90,5 @@ public class DPASClient {
 
 		String inputString = scanner.nextLine();
 	}
-
+*/
 }

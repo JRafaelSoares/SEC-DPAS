@@ -20,12 +20,9 @@ public class SignatureHandler {
 	public static final int KEY_SIZE = 256;
 
 	public SignatureHandler(SecretKey sharedHMACKey) {
-		System.out.println("\n\n\nIs null\n\n\n");
 		if(sharedHMACKey == null){
 			return;
 		}
-
-		System.out.println("\n\n\nIs not null\n\n\n");
 
 		try {
 			this.mac = Mac.getInstance(HMAC_ALGO);
@@ -44,15 +41,6 @@ public class SignatureHandler {
 			builder.append(String.format("%02x", b));
 		}
 
-		System.out.println("Sent Signature: " + builder.toString());
-
-		builder = new StringBuilder();
-		for(byte b : message) {
-			builder.append(String.format("%02x", b));
-		}
-
-		System.out.println("Sent Complete Message: " + builder.toString());
-
 		return signature;
 	}
 
@@ -64,19 +52,15 @@ public class SignatureHandler {
 			builder.append(String.format("%02x", b));
 		}
 
-		System.out.println("Received Signature: " + builder.toString());
-
 		builder = new StringBuilder();
 		for(byte b : check) {
 			builder.append(String.format("%02x", b));
 		}
-		System.out.println("Expected Signature: " + builder.toString());
 
 		builder = new StringBuilder();
 		for(byte b : message) {
 			builder.append(String.format("%02x", b));
 		}
-		System.out.println("Received Complete Message: " + builder.toString());
 
 		return Arrays.equals(check, signature);
 	}

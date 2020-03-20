@@ -45,9 +45,6 @@ public class FreshnessHandler {
             builder.append(String.format("%02x", b));
         }
 
-        System.out.println("Received Nonce: " + builder.toString());
-        System.out.println("Received Message Timestamp: " + messageTimestamp);
-
         long delta = System.currentTimeMillis() - messageTimestamp;
 
         if(delta > NONCE_REFRESH || messageTimestamp < initialTime){
@@ -85,9 +82,6 @@ public class FreshnessHandler {
         for(byte b : nonce) {
             builder.append(String.format("%02x", b));
         }
-
-        System.out.println("Sent Nonce: " + builder.toString());
-        System.out.println("Sent Message Timestamp: " + timestamp);
 
         return Bytes.concat(nonce, Longs.toByteArray(timestamp));
     }

@@ -42,7 +42,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void setupConnection(Contract.DHRequest request, StreamObserver<Contract.DHResponse> responseObserver){
-		System.out.println("SET UP CONNECTION");
 		byte[] encodedClientKey = request.getPublicKey().toByteArray();
 		byte[] clientAgreement = request.getClientAgreement().toByteArray();
 		byte[] clientFreshness = request.getFreshness().toByteArray();
@@ -52,11 +51,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		// Check that the client exists
 		if(!this.privateBoard.containsKey(userKey)){
-			System.out.println("client not registered");
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;
 		}
-		System.out.println("DO NOT");
 
 		// Check that request is fresh
 		MessageHandler messageHandler = clientSessions.get(userKey);
@@ -64,13 +61,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try {
 			messageHandler.verifyFreshness(clientFreshness);
 		} catch (MessageNotFreshException e) {
-			System.out.println("Diffie-Hellman request not fresh");
 			responseObserver.onError(new ServerRequestNotFreshException("Diffie-Hellman request not fresh"));
 		}
 
 		// Check that the signature is valid and matches the user
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(encodedClientKey, clientAgreement, clientFreshness), clientSignature, userKey)){
-			System.out.println("Request signature not valid");
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature not valid"));
 			return;
 		}
@@ -172,7 +167,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		System.out.println("Im in");
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
 		byte[] message = request.getMessage().getBytes();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
@@ -188,13 +182,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		System.out.println("1");
-
 		// Check if request is fresh
 		MessageHandler messageHandler = clientSessions.get(userKey);
 
 		if(!messageHandler.isInSession()){
-			System.out.println("No Diffie-Hellman session is established");
 			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
 			return;
 		}
@@ -202,11 +193,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), freshness, signature);
 		} catch (SignatureNotValidException e) {
-			System.out.println("Request signature invalid");
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
 		} catch (MessageNotFreshException e) {
-			System.out.println("Request is not fresh");
 			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
 			return;
 		}

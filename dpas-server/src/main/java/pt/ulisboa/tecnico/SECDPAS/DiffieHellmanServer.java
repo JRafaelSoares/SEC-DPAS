@@ -31,7 +31,6 @@ public class DiffieHellmanServer {
 
         } catch (NoSuchAlgorithmException e) {
             // This exception depends only on the parameters used, so shouldn't happen
-            System.out.println("\n\n\n\nWhat is this???\n\n\n\n");
             return null;
         }
 
@@ -48,10 +47,6 @@ public class DiffieHellmanServer {
         for(byte b : sharedSecret) {
             builder.append(String.format("%02x", b));
         }
-
-        System.out.println("Shared secret: " + builder.toString());
-
-        System.out.println("Length: " + sharedSecret.length);
 
         return toSend;
     }

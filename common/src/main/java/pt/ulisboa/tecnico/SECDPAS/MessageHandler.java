@@ -46,7 +46,6 @@ public class MessageHandler {
     }
 
     public void resetSignature(SecretKey sharedHMACKey){
-        System.out.println("\tHello");
         this.signatureHandler = new SignatureHandler(sharedHMACKey);
 
         if(sharedHMACKey != null) {
