@@ -42,7 +42,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void setupConnection(Contract.DHRequest request, StreamObserver<Contract.DHResponse> responseObserver){
-
+		System.out.println("SET UP CONNECTION");
 		byte[] encodedClientKey = request.getPublicKey().toByteArray();
 		byte[] clientAgreement = request.getClientAgreement().toByteArray();
 		byte[] clientFreshness = request.getFreshness().toByteArray();
@@ -52,9 +52,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		// Check that the client exists
 		if(!this.privateBoard.containsKey(userKey)){
+			System.out.println("client not registered");
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;
 		}
+		System.out.println("DO NOT");
 
 		// Check that request is fresh
 		MessageHandler messageHandler = clientSessions.get(userKey);
@@ -354,6 +356,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 
+		if(this.privateBoard.get(userKey) == null){
+			responseObserver.onNext(response);
+			responseObserver.onCompleted();
+			return;
+		}
 		for (Announcement announcement: this.privateBoard.get(userKey)) {
 			if(announcement.equals(testingAnnouncement)){
 				response = Contract.TestsResponse.newBuilder().setTestResult(true).build();

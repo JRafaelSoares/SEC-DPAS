@@ -12,18 +12,14 @@ import static org.junit.Assert.*;
 
 public class PostTest {
 
-	private static ClientLibrary lib;
+	private static ClientLibrary lib1;
+	private static ClientLibrary lib2;
 	private static PublicKey pub1;
-	private static PrivateKey priv1;
-	private static PublicKey pub2;
-	private static PrivateKey priv2;
-
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
 	@BeforeClass
 	public static void setUp(){
-		lib = new ClientLibrary("localhost", 8080);
 
 		try{
 
@@ -31,15 +27,19 @@ public class PostTest {
 			kpg.initialize(2048);
 			KeyPair kp = kpg.genKeyPair();
 			pub1 = kp.getPublic();
-			priv1 = kp.getPrivate();
+			PrivateKey priv = kp.getPrivate();
+
+			lib1 = new ClientLibrary("localhost", 8080, pub1, priv);
 
 			kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(2048);
 			KeyPair kp2 = kpg.genKeyPair();
-			pub2 = kp2.getPublic();
-			priv2 = kp2.getPrivate();
+			PublicKey pub = kp2.getPublic();
+			priv = kp2.getPrivate();
 
-			lib.register(pub1, priv1);
+			lib2 = new ClientLibrary("localhost", 8080, pub, priv);
+
+			lib1.register();
 
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
@@ -48,16 +48,16 @@ public class PostTest {
 
 	@AfterClass
 	public static void cleanUp(){
-		lib.cleanPosts();
+		lib1.cleanPosts();
 	}
 
 
 	@Test
 	public void postCorrectNoAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		String s = "NoAnnouncement";
-		lib.post(pub1, s.toCharArray());
+		lib1.post(s.toCharArray());
 
-		assertTrue(lib.postState(pub1, s.toCharArray()));
+		assertTrue(lib1.postState(s.toCharArray()));
 	}
 
 	@Test
@@ -66,13 +66,13 @@ public class PostTest {
 		Announcement a = new Announcement(s1.toCharArray(), pub1);
 		Announcement[] announcements = {a};
 
-		lib.post(pub1, s1.toCharArray());
+		lib1.post(s1.toCharArray());
 
 		String s2 = "WithAnnouncement";
-		lib.post(pub1, s2.toCharArray(), announcements);
+		lib1.post(s2.toCharArray(), announcements);
 
-		assertTrue(lib.postState(pub1, s1.toCharArray()));
-		assertTrue(lib.postState(pub1, s2.toCharArray(), announcements));
+		assertTrue(lib1.postState(s1.toCharArray()));
+		assertTrue(lib1.postState(s2.toCharArray(), announcements));
 	}
 
 	@Test
@@ -82,26 +82,26 @@ public class PostTest {
 			messageLimit[i] = 'a';
 		}
 
-		lib.post(pub1, messageLimit);
-		assertTrue(lib.postState(pub1, messageLimit));
+		lib1.post(messageLimit);
+		assertTrue(lib1.postState(messageLimit));
 	}
 
 	@Test
 	public void postMessageEmptyTest() throws ClientNotRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
 		char[] emptyMessage = new char[0];
-		lib.post(pub1, emptyMessage);
+		lib1.post(emptyMessage);
 
-		assertTrue(lib.postState(pub1, emptyMessage));
+		assertTrue(lib1.postState(emptyMessage));
 	}
 
 	@Test
 	public void postClientNotRegisteredTest() throws InvalidArgumentException {
 		try{
-			lib.post(pub2, "Client Not Registered".toCharArray());
+			lib2.post("Client Not Registered".toCharArray());
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
 		}catch (ClientNotRegisteredException e){
-			assertFalse(lib.postState(pub1, "Client Not Registered".toCharArray()));
+			assertFalse(lib2.postState("Client Not Registered".toCharArray()));
 		}
 	}
 
@@ -113,11 +113,11 @@ public class PostTest {
 		}
 
 		try{
-			lib.post(pub1, messageTooLong);
+			lib1.post(messageTooLong);
 			fail("Exception InvalidArgumentException should have been thrown");
 
 		}catch (InvalidArgumentException e){
-			assertFalse(lib.postState(pub1, messageTooLong));
+			assertFalse(lib1.postState(messageTooLong));
 		}
 	}
 
@@ -125,36 +125,11 @@ public class PostTest {
 	public void postMessageNullTest() throws ClientNotRegisteredException {
 
 		try {
-			lib.post(pub1, null);
+			lib1.post(null);
 			fail("Exception InvalidArgumentException should have been thrown");
 
 		} catch (InvalidArgumentException e) {
-			assertFalse(lib.postState(pub1, null));
-		}
-	}
-
-	@Test
-	public void postPublicKeyNullTest() throws ClientNotRegisteredException {
-		char[] message = new char[256];
-		message[0] = 'a';
-		try{
-			lib.post(null, message);
-			fail("Exception InvalidArgumentException should have been thrown");
-
-		}catch (InvalidArgumentException e){
-			assertFalse(lib.postState(pub1, null));
-		}
-	}
-
-	@Test
-	public void postPublicKeyMessageNullTest() throws ClientNotRegisteredException {
-
-		try{
-			lib.post(null, null);
-			fail("Exception InvalidArgumentException should have been thrown");
-
-		}catch (InvalidArgumentException e){
-			assertFalse(lib.postState(pub1, null));
+			assertFalse(lib1.postState(null));
 		}
 	}
 

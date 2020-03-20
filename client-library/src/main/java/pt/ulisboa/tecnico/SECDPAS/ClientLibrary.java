@@ -27,31 +27,23 @@ public class ClientLibrary {
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
 	private MessageHandler messageHandler;
 
-	private PublicKey userKey;
+	private PublicKey publicKey;
 	private PrivateKey privateKey;
 
-	public ClientLibrary(String host, int port){
+	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException{
+		checkConstructor(host, port, publicKey, privateKey);
+
 		this.target = host + ":" + port;
 		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
 		this.stub = DPASServiceGrpc.newBlockingStub(channel);
 		this.messageHandler = new MessageHandler(null);
-	}
-
-	public ClientLibrary(){
-		super();
-		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-		this.stub = DPASServiceGrpc.newBlockingStub(channel);
-	}
-
-	public void register(PublicKey userKey, PrivateKey privateKey) throws ClientAlreadyRegisteredException, InvalidArgumentException {
-		checkPublicKey(userKey);
-		checkPrivateKey(privateKey);
-
-		this.userKey = userKey;
+		this.publicKey = publicKey;
 		this.privateKey = privateKey;
+	}
 
+	public void register() throws ClientAlreadyRegisteredException {
 		//Serializes key and changes to ByteString
-		byte[] publicKey = SerializationUtils.serialize(userKey);
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
@@ -69,7 +61,7 @@ public class ClientLibrary {
 		}
 	}
 
-	private void setupConnection() {
+	private void setupConnection() throws ClientNotRegisteredException{
 		// Create Diffie-Hellman agreement
 		DiffieHellmanClient diffieHellmanClient = new DiffieHellmanClient();
 
@@ -85,14 +77,21 @@ public class ClientLibrary {
 		System.out.println("// HERE \\\n\n" + clientAgreement + "\n\n// END \\");
 
 		// Serializes key and changes to ByteString
-		byte[] publicKey = SerializationUtils.serialize(userKey);
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, clientAgreement, freshness), privateKey);
 
 		Contract.DHRequest request = Contract.DHRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientAgreement(ByteString.copyFrom(clientAgreement)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-		Contract.DHResponse response = stub.setupConnection(request);
+		System.out.println("going to stup");
+		Contract.DHResponse response;
+		try{
+			response = stub.setupConnection(request);
+		}catch (RuntimeException e){
+			throw new ClientNotRegisteredException(e.getMessage());
+		}
+		System.out.println("DONE stup");
 
 		byte[] serverAgreement = response.getServerAgreement().toByteArray();
 
@@ -117,15 +116,13 @@ public class ClientLibrary {
 		messageHandler.resetSignature(diffieHellmanClient.getSharedHMACKey());
 	}
 
-	public void post(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
-		checkPublicKey(userKey);
+	public void post(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-		post(userKey, message, new Announcement[0]);
+		post(message, new Announcement[0]);
 	}
 
-	public void post(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
-		checkPublicKey(userKey);
+	public void post(char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -134,29 +131,25 @@ public class ClientLibrary {
 
 		try{
 			System.out.println("\n\n\nBom dia\n\n\n");
-			Contract.ACK response = stub.post(getPostRequest(userKey, message, references));
+			Contract.ACK response = stub.post(getPostRequest(message, references));
 			System.out.println("\n\n\nBoa tarde\n\n\n");
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException e) {
+		} catch (SignatureNotValidException | MessageNotFreshException e) {
 			//TODO- Handle exceptions properly
-			e.printStackTrace();
-		} catch (MessageNotFreshException e) {
 			e.printStackTrace();
 		}
 	}
 
-	public void postGeneral(PublicKey userKey, char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
-		checkPublicKey(userKey);
+	public void postGeneral(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-		postGeneral(userKey, message, new Announcement[0]);
+		postGeneral(message, new Announcement[0]);
 	}
 
 
-	public void postGeneral(PublicKey userKey, char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
-		checkPublicKey(userKey);
+	public void postGeneral(char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -164,27 +157,24 @@ public class ClientLibrary {
 		}
 
 		try{
-			Contract.ACK response = stub.postGeneral(getPostRequest(userKey, message, references));
+			Contract.ACK response = stub.postGeneral(getPostRequest(message, references));
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException e) {
+		} catch (SignatureNotValidException | MessageNotFreshException e) {
 			//TODO- Handle exceptions properly
-			e.printStackTrace();
-		} catch (MessageNotFreshException e) {
 			e.printStackTrace();
 		}
 	}
 
-	public Announcement[] read(PublicKey userKey, int number) throws ClientNotRegisteredException, InvalidArgumentException {
-		checkPublicKey(userKey);
+	public Announcement[] read(int number) throws ClientNotRegisteredException, InvalidArgumentException {
 		checkNumber(number);
 
 		if(!messageHandler.isInSession()){
 			setupConnection();
 		}
 
-		byte[] publicKey = SerializationUtils.serialize(userKey);
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
@@ -197,25 +187,21 @@ public class ClientLibrary {
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException e) {
+		} catch (SignatureNotValidException | MessageNotFreshException e) {
 			//TODO- Handle exceptions properly
-			e.printStackTrace();
-			return null;
-		} catch (MessageNotFreshException e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
 
-	public Announcement[] readGeneral(PublicKey userKey, int number) throws ClientNotRegisteredException, InvalidArgumentException {
-		checkPublicKey(userKey);
+	public Announcement[] readGeneral(int number) throws ClientNotRegisteredException, InvalidArgumentException {
 		checkNumber(number);
 
 		if(!messageHandler.isInSession()){
 			setupConnection();
 		}
 
-		byte[] publicKey = SerializationUtils.serialize(userKey);
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
@@ -228,11 +214,8 @@ public class ClientLibrary {
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException e) {
+		} catch (SignatureNotValidException | MessageNotFreshException e) {
 			//TODO- Handle exceptions properly
-			e.printStackTrace();
-			return null;
-		} catch (MessageNotFreshException e) {
 			e.printStackTrace();
 			return null;
 		}
@@ -242,8 +225,8 @@ public class ClientLibrary {
 	/**** AUX FUNCTIONS ******/
 	/*************************/
 
-	public Contract.PostRequest getPostRequest(PublicKey userKey, char[] message, Announcement[] references) {
-		byte[] publicKey = SerializationUtils.serialize(userKey);
+	public Contract.PostRequest getPostRequest(char[] message, Announcement[] references) {
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] postBytes = post.getBytes();
 		byte[] announcements = SerializationUtils.serialize(references);
@@ -256,8 +239,8 @@ public class ClientLibrary {
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
-	public Contract.PostRequest getTestPostRequest(PublicKey userKey, char[] message, Announcement[] references) {
-		byte[] publicKey = SerializationUtils.serialize(userKey);
+	public Contract.PostRequest getTestPostRequest(char[] message, Announcement[] references) {
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
 
@@ -268,8 +251,8 @@ public class ClientLibrary {
 	/** TEST FUNCTIONS **/
 	/********************/
 
-	public boolean clientRegisteredState(PublicKey userKey) {
-		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(userKey));
+	public boolean clientRegisteredState() {
+		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(this.publicKey));
 		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
 
 		Contract.TestsResponse response = stub.clientRegisteredState(request);
@@ -277,47 +260,43 @@ public class ClientLibrary {
 		return response.getTestResult();
 	}
 
-	public boolean postState(PublicKey userKey, char[] message, Announcement[] references) {
+	public boolean postState(char[] message, Announcement[] references) {
 		try{
-			checkPublicKey(userKey);
 			checkMessage(message);
 
-			Contract.TestsResponse response = stub.postState(getTestPostRequest(userKey, message, references));
+			Contract.TestsResponse response = stub.postState(getTestPostRequest(message, references));
 			return response.getTestResult();
 		} catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
-	public boolean postState(PublicKey userKey, char[] message) {
+	public boolean postState(char[] message) {
 		try{
-			checkPublicKey(userKey);
 			checkMessage(message);
 
-			return postState(userKey, message, new Announcement[0]);
+			return postState(message, new Announcement[0]);
 		}catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
-	public boolean postGeneralState(PublicKey userKey, char[] message, Announcement[] references) {
+	public boolean postGeneralState(char[] message, Announcement[] references) {
 		try{
-			checkPublicKey(userKey);
 			checkMessage(message);
 
-			Contract.TestsResponse response = stub.postGeneralState(getTestPostRequest(userKey, message, references));
+			Contract.TestsResponse response = stub.postGeneralState(getTestPostRequest(message, references));
 			return response.getTestResult();
 		} catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
-	public boolean postGeneralState(PublicKey userKey, char[] message) {
+	public boolean postGeneralState(char[] message) {
 		try{
-			checkPublicKey(userKey);
 			checkMessage(message);
 
-			return postGeneralState(userKey, message, new Announcement[0]);
+			return postGeneralState(message, new Announcement[0]);
 		}catch (InvalidArgumentException e){
 			return false;
 		}
@@ -335,15 +314,9 @@ public class ClientLibrary {
 	/** CHECK ARGUMENTS **/
 	/*********************/
 
-	private void checkPublicKey(PublicKey key) throws InvalidArgumentException {
-		if(key == null){
-			throw new InvalidArgumentException("Public key can not be null");
-		}
-	}
-
-	private void checkPrivateKey(PrivateKey key) throws InvalidArgumentException {
-		if(key == null){
-			throw new InvalidArgumentException("Private key can not be null");
+	private void checkConstructor(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException {
+		if(host == null || host.isEmpty() || port < 0 || publicKey == null || privateKey == null){
+			throw new InvalidArgumentException("Invalid constructor arguments");
 		}
 	}
 
