@@ -49,13 +49,13 @@ public class RegisterTest {
 	}
 
 	@Test
-	public void registerCorrectTest() throws ClientAlreadyRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+	public void registerCorrectTest() throws ClientAlreadyRegisteredException{
 		lib1.register();
 		assertTrue(lib1.clientRegisteredState());
 	}
 
 	@Test
-	public void registerClientAlreadyRegisteredTest() throws ClientAlreadyRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+	public void registerClientAlreadyRegisteredTest() throws ClientAlreadyRegisteredException{
 		lib2.register();
 		thrown.expect(ClientAlreadyRegisteredException.class);
 		lib2.register();
