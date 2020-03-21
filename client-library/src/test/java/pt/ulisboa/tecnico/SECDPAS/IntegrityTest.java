@@ -11,6 +11,8 @@ import org.junit.rules.ExpectedException;
 
 import java.security.*;
 
+import static org.junit.Assert.assertEquals;
+
 public class IntegrityTest {
 
     private static ClientLibrary lib;
@@ -41,6 +43,7 @@ public class IntegrityTest {
     @AfterClass
     public static void cleanUp(){
         lib.cleanPosts();
+        lib.cleanGeneralPosts();
     }
 
     @Test
@@ -55,6 +58,28 @@ public class IntegrityTest {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
 
         lib.postGeneralRequest(request);
+    }
+
+    @Test
+    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        Announcement[] announcement = lib.readRequest(request);
+
+        assertEquals(1, announcement.length);
+        assertEquals(s, new String(announcement[0].getPost()));
+    }
+
+    @Test
+    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.postGeneral(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        Announcement[] announcement = lib.readGeneralRequest(request);
+
+        assertEquals(1, announcement.length);
+        assertEquals(s, new String(announcement[0].getPost()));
     }
 
     @Test
@@ -154,6 +179,36 @@ public class IntegrityTest {
         thrown.expect(ClientNotRegisteredException.class);
 
         lib.postGeneralRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityReadCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        byte[] publicKey = request.getPublicKey().toByteArray();
+        int number = -1;
+
+        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.readRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityReadGeneralCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.postGeneral(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        byte[] publicKey = request.getPublicKey().toByteArray();
+        int number = -1;
+
+        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.readGeneralRequest(request);
 
     }
 
