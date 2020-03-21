@@ -13,16 +13,19 @@ import java.util.Arrays;
 public class MessageHandler {
     private FreshnessHandler freshnessHandler;
     private SignatureHandler signatureHandler;
+    private IntegrityHandler integrityHandler;
     private boolean inSession = false;
 
     public MessageHandler(SecretKey sharedHMACKey) {
         this.freshnessHandler = new FreshnessHandler(System.currentTimeMillis());
-        this.signatureHandler = new SignatureHandler(sharedHMACKey);
+        this.signatureHandler = new SignatureHandler();
+        this.integrityHandler = new IntegrityHandler(sharedHMACKey);
     }
 
     public MessageHandler(SecretKey sharedHMACKey, long initTime) {
         this.freshnessHandler = new FreshnessHandler(initTime);
-        this.signatureHandler = new SignatureHandler(sharedHMACKey);
+        this.signatureHandler = new SignatureHandler();
+        this.integrityHandler = new IntegrityHandler(sharedHMACKey);
     }
 
     public byte[] getFreshness() {
@@ -30,7 +33,7 @@ public class MessageHandler {
     }
 
     public byte[] sign(byte[] message, byte[] freshness) {
-        return signatureHandler.sign(Bytes.concat(message, freshness));
+        return integrityHandler.sign(Bytes.concat(message, freshness));
     }
 
     public void verifyMessage(byte[] message, byte[] freshness, byte[] signature) throws SignatureNotValidException, MessageNotFreshException {
@@ -45,13 +48,13 @@ public class MessageHandler {
     }
 
     public void verifySignature(byte[] message, byte[] freshness, byte[] signature) throws SignatureNotValidException {
-        if(!signatureHandler.verifySignature(Bytes.concat(message, freshness), signature)){
+        if(!integrityHandler.verifySignature(Bytes.concat(message, freshness), signature)){
             throw new SignatureNotValidException();
         }
     }
 
     public void resetSignature(SecretKey sharedHMACKey){
-        this.signatureHandler = new SignatureHandler(sharedHMACKey);
+        this.integrityHandler = new IntegrityHandler(sharedHMACKey);
 
         if(sharedHMACKey != null) {
             this.inSession = true;

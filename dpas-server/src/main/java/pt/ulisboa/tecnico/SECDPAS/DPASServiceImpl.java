@@ -132,7 +132,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-
 		byte[] freshness = messageHandler.getFreshness();
 		//TODO- Create server key pair
 		//byte[] signature = SignatureHandler.publicSign(freshness, serverKey);

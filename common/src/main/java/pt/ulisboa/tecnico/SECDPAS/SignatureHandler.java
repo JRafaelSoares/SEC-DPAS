@@ -1,46 +1,13 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
-import com.google.common.primitives.Bytes;
-
-import javax.crypto.KeyGenerator;
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import java.io.*;
 import java.security.*;
-import java.util.Arrays;
-import java.util.List;
 
 
 public class SignatureHandler {
 
-	private Mac mac;
 	public static final String HMAC_ALGO = "HmacSHA256";
 	public static final String PUB_SIGN_ALGO = "SHA256withRSA";
 	public static final int KEY_SIZE = 256;
-
-	public SignatureHandler(SecretKey sharedHMACKey) {
-		if(sharedHMACKey == null){
-			return;
-		}
-
-		try {
-			this.mac = Mac.getInstance(HMAC_ALGO);
-			this.mac.init(sharedHMACKey);
-		} catch (NoSuchAlgorithmException | InvalidKeyException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public byte[] sign(byte[] message){
-		return mac.doFinal(message);
-	}
-
-	public boolean verifySignature(byte[] message, byte[] signature){
-		byte[] check = mac.doFinal(message);
-
-		return Arrays.equals(check, signature);
-	}
 
 	public static byte[] publicSign(byte[] message, PrivateKey privateKey){
 		Signature signature;
