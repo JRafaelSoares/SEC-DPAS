@@ -191,7 +191,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
 			return;
 		}
-		
+
 		if(!this.privateBoard.containsKey(userKey)){
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;
@@ -235,7 +235,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		PublicKey userKey = SerializationUtils.deserialize(serializedPublicKey);
+		PublicKey userKey;
+		try{
+			userKey = SerializationUtils.deserialize(serializedPublicKey);
+		}catch(SerializationException e){
+			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			return;
+		}
 
 		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
@@ -290,7 +296,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		PublicKey userKey;
+		try{
+			userKey = SerializationUtils.deserialize(serializedPublicKey);
+		}catch(SerializationException e){
+			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			return;
+		}
 
 		if(!this.privateBoard.containsKey(userKey)){
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));

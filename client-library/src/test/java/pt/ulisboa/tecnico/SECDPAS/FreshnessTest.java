@@ -9,6 +9,8 @@ import org.junit.rules.ExpectedException;
 
 import java.security.*;
 
+import static org.junit.Assert.assertEquals;
+
 public class FreshnessTest {
 
     private static ClientLibrary lib;
@@ -57,6 +59,28 @@ public class FreshnessTest {
     }
 
     @Test
+    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        Announcement[] announcement = lib.readRequest(request);
+
+        assertEquals(1, announcement.length);
+        assertEquals(s, new String(announcement[0].getPost()));
+    }
+
+    @Test
+    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        Announcement[] announcement = lib.readGeneralRequest(request);
+
+        assertEquals(1, announcement.length);
+        assertEquals(s, new String(announcement[0].getPost()));
+    }
+
+    @Test
     public void failPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
 
@@ -67,12 +91,67 @@ public class FreshnessTest {
     }
 
     @Test
-    public void failGeneralPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void failPostGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
 
         lib.postGeneralRequest(request);
         thrown.expect(ClientNotRegisteredException.class);
         lib.postGeneralRequest(request);
+
+    }
+
+    @Test
+    public void failBothPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+
+        lib.postRequest(request);
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.postGeneralRequest(request);
+
+    }
+
+    @Test
+    public void failReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        Announcement[] announcement = lib.readRequest(request);
+
+        assertEquals(1, announcement.length);
+        assertEquals(s, new String(announcement[0].getPost()));
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.readRequest(request);
+
+    }
+
+    @Test
+    public void failReadGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        Announcement[] announcement = lib.readGeneralRequest(request);
+
+        assertEquals(1, announcement.length);
+        assertEquals(s, new String(announcement[0].getPost()));
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.readGeneralRequest(request);
+
+    }
+
+    @Test
+    public void failBothReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        Announcement[] announcement = lib.readRequest(request);
+
+        assertEquals(1, announcement.length);
+        assertEquals(s, new String(announcement[0].getPost()));
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.readGeneralRequest(request);
 
     }
 

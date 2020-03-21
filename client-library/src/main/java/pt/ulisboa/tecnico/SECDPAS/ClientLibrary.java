@@ -168,15 +168,8 @@ public class ClientLibrary {
 			setupConnection();
 		}
 
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = messageHandler.getFreshness();
-		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
-
-		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
 		try {
-			Contract.ReadResponse response = stub.read(request);
+			Contract.ReadResponse response = stub.read(getReadRequest(number));
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -195,15 +188,8 @@ public class ClientLibrary {
 			setupConnection();
 		}
 
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = messageHandler.getFreshness();
-		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
-
-		Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
 		try {
-			Contract.ReadResponse response = stub.readGeneral(request);
+			Contract.ReadResponse response = stub.readGeneral(getReadRequest(number));
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -237,6 +223,16 @@ public class ClientLibrary {
 		byte[] announcements = SerializationUtils.serialize(references);
 
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).build();
+	}
+
+	public Contract.ReadRequest getReadRequest(int number){
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
+		byte[] numberBytes = Ints.toByteArray(number);
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
+
+		return Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
 	}
 
 	/********************/
@@ -307,6 +303,26 @@ public class ClientLibrary {
 		try{
 			Contract.ACK response = stub.postGeneral(request);
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+		} catch (RuntimeException e){
+			throw new ClientNotRegisteredException(e.getMessage());
+		}
+	}
+
+	public Announcement[] readRequest(Contract.ReadRequest request) throws ClientNotRegisteredException ,SignatureNotValidException, MessageNotFreshException {
+		try {
+			Contract.ReadResponse response = stub.read(request);
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+		} catch (RuntimeException e){
+			throw new ClientNotRegisteredException(e.getMessage());
+		}
+	}
+
+	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ClientNotRegisteredException ,SignatureNotValidException, MessageNotFreshException {
+		try {
+			Contract.ReadResponse response = stub.readGeneral(request);
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
 		}
