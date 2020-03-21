@@ -3,13 +3,7 @@ package pt.ulisboa.tecnico.SECDPAS;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Longs;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import java.nio.ByteBuffer;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,21 +27,17 @@ public class FreshnessHandler {
     }
 
     public boolean verifyFreshness(byte[] freshness) {
-        if(freshness.length != NONCE_SIZE + Long.BYTES){
+        if(freshness == null || freshness.length != NONCE_SIZE + Long.BYTES){
             return false;
         }
 
         byte[] nonce = Arrays.copyOfRange(freshness, 0, NONCE_SIZE);
         long messageTimestamp = Longs.fromByteArray(Arrays.copyOfRange(freshness, NONCE_SIZE, NONCE_SIZE + Long.BYTES));
 
-        StringBuilder builder = new StringBuilder();
-        for(byte b : nonce) {
-            builder.append(String.format("%02x", b));
-        }
-
         long delta = System.currentTimeMillis() - messageTimestamp;
 
         if(delta > NONCE_REFRESH || messageTimestamp < initialTime){
+            System.out.println("2");
             return false;
         }
 
@@ -77,11 +67,6 @@ public class FreshnessHandler {
             nonce = generateRandomBytes(NONCE_SIZE);
             timestamp = System.currentTimeMillis();
         } while(usedNonces.putIfAbsent(ByteBuffer.wrap(nonce), timestamp) != null);
-
-        StringBuilder builder = new StringBuilder();
-        for(byte b : nonce) {
-            builder.append(String.format("%02x", b));
-        }
 
         return Bytes.concat(nonce, Longs.toByteArray(timestamp));
     }
