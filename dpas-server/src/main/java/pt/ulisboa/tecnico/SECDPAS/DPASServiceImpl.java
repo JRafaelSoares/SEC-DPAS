@@ -8,6 +8,7 @@ import com.google.common.primitives.Ints;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
 import io.grpc.stub.StreamObserver;
+import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
 import javax.crypto.SecretKey;
 import javax.xml.crypto.Data;
@@ -117,17 +118,23 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
-
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
 		byte[] message = request.getMessage().getBytes();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-
 		char[] post = request.getMessage().toCharArray();
-		PublicKey userKey = SerializationUtils.deserialize(serializedPublicKey);
-		Announcement[] announcements = SerializationUtils.deserialize(serializedAnnouncements);
+
+		PublicKey userKey;
+		Announcement[] announcements;
+		try{
+			userKey = SerializationUtils.deserialize(serializedPublicKey);
+			announcements = SerializationUtils.deserialize(serializedAnnouncements);
+		}catch(SerializationException e){
+			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			return;
+		}
 
 		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
@@ -174,9 +181,17 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] signature = request.getSignature().toByteArray();
 
 		char[] post = request.getMessage().toCharArray();
-		PublicKey userKey = SerializationUtils.deserialize(serializedPublicKey);
-		Announcement[] announcements = SerializationUtils.deserialize(serializedAnnouncements);
 
+		PublicKey userKey;
+		Announcement[] announcements;
+		try{
+			userKey = SerializationUtils.deserialize(serializedPublicKey);
+			announcements = SerializationUtils.deserialize(serializedAnnouncements);
+		}catch(SerializationException e){
+			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			return;
+		}
+		
 		if(!this.privateBoard.containsKey(userKey)){
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;

@@ -33,40 +33,17 @@ public class SignatureHandler {
 	}
 
 	public byte[] sign(byte[] message){
-
-		byte[] signature = mac.doFinal(message);
-
-		StringBuilder builder = new StringBuilder();
-		for(byte b : signature) {
-			builder.append(String.format("%02x", b));
-		}
-
-		return signature;
+		return mac.doFinal(message);
 	}
 
 	public boolean verifySignature(byte[] message, byte[] signature){
 		byte[] check = mac.doFinal(message);
 
-		StringBuilder builder = new StringBuilder();
-		for(byte b : signature) {
-			builder.append(String.format("%02x", b));
-		}
-
-		builder = new StringBuilder();
-		for(byte b : check) {
-			builder.append(String.format("%02x", b));
-		}
-
-		builder = new StringBuilder();
-		for(byte b : message) {
-			builder.append(String.format("%02x", b));
-		}
-
 		return Arrays.equals(check, signature);
 	}
 
 	public static byte[] publicSign(byte[] message, PrivateKey privateKey){
-		Signature signature = null;
+		Signature signature;
 
 		try {
 			signature = Signature.getInstance(PUB_SIGN_ALGO);
@@ -80,7 +57,7 @@ public class SignatureHandler {
 	}
 
 	public static boolean verifyPublicSignature(byte[] message, byte[] signature, PublicKey publicKey){
-		Signature sign = null;
+		Signature sign;
 
 		try {
 			sign = Signature.getInstance(PUB_SIGN_ALGO);

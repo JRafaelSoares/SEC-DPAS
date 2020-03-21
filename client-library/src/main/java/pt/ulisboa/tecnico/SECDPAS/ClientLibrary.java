@@ -139,7 +139,7 @@ public class ClientLibrary {
 	public void postGeneral(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-		postGeneral(message, new Announcement[0]);
+			postGeneral(message, new Announcement[0]);
 	}
 
 

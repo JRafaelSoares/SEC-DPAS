@@ -1,8 +1,6 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
 import SECDPAS.grpc.Contract;
-import com.google.protobuf.ByteString;
-import org.apache.commons.lang3.SerializationUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
