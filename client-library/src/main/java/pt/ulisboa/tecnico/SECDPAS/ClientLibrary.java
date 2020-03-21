@@ -44,7 +44,6 @@ public class ClientLibrary {
 	public void register() throws ClientAlreadyRegisteredException {
 		//Serializes key and changes to ByteString
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
 
@@ -235,6 +234,14 @@ public class ClientLibrary {
 
 	}
 
+	public Contract.RegisterRequest getRegisterRequest(){
+		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
+
+		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+	}
+
 	/********************/
 	/** TEST FUNCTIONS **/
 	/********************/
@@ -325,6 +332,17 @@ public class ClientLibrary {
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
+		}
+	}
+
+	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, MessageNotFreshException {
+		try{
+			Contract.ACK response = stub.register(request);
+			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
+			//TODO- Distribute server key to clients
+			//SignatureHandler.verifyPublicSignature(response.getFreshness(), response.getSignature(), serverKey);
+		} catch (RuntimeException e){
+			throw new ClientAlreadyRegisteredException(e.getMessage());
 		}
 	}
 

@@ -20,10 +20,10 @@ public class FreshnessHandler {
     private HashMap<ByteBuffer, Long> usedNonces;
 
 
-    public FreshnessHandler(){
+    public FreshnessHandler(long initTime){
         this.usedNonces = new HashMap<>();
 
-        this.initialTime = System.currentTimeMillis();
+        this.initialTime = initTime;
     }
 
     public boolean verifyFreshness(byte[] freshness) {

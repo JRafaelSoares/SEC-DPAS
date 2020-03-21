@@ -31,6 +31,7 @@ public class IntegrityTest {
             PrivateKey priv = kp.getPrivate();
 
             lib = new ClientLibrary("localhost", 8080, pub, priv);
+
             lib.register();
 
             lib.setupConnection();
@@ -83,6 +84,80 @@ public class IntegrityTest {
     }
 
     @Test
+    public void failRegisterIntegrityPublicKey() throws ClientAlreadyRegisteredException, MessageNotFreshException{
+        PublicKey pub;
+        Contract.RegisterRequest registerRequest;
+        ClientLibrary lib;
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            pub = kp.getPublic();
+            PrivateKey priv = kp.getPrivate();
+
+            lib = new ClientLibrary("localhost", 8080, pub, priv);
+            registerRequest = lib.getRegisterRequest();
+
+            kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            kp = kpg.genKeyPair();
+            pub = kp.getPublic();
+
+        }catch(NoSuchAlgorithmException | InvalidArgumentException e){
+            System.out.println("Unable to create public key for testing");
+            return;
+        }
+
+        byte[] publicKey = SerializationUtils.serialize(pub);
+
+        registerRequest = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(registerRequest.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(registerRequest.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientAlreadyRegisteredException.class);
+        lib.registerRequest(registerRequest);
+    }
+
+    @Test
+    public void failIntegrityPostCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+
+        PublicKey pub = null;
+
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            pub = kp.getPublic();
+        }catch(NoSuchAlgorithmException e){
+            System.out.println("Unable to create public key for testing");
+        }
+
+        byte[] publicKey = SerializationUtils.serialize(pub);
+        String post = request.getMessage();
+        byte[] announcements = request.getAnnouncements().toByteArray();
+
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.postRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityPostCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+
+        byte[] publicKey = new byte[0];
+        String post = request.getMessage();
+        byte[] announcements = request.getAnnouncements().toByteArray();
+
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.postRequest(request);
+
+    }
+
+    @Test
     public void failIntegrityPostCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
 
@@ -94,7 +169,6 @@ public class IntegrityTest {
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientNotRegisteredException.class);
-
         lib.postRequest(request);
 
     }
@@ -129,6 +203,47 @@ public class IntegrityTest {
         thrown.expect(ClientNotRegisteredException.class);
 
         lib.postRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+
+        PublicKey pub = null;
+
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            pub = kp.getPublic();
+        }catch(NoSuchAlgorithmException e){
+            System.out.println("Unable to create public key for testing");
+        }
+
+        byte[] publicKey = SerializationUtils.serialize(pub);
+        String post = request.getMessage();
+        byte[] announcements = request.getAnnouncements().toByteArray();
+
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.postGeneralRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityPostGeneralCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+
+        byte[] publicKey = new byte[0];
+        String post = request.getMessage();
+        byte[] announcements = request.getAnnouncements().toByteArray();
+
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.postGeneralRequest(request);
 
     }
 
@@ -179,6 +294,47 @@ public class IntegrityTest {
         thrown.expect(ClientNotRegisteredException.class);
 
         lib.postGeneralRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityReadCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        PublicKey pub = null;
+
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            pub = kp.getPublic();
+        }catch(NoSuchAlgorithmException e){
+            System.out.println("Unable to create public key for testing");
+        }
+
+        byte[] publicKey = SerializationUtils.serialize(pub);
+        int number = -1;
+
+        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.readRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityReadCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(1);
+
+        byte[] publicKey = new byte[0];
+        int number = -1;
+
+        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientNotRegisteredException.class);
+        lib.readRequest(request);
 
     }
 

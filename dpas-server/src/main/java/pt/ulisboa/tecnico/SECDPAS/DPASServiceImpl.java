@@ -34,8 +34,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private ConcurrentHashMap<PublicKey, MessageHandler> clientSessions = new ConcurrentHashMap<>();
 
 	private String databasePath;
+	private long initialTime;
 
 	public DPASServiceImpl() throws DatabaseException{
+		this.initialTime = System.currentTimeMillis();
+
 		Path currentRelativePath = Paths.get("");
 		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
 		load();
@@ -63,6 +66,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			messageHandler.verifyFreshness(clientFreshness);
 		} catch (MessageNotFreshException e) {
 			responseObserver.onError(new ServerRequestNotFreshException("Diffie-Hellman request not fresh"));
+			return;
 		}
 
 		// Check that the signature is valid and matches the user
@@ -92,7 +96,17 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		byte[] encodedClientKey = request.getPublicKey().toByteArray();
+		byte[] clientFreshness = request.getFreshness().toByteArray();
+		byte[] clientSignature = request.getSignature().toByteArray();
+		PublicKey userKey;
+		try{
+			userKey = SerializationUtils.deserialize(encodedClientKey);
+		}catch(SerializationException e){
+			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			return;
+		}
+
 		if(this.privateBoard.get(userKey) != null){
 			//TODO- Add freshness check here
 			responseObserver.onError(new ServerAlreadyRegisteredException("Client is already registered"));
@@ -102,8 +116,22 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		this.privateBoard.put(userKey, new ArrayList<>());
 
 		// Create new messageHandler for this client
-		MessageHandler messageHandler = new MessageHandler(null);
+		MessageHandler messageHandler = new MessageHandler(null, this.initialTime);
 		this.clientSessions.put(userKey, messageHandler);
+
+		try {
+			messageHandler.verifyFreshness(clientFreshness);
+		} catch (MessageNotFreshException e) {
+			responseObserver.onError(new ServerRequestNotFreshException("Diffie-Hellman request not fresh"));
+			return;
+		}
+
+		// Check that the signature is valid and matches the user
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(encodedClientKey, clientFreshness), clientSignature, userKey)){
+			responseObserver.onError(new ServerInvalidSignatureException("Request signature not valid"));
+			return;
+		}
+
 
 		byte[] freshness = messageHandler.getFreshness();
 		//TODO- Create server key pair

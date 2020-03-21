@@ -20,8 +20,8 @@ public class FreshnessHandlerTest {
 
     @BeforeClass
     public static void setUp() {
-        clientHandler = new FreshnessHandler();
-        serverHandler = new FreshnessHandler();
+        clientHandler = new FreshnessHandler(System.currentTimeMillis());
+        serverHandler = new FreshnessHandler(System.currentTimeMillis());
 
     }
 

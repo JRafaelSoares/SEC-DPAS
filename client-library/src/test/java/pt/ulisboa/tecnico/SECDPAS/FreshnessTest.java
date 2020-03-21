@@ -14,6 +14,7 @@ import static org.junit.Assert.assertEquals;
 public class FreshnessTest {
 
     private static ClientLibrary lib;
+    private static Contract.RegisterRequest registerRequest;
     private static String s = "message";
 
     @Rule
@@ -30,7 +31,9 @@ public class FreshnessTest {
             PrivateKey priv = kp.getPrivate();
 
             lib = new ClientLibrary("localhost", 8080, pub, priv);
-            lib.register();
+
+            registerRequest = lib.getRegisterRequest();
+            lib.registerRequest(registerRequest);
 
             lib.setupConnection();
 
@@ -79,6 +82,12 @@ public class FreshnessTest {
 
         assertEquals(1, announcement.length);
         assertEquals(s, new String(announcement[0].getPost()));
+    }
+
+    @Test
+    public void failRegisterFreshness() throws ClientAlreadyRegisteredException, MessageNotFreshException{
+        thrown.expect(ClientAlreadyRegisteredException.class);
+        lib.registerRequest(registerRequest);
     }
 
     @Test

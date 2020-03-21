@@ -16,7 +16,12 @@ public class MessageHandler {
     private boolean inSession = false;
 
     public MessageHandler(SecretKey sharedHMACKey) {
-        this.freshnessHandler = new FreshnessHandler();
+        this.freshnessHandler = new FreshnessHandler(System.currentTimeMillis());
+        this.signatureHandler = new SignatureHandler(sharedHMACKey);
+    }
+
+    public MessageHandler(SecretKey sharedHMACKey, long initTime) {
+        this.freshnessHandler = new FreshnessHandler(initTime);
         this.signatureHandler = new SignatureHandler(sharedHMACKey);
     }
 
@@ -54,7 +59,7 @@ public class MessageHandler {
     }
 
     public void resetFreshness(){
-        this.freshnessHandler = new FreshnessHandler();
+        this.freshnessHandler = new FreshnessHandler(System.currentTimeMillis());
     }
 
     public boolean isInSession(){
