@@ -61,7 +61,7 @@ public class ClientLibrary {
 		}
 	}
 
-	private void setupConnection() throws ClientNotRegisteredException{
+	protected void setupConnection() throws ClientNotRegisteredException{
 		// Create Diffie-Hellman agreement
 		DiffieHellmanClient diffieHellmanClient = new DiffieHellmanClient();
 
@@ -291,6 +291,24 @@ public class ClientLibrary {
 			return postGeneralState(message, new Announcement[0]);
 		}catch (InvalidArgumentException e){
 			return false;
+		}
+	}
+
+	public void postRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+		try{
+			Contract.ACK response = stub.post(request);
+			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+		} catch (RuntimeException e){
+			throw new ClientNotRegisteredException(e.getMessage());
+		}
+	}
+
+	public void postGeneralRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+		try{
+			Contract.ACK response = stub.postGeneral(request);
+			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+		} catch (RuntimeException e){
+			throw new ClientNotRegisteredException(e.getMessage());
 		}
 	}
 
