@@ -47,11 +47,6 @@ public class DiffieHellmanClient {
          */
         sharedSecret = clientKeyAgreement.generateSecret();
 
-        StringBuilder builder = new StringBuilder();
-        for(byte b : sharedSecret) {
-            builder.append(String.format("%02x", b));
-        }
-
     }
 
 	// Should be sent over to other party

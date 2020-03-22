@@ -43,11 +43,6 @@ public class DiffieHellmanServer {
          */
         sharedSecret = serverKeyAgree.generateSecret();
 
-        StringBuilder builder = new StringBuilder();
-        for(byte b : sharedSecret) {
-            builder.append(String.format("%02x", b));
-        }
-
         return toSend;
     }
 
