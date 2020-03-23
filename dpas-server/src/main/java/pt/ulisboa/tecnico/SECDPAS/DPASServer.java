@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.cert.Certificate;
 
 
 public class DPASServer {
@@ -65,7 +66,6 @@ public class DPASServer {
 			keyStore.load(keyStoreData, args[1].toCharArray());
 			KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(args[1].toCharArray());
 			KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(args[2], entryPassword);
-
 			final BindableService impl = new DPASServiceImpl(privateKeyEntry.getPrivateKey());
 
 
