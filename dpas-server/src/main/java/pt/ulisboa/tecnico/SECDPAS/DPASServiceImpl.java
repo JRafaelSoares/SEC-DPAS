@@ -44,8 +44,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
 		this.privateKey = privateKey;
 		load();
-
-
 	}
 
 	@Override

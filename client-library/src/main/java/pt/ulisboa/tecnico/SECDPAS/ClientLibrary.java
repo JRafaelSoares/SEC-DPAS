@@ -21,6 +21,7 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.TimeUnit;
 
 public class ClientLibrary {
 
@@ -36,12 +37,14 @@ public class ClientLibrary {
 	private PrivateKey privateKey;
 	private PublicKey serverPublicKey;
 
+	private long timeout = 1000;
+
 	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException{ //, CertificateInvalidException{
 		checkConstructor(host, port, publicKey, privateKey);
 
 		this.target = host + ":" + port;
 		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-		this.stub = DPASServiceGrpc.newBlockingStub(channel);
+		this.stub = DPASServiceGrpc.newBlockingStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
 		this.messageHandler = new MessageHandler(null);
 		this.publicKey = publicKey;
 		this.privateKey = privateKey;
@@ -169,6 +172,7 @@ public class ClientLibrary {
 
 		try{
 			Contract.ACK response = stub.postGeneral(getPostRequest(message, references));
+
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
@@ -187,6 +191,7 @@ public class ClientLibrary {
 
 		try {
 			Contract.ReadResponse response = stub.read(getReadRequest(number));
+
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -207,6 +212,7 @@ public class ClientLibrary {
 
 		try {
 			Contract.ReadResponse response = stub.readGeneral(getReadRequest(number));
+
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
