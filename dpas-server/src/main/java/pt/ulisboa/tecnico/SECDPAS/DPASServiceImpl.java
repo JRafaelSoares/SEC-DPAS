@@ -20,8 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.PublicKey;
-import java.security.SignatureException;
+import java.security.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,12 +35,17 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private String databasePath;
 	private long initialTime;
 
-	public DPASServiceImpl() throws DatabaseException{
+	private PrivateKey privateKey;
+
+	public DPASServiceImpl(PrivateKey privateKey) throws DatabaseException{
 		this.initialTime = System.currentTimeMillis();
 
 		Path currentRelativePath = Paths.get("");
 		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
+		this.privateKey = privateKey;
 		load();
+
+
 	}
 
 	@Override
@@ -133,9 +137,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		byte[] freshness = messageHandler.getFreshness();
-		//TODO- Create server key pair
-		//byte[] signature = SignatureHandler.publicSign(freshness, serverKey);
-		byte[] signature = new byte[256];
+		byte[] signature = SignatureHandler.publicSign(freshness, this.privateKey);
 
 		Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
