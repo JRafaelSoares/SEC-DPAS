@@ -415,6 +415,27 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			Path dst = Paths.get(this.databasePath + "/"+ file + ".txt");
 
 			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
+			//Saves the IDs persisantly
+			saveIDs();
+
+		} catch (IOException e) {
+			throw new DatabaseException("Unable to save: " + e.getMessage());
+		}
+
+	}
+
+	private void saveIDs() throws DatabaseException{
+
+		try {
+			FileOutputStream myWriter = new FileOutputStream(this.databasePath + "/announcementsID_try.txt");
+			myWriter.write(SerializationUtils.serialize(this.announcementIDs));
+			myWriter.close();
+
+			/* File successfully created, transferring to official file */
+			Path src = Paths.get(this.databasePath + "/announcementsID_try.txt");
+			Path dst = Paths.get(this.databasePath + "/announcementsID.txt");
+
+			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
 
 		} catch (IOException e) {
 			throw new DatabaseException("Unable to save: " + e.getMessage());
@@ -437,6 +458,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				this.generalBoard = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
 			}
+			if(new File(this.databasePath + "/announcementsID.txt").exists()) {
+				/* read from file generalPosts */
+				FileInputStream myReader = new FileInputStream(this.databasePath + "/announcementsID.txt");
+				this.announcementIDs = SerializationUtils.deserialize(myReader.readAllBytes());
+				myReader.close();
+			}
+
 
 		} catch (IOException e) {
 			throw new DatabaseException("Unable to load: " + e.getMessage());
