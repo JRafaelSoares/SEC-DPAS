@@ -66,12 +66,14 @@ public class PostGeneralTest {
 	@Test
 	public void postGeneralCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		String s1 = "NoAnnouncement";
-		Announcement a = new Announcement(s1.toCharArray(), pub1);
-		Announcement[] announcements = {a};
-
+		//Announcement a = new Announcement(s1.toCharArray(), pub1, 0);
 		lib1.postGeneral(s1.toCharArray());
 
+		String[] announcements = {Integer.toString(lib1.readGeneral(1)[0].getAnnouncementID())};
+
+
 		String s2 = "WithAnnouncement";
+
 		lib1.postGeneral(s2.toCharArray(), announcements);
 
 		assertTrue(lib1.postGeneralState(s1.toCharArray()));

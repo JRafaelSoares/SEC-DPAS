@@ -56,14 +56,14 @@ public class SignatureTest {
 
     @Test
     public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
     public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
@@ -82,7 +82,7 @@ public class SignatureTest {
     @Test
     public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.postGeneral(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(pub, 1);
+        Contract.ReadRequest request = lib.getReadGeneralRequest( 1);
 
         Announcement[] announcement = lib.readGeneralRequest(request);
 
@@ -117,7 +117,7 @@ public class SignatureTest {
         PublicKey pub = kp.getPublic();
         PrivateKey priv = kp.getPrivate();
 
-        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new String[0]);
 
         byte[] publicKey = SerializationUtils.serialize(pub);
         byte[] freshness = request.getFreshness().toByteArray();
@@ -137,7 +137,7 @@ public class SignatureTest {
         PublicKey pub = kp.getPublic();
         PrivateKey priv = kp.getPrivate();
 
-        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new String[0]);
 
         byte[] publicKey = SerializationUtils.serialize(pub);
         byte[] freshness = request.getFreshness().toByteArray();
@@ -163,7 +163,7 @@ public class SignatureTest {
         byte[] freshness = request.getFreshness().toByteArray();
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(request.getPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readRequest(request);
@@ -183,7 +183,7 @@ public class SignatureTest {
         byte[] freshness = request.getFreshness().toByteArray();
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(request.getPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        request = Contract.ReadRequest.newBuilder().setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readGeneralRequest(request);

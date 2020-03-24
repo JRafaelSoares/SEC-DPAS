@@ -1,13 +1,8 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
 import com.google.common.primitives.Bytes;
-import com.google.common.primitives.Ints;
 
 import javax.crypto.*;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 
 
 public class MessageHandler {

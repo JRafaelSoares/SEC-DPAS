@@ -8,16 +8,28 @@ import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 
 import java.security.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
 public class MultiClientTest {
 
+    private static List<ClientLibrary> list = new ArrayList<>();
     private static PublicKey pub1;
+
+    @AfterClass
+    public static void cleanUp(){
+        for(ClientLibrary lib : list){
+            lib.cleanPosts();
+            lib.cleanGeneralPosts();
+            lib.shutDown();
+        }
+    }
 
     @Test
     public void runAllTests(){
-        Class<?>[] classes = {Client1.class/*, Client5.class, Client2.class, Client3.class, Client4.class*/};
+        Class<?>[] classes = {Client1.class, Client2.class, Client3.class, Client4.class, Client5.class};
 
         Result result = JUnitCore.runClasses(new ParallelComputer(true, true), classes);
 
@@ -31,17 +43,12 @@ public class MultiClientTest {
     }
 
     public static class Client1{
-        /* post and read */
+        /* post and read on its own */
         private static ClientLibrary lib;
-        @AfterClass
-        public static void cleanUp(){
-            lib.cleanPosts();
-            lib.cleanGeneralPosts();
-            lib.shutDown();
-        }
+
         @Test
         public void run(){
-            int num = 1;
+            int num = 100;
             Boolean result = true;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -51,6 +58,7 @@ public class MultiClientTest {
                 PrivateKey priv = kp.getPrivate();
 
                 lib = new ClientLibrary("localhost", 8080, pub1, priv);
+                list.add(lib);
 
                 lib.register();
 
@@ -58,7 +66,6 @@ public class MultiClientTest {
 
                 for(int i=0; i<num; i++){
                     lib.post(("message" + i).toCharArray());
-                    System.out.println("T1 post " + i);
                 }
 
                 Announcement[] announcements = lib.read(pub1, 0);
@@ -67,35 +74,9 @@ public class MultiClientTest {
 
                 for(int i=0; i<announcements.length; i++){
                     result = ("message" + i).equals(new String(announcements[i].getPost()));
-                    System.out.println("T1 read " + i);
-
                     if(!result) break;
                 }
-                System.out.println("SECOND READ");
-                kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                kp = kpg.genKeyPair();
-                PublicKey pub = kp.getPublic();
-                priv = kp.getPrivate();
-
-                ClientLibrary lib2 = new ClientLibrary("localhost", 8080, pub, priv);
-
-                lib2.register();
-
-                lib2.setupConnection();
-
-                announcements = lib2.read(pub1, 0);
-
-                assertEquals(num, announcements.length);
-
-                for(int i=0; i<announcements.length; i++){
-                    result = ("message" + i).equals(new String(announcements[i].getPost()));
-                    System.out.println("T100 read " + i);
-
-                    if(!result) break;
-                }
-
-                System.out.println("\n\nT1 done");
+                //System.out.println("\n\nT1 done");
                 assertTrue(result);
 
             }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
@@ -105,14 +86,9 @@ public class MultiClientTest {
     }
 
     public static class Client2{
-        /* post and read */
+        /* post and read on its own */
         private static ClientLibrary lib;
-        @AfterClass
-        public static void cleanUp(){
-            lib.cleanPosts();
-            lib.cleanGeneralPosts();
-            lib.shutDown();
-        }
+
         @Test
         public void run(){
             int num = 100;
@@ -125,6 +101,7 @@ public class MultiClientTest {
                 PrivateKey priv = kp.getPrivate();
 
                 lib = new ClientLibrary("localhost", 8080, pub, priv);
+                list.add(lib);
 
                 lib.register();
 
@@ -132,21 +109,18 @@ public class MultiClientTest {
 
                 for(int i=0; i<num; i++){
                     lib.post(("message" + i).toCharArray());
-                    System.out.println("T2 post " + i);
                 }
 
                 Announcement[] announcements = lib.read(pub, 0);
 
                 assertEquals(num, announcements.length);
 
-                for(int i=0; i<announcements.length; i++){
+                for(int i=0; i<announcements.length; i++) {
                     result = ("message" + i).equals(new String(announcements[i].getPost()));
-
-                    System.out.println("T2 read " + i);
-
-                    if(!result) break;
+                    if (!result) break;
                 }
-                System.out.println("\n\nT2 done");
+
+                //System.out.println("\n\nT2 done");
 
                 assertTrue(result);
 
@@ -160,16 +134,9 @@ public class MultiClientTest {
     public static class Client3{
         /* post general and read general */
         private static ClientLibrary lib;
-        @AfterClass
-        public static void cleanUp(){
-            lib.cleanPosts();
-            lib.cleanGeneralPosts();
-            lib.shutDown();
-        }
         @Test
         public void run(){
             int num = 100;
-            Boolean result = true;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -178,6 +145,7 @@ public class MultiClientTest {
                 PrivateKey priv = kp.getPrivate();
 
                 lib = new ClientLibrary("localhost", 8080, pub, priv);
+                list.add(lib);
 
                 lib.register();
 
@@ -185,22 +153,13 @@ public class MultiClientTest {
 
                 for(int i=0; i<num; i++){
                     lib.postGeneral(("message" + i).toCharArray());
-                    System.out.println("T3 post " + i);
                 }
 
-                Announcement[] announcements = lib.readGeneral(0);
+                Announcement[] announcements = lib.readGeneral(100);
 
                 assertEquals(num, announcements.length);
 
-                for(int i=0; i<announcements.length; i++){
-                    result = ("message" + i).equals(new String(announcements[i].getPost()));
-                    System.out.println("T3 read " + i);
-
-                    if(!result) break;
-                }
-                System.out.println("\n\nT3 done");
-
-                assertTrue(result);
+                //System.out.println("\n\nT3 done");
 
             }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
                 System.out.println(e.getMessage());
@@ -209,18 +168,11 @@ public class MultiClientTest {
     }
 
     public static class Client4{
-        /* read general */
+        /* post general and read general */
         private static ClientLibrary lib;
-        @AfterClass
-        public static void cleanUp(){
-            lib.cleanPosts();
-            lib.cleanGeneralPosts();
-            lib.shutDown();
-        }
         @Test
         public void run(){
             int num = 100;
-            Boolean result = true;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -229,29 +181,55 @@ public class MultiClientTest {
                 PrivateKey priv = kp.getPrivate();
 
                 lib = new ClientLibrary("localhost", 8080, pub, priv);
+                list.add(lib);
 
                 lib.register();
 
                 lib.setupConnection();
 
-                Thread.sleep(3000);
+                for(int i=0; i<num; i++){
+                    lib.postGeneral(("message" + i).toCharArray());
+                }
 
-                Announcement[] announcements = lib.readGeneral(1);
-
-                System.out.println(announcements);
+                Announcement[] announcements = lib.readGeneral(100);
 
                 assertEquals(num, announcements.length);
 
-                for(int i=0; i<announcements.length; i++){
-                    result = ("message" + i).equals(new String(announcements[i].getPost()));
-                    System.out.println("T4 read " + i);
+                //System.out.println("\n\nT4 done");
 
-                    if(!result) break;
-                }
+            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
+                System.out.println(e.getMessage());
+            }
+        }
+    }
 
-                System.out.println("\n\nT4 done");
+    public static class Client5{
+        /* read general */
+        private static ClientLibrary lib;
+        @Test
+        public void run(){
+            int num = 100;
+            try{
+                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+                kpg.initialize(2048);
+                KeyPair kp = kpg.genKeyPair();
+                PublicKey pub = kp.getPublic();
+                PrivateKey priv = kp.getPrivate();
 
-                assertTrue(result);
+                lib = new ClientLibrary("localhost", 8080, pub, priv);
+                list.add(lib);
+
+                lib.register();
+
+                lib.setupConnection();
+
+                Thread.sleep(4000);
+
+                Announcement[] announcements = lib.readGeneral(0);
+
+                assertEquals(num*2, announcements.length);
+
+                //System.out.println("\n\nT5 done");
 
             }catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
                 System.out.println(e.getMessage());
@@ -259,15 +237,9 @@ public class MultiClientTest {
         }
     }
 
-    public static class Client5{
-        /* post and read */
+    public static class Client6{
+        /* read Client1 */
         private static ClientLibrary lib;
-        @AfterClass
-        public static void cleanUp(){
-            lib.cleanPosts();
-            lib.cleanGeneralPosts();
-            lib.shutDown();
-        }
         @Test
         public void run(){
             int num = 100;
@@ -280,25 +252,29 @@ public class MultiClientTest {
                 PrivateKey priv = kp.getPrivate();
 
                 lib = new ClientLibrary("localhost", 8080, pub, priv);
+                list.add(lib);
 
                 lib.register();
 
                 lib.setupConnection();
 
-                Thread.sleep(1500);
+                Thread.sleep(3000);
 
                 Announcement[] announcements = lib.read(pub1, 0);
 
-                assertEquals(num, announcements.length);
+                assertEquals(num*2, announcements.length);
 
                 for(int i=0; i<announcements.length; i++){
                     result = ("message" + i).equals(new String(announcements[i].getPost()));
-
-                    System.out.println("T5 read " + i);
-
                     if(!result) break;
                 }
-                System.out.println("\n\nT5 done");
+
+                for(int i=0; i<announcements.length; i++){
+                    result = ("message" + i).equals(new String(announcements[i].getPost()));
+                    if(!result) break;
+                }
+
+                //System.out.println("\n\nT6 done");
 
                 assertTrue(result);
 

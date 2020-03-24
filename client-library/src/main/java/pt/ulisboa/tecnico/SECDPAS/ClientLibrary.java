@@ -47,8 +47,8 @@ public class ClientLibrary {
 
 		this.target = host + ":" + port;
 		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-		this.futureStub = DPASServiceGrpc.newFutureStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
-		this.stub = DPASServiceGrpc.newBlockingStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
+		this.futureStub = DPASServiceGrpc.newFutureStub(channel);//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
+		this.stub = DPASServiceGrpc.newBlockingStub(channel);//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
 
 		this.messageHandler = new MessageHandler(null);
 		this.publicKey = publicKey;
@@ -147,10 +147,10 @@ public class ClientLibrary {
 	public void post(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-		post(message, new Announcement[0]);
+		post(message, new String[0]);
 	}
 
-	public void post(char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void post(char[] message, String[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -175,11 +175,11 @@ public class ClientLibrary {
 	public void postGeneral(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-			postGeneral(message, new Announcement[0]);
+			postGeneral(message, new String[0]);
 	}
 
 
-	public void postGeneral(char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -210,11 +210,8 @@ public class ClientLibrary {
 		}
 
 		try {
-            System.out.println("stub");
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.read(getReadRequest(client, number));
-            System.out.println("response?");
 			Contract.ReadResponse response = listenableFuture.get();
-            System.out.println("got it");
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -239,9 +236,7 @@ public class ClientLibrary {
 		try {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.readGeneral(getReadGeneralRequest(number));
 			Contract.ReadResponse response = listenableFuture.get();
-			System.out.println("REPONSE?");
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
-			System.out.println("verified");
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
@@ -259,7 +254,7 @@ public class ClientLibrary {
 	/**** AUX FUNCTIONS ******/
 	/*************************/
 
-	public Contract.PostRequest getPostRequest(char[] message, Announcement[] references) {
+	public Contract.PostRequest getPostRequest(char[] message, String[] references) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] postBytes = post.getBytes();
@@ -271,7 +266,7 @@ public class ClientLibrary {
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
-	public Contract.PostRequest getTestPostRequest(char[] message, Announcement[] references) {
+	public Contract.PostRequest getTestPostRequest(char[] message, String[] references) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
@@ -280,12 +275,14 @@ public class ClientLibrary {
 	}
 
 	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){
-		byte[] publicKey = SerializationUtils.serialize(clientKey);
+		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
+		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 		byte[] freshness = messageHandler.getFreshness();
-		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
 
-		return Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
+		byte[] signature = messageHandler.sign(Bytes.concat(keys, numberBytes), freshness);
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
 	public Contract.ReadRequest getReadGeneralRequest(int number){
@@ -294,7 +291,7 @@ public class ClientLibrary {
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
 
-		return Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
 
@@ -319,7 +316,7 @@ public class ClientLibrary {
 		return response.getTestResult();
 	}
 
-	public boolean postState(char[] message, Announcement[] references) {
+	public boolean postState(char[] message, String[] references) {
 		try{
 			checkMessage(message);
 
@@ -334,13 +331,13 @@ public class ClientLibrary {
 		try{
 			checkMessage(message);
 
-			return postState(message, new Announcement[0]);
+			return postState(message, new String[0]);
 		}catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
-	public boolean postGeneralState(char[] message, Announcement[] references) {
+	public boolean postGeneralState(char[] message, String[] references) {
 		try{
 			checkMessage(message);
 
@@ -355,7 +352,7 @@ public class ClientLibrary {
 		try{
 			checkMessage(message);
 
-			return postGeneralState(message, new Announcement[0]);
+			return postGeneralState(message, new String[0]);
 		}catch (InvalidArgumentException e){
 			return false;
 		}
