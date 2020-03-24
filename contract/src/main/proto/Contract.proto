@@ -44,11 +44,12 @@ message PostRequest {
 
 message ReadRequest {
     //PublicKey
-    bytes publicKey = 1;
+    bytes targetPublicKey = 1;
+    bytes clientPublicKey = 2;
     //Number of posts to see
-    int32 number = 2;
-    bytes freshness = 3;
-    bytes signature = 4;
+    int32 number = 3;
+    bytes freshness = 4;
+    bytes signature = 5;
 }
 
 message ReadResponse {

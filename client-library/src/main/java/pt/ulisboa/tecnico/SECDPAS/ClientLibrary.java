@@ -48,8 +48,8 @@ public class ClientLibrary {
 
 		this.target = host + ":" + port;
 		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-		this.futureStub = DPASServiceGrpc.newFutureStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
-		this.stub = DPASServiceGrpc.newBlockingStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
+		this.futureStub = DPASServiceGrpc.newFutureStub(channel);//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
+		this.stub = DPASServiceGrpc.newBlockingStub(channel);//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
 
 		this.messageHandler = new MessageHandler(null);
 		this.publicKey = publicKey;
@@ -276,12 +276,15 @@ public class ClientLibrary {
 	}
 
 	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){
-		byte[] publicKey = SerializationUtils.serialize(clientKey);
+		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
+		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 		byte[] freshness = messageHandler.getFreshness();
-		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
 
-		return Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
+		byte[] signature = messageHandler.sign(Bytes.concat(keys, numberBytes), freshness);
+
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
 	public Contract.ReadRequest getReadGeneralRequest(int number){
@@ -290,7 +293,7 @@ public class ClientLibrary {
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
 
-		return Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
 

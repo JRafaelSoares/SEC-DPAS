@@ -82,7 +82,7 @@ public class SignatureTest {
     @Test
     public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.postGeneral(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(pub, 1);
+        Contract.ReadRequest request = lib.getReadGeneralRequest( 1);
 
         Announcement[] announcement = lib.readGeneralRequest(request);
 
@@ -163,7 +163,7 @@ public class SignatureTest {
         byte[] freshness = request.getFreshness().toByteArray();
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(request.getPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readRequest(request);
@@ -183,7 +183,7 @@ public class SignatureTest {
         byte[] freshness = request.getFreshness().toByteArray();
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(request.getPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        request = Contract.ReadRequest.newBuilder().setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readGeneralRequest(request);

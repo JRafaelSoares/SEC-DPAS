@@ -317,7 +317,7 @@ public class IntegrityTest {
         byte[] publicKey = SerializationUtils.serialize(pub);
         int number = -1;
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(ByteString.copyFrom(publicKey)).setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readRequest(request);
@@ -332,7 +332,7 @@ public class IntegrityTest {
         byte[] publicKey = new byte[0];
         int number = -1;
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(ByteString.copyFrom(publicKey)).setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readRequest(request);
@@ -344,10 +344,10 @@ public class IntegrityTest {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
-        byte[] publicKey = request.getPublicKey().toByteArray();
+        byte[] publicKey = request.getClientPublicKey().toByteArray();
         int number = -1;
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(ByteString.copyFrom(publicKey)).setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readRequest(request);
@@ -359,10 +359,10 @@ public class IntegrityTest {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
-        byte[] publicKey = request.getPublicKey().toByteArray();
+        byte[] publicKey = request.getClientPublicKey().toByteArray();
         int number = -1;
 
-        request = Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(ByteString.copyFrom(publicKey)).setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.readGeneralRequest(request);

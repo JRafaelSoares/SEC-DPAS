@@ -255,28 +255,39 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void read(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
-		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
+		byte[] serializedTargetPublicKey = request.getTargetPublicKey().toByteArray();
+		byte[] serializedClientPublicKey = request.getClientPublicKey().toByteArray();
+
 		int numPosts = request.getNumber();
 		byte[] number = Ints.toByteArray(numPosts);
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		PublicKey userKey;
+		PublicKey targetUserKey;
+		PublicKey clientUserKey;
 		try{
-			userKey = SerializationUtils.deserialize(serializedPublicKey);
+			targetUserKey = SerializationUtils.deserialize(serializedTargetPublicKey);
+			clientUserKey = SerializationUtils.deserialize(serializedClientPublicKey);
 		}catch(SerializationException e){
 			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
 			return;
 		}
 
-		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
+		ArrayList<Announcement> clientAnnouncementList = this.privateBoard.get(clientUserKey);
 
-		if(announcementList == null){
+		if(clientAnnouncementList == null){
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;
 		}
 
-		MessageHandler messageHandler = clientSessions.get(userKey);
+		ArrayList<Announcement> announcementList = this.privateBoard.get(targetUserKey);
+
+		if(announcementList == null){
+			responseObserver.onError(new ServerNotRegisteredException("Target user not yet registered"));
+			return;
+		}
+
+		MessageHandler messageHandler = clientSessions.get(targetUserKey);
 
 		if(!messageHandler.isInSession()){
 			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
@@ -284,7 +295,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		try {
-			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, number), freshness, signature);
+			byte[] keys = Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey);
+			messageHandler.verifyMessage(Bytes.concat(keys, number), freshness, signature);
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
@@ -316,26 +328,26 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void readGeneral(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
-		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
+		byte[] serializedClientPublicKey = request.getClientPublicKey().toByteArray();
 		int numPosts = request.getNumber();
 		byte[] number = Ints.toByteArray(numPosts);
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		PublicKey userKey;
+		PublicKey clientUserKey;
 		try{
-			userKey = SerializationUtils.deserialize(serializedPublicKey);
+			clientUserKey = SerializationUtils.deserialize(serializedClientPublicKey);
 		}catch(SerializationException e){
 			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
 			return;
 		}
 
-		if(!this.privateBoard.containsKey(userKey)){
+		if(!this.privateBoard.containsKey(clientUserKey)){
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;
 		}
 
-		MessageHandler messageHandler = clientSessions.get(userKey);
+		MessageHandler messageHandler = clientSessions.get(clientUserKey);
 
 		if(!messageHandler.isInSession()){
 			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
@@ -343,7 +355,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		try {
-			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, number), freshness, signature);
+			messageHandler.verifyMessage(Bytes.concat(serializedClientPublicKey, number), freshness, signature);
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
