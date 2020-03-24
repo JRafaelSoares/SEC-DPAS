@@ -46,6 +46,9 @@ public class RegisterTest {
 	@AfterClass
 	public static void cleanUp(){
 		lib1.cleanPosts();
+		lib2.cleanPosts();
+		lib1.shutDown();
+		lib2.shutDown();
 	}
 
 	@Test

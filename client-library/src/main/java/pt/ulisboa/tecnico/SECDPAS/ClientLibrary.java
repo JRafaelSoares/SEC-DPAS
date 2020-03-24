@@ -6,6 +6,7 @@ import SECDPAS.grpc.DPASServiceGrpc;
 
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Empty;
 
 import com.google.protobuf.ByteString;
@@ -21,6 +22,7 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class ClientLibrary {
@@ -30,21 +32,25 @@ public class ClientLibrary {
 	private String target = host + ":" + port;
 
 	private ManagedChannel channel;
+	private DPASServiceGrpc.DPASServiceFutureStub futureStub;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
+
 	private MessageHandler messageHandler;
 
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private PublicKey serverPublicKey;
 
-	private long timeout = 1000;
+	private long timeout = 10000;
 
 	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException{ //, CertificateInvalidException{
 		checkConstructor(host, port, publicKey, privateKey);
 
 		this.target = host + ":" + port;
 		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
+		this.futureStub = DPASServiceGrpc.newFutureStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
 		this.stub = DPASServiceGrpc.newBlockingStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
+
 		this.messageHandler = new MessageHandler(null);
 		this.publicKey = publicKey;
 		this.privateKey = privateKey;
@@ -70,11 +76,15 @@ public class ClientLibrary {
 
 		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 		try{
-			Contract.ACK response = stub.register(request);
+			ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
+			Contract.ACK response = listenable.get();
 			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
 			//TODO- Distribute server key to clients
 			SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey);
 		} catch (RuntimeException e){
+			throw new ClientAlreadyRegisteredException(e.getMessage());
+		} catch (InterruptedException | ExecutionException e){
+			//TODO - Check if better way to handle
 			throw new ClientAlreadyRegisteredException(e.getMessage());
 		} catch (MessageNotFreshException e) {
 			System.out.println("Message not fresh");
@@ -104,8 +114,13 @@ public class ClientLibrary {
 
 		Contract.DHResponse response;
 		try{
-			response = stub.setupConnection(request);
+
+			ListenableFuture<Contract.DHResponse> listenable = futureStub.setupConnection(request);
+			response = listenable.get();
 		}catch (RuntimeException e){
+			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (InterruptedException | ExecutionException e){
+			//TODO - Check if better way to handle
 			throw new ClientNotRegisteredException(e.getMessage());
 		}
 
@@ -146,13 +161,17 @@ public class ClientLibrary {
 		}
 
 		try{
-			Contract.ACK response = stub.post(getPostRequest(message, references));
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub.post(getPostRequest(message, references));
+			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
 		} catch (SignatureNotValidException | MessageNotFreshException e) {
 			//TODO- Handle exceptions properly
 			e.printStackTrace();
+		} catch (InterruptedException | ExecutionException e){
+			//TODO - Check if better way to handle
+			throw new ClientNotRegisteredException(e.getMessage());
 		}
 	}
 
@@ -171,14 +190,18 @@ public class ClientLibrary {
 		}
 
 		try{
-			Contract.ACK response = stub.postGeneral(getPostRequest(message, references));
 
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub.postGeneral(getPostRequest(message, references));
+			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
 		} catch (SignatureNotValidException | MessageNotFreshException e) {
 			//TODO- Handle exceptions properly
 			e.printStackTrace();
+		} catch (InterruptedException | ExecutionException e){
+			//TODO - Check if better way to handle
+			throw new ClientNotRegisteredException(e.getMessage());
 		}
 	}
 
@@ -190,8 +213,8 @@ public class ClientLibrary {
 		}
 
 		try {
-			Contract.ReadResponse response = stub.read(getReadRequest(number));
-
+			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.read(getReadRequest(number));
+			Contract.ReadResponse response = listenableFuture.get();
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -200,6 +223,9 @@ public class ClientLibrary {
 			//TODO- Handle exceptions properly
 			e.printStackTrace();
 			return null;
+		} catch (InterruptedException | ExecutionException e){
+			//TODO - Check if better way to handle
+			throw new ClientNotRegisteredException(e.getMessage());
 		}
 	}
 
@@ -211,8 +237,8 @@ public class ClientLibrary {
 		}
 
 		try {
-			Contract.ReadResponse response = stub.readGeneral(getReadRequest(number));
-
+			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.readGeneral(getReadRequest(number));
+			Contract.ReadResponse response = listenableFuture.get();
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -221,6 +247,9 @@ public class ClientLibrary {
 			//TODO- Handle exceptions properly
 			e.printStackTrace();
 			return null;
+		} catch (InterruptedException | ExecutionException e){
+			//TODO - Check if better way to handle
+			throw new ClientNotRegisteredException(e.getMessage());
 		}
 	}
 
@@ -403,5 +432,12 @@ public class ClientLibrary {
 		}
 	}
 
+	/***********************/
+	/** Channel Shut Down **/
+	/***********************/
+
+	public void shutDown(){
+		this.channel.shutdown();
+	}
 
 }

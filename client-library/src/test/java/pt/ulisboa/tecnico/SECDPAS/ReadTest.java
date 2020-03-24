@@ -57,6 +57,11 @@ public class ReadTest {
 	@AfterClass
 	public static void cleanUp(){
 		lib1.cleanPosts();
+		lib2.cleanPosts();
+		lib3.cleanPosts();
+		lib1.shutDown();
+		lib2.shutDown();
+		lib3.shutDown();
 	}
 
 	@Test

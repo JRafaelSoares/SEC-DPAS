@@ -46,6 +46,7 @@ public class FreshnessTest {
     public static void cleanUp(){
         lib.cleanPosts();
         lib.cleanGeneralPosts();
+        lib.shutDown();
     }
 
     @Test

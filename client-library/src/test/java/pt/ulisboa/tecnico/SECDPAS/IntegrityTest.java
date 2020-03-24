@@ -45,6 +45,7 @@ public class IntegrityTest {
     public static void cleanUp(){
         lib.cleanPosts();
         lib.cleanGeneralPosts();
+        lib.shutDown();
     }
 
     @Test

@@ -43,6 +43,7 @@ public class SignatureTest {
     public static void cleanUp(){
         lib.cleanPosts();
         lib.cleanGeneralPosts();
+        lib.shutDown();
     }
 
 

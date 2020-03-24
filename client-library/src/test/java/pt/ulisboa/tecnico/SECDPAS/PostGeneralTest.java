@@ -50,6 +50,10 @@ public class PostGeneralTest {
 	@AfterClass
 	public static void cleanUp(){
 		lib1.cleanGeneralPosts();
+		lib2.cleanGeneralPosts();
+		lib1.shutDown();
+		lib2.shutDown();
+
 	}
 	@Test
 	public void postGeneralCorrectNoAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
