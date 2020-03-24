@@ -17,7 +17,7 @@ public class IntegrityTest {
 
     private static ClientLibrary lib;
     private static String s = "message";
-
+    private static PublicKey pub;
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
@@ -27,7 +27,7 @@ public class IntegrityTest {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(2048);
             KeyPair kp = kpg.genKeyPair();
-            PublicKey pub = kp.getPublic();
+            pub = kp.getPublic();
             PrivateKey priv = kp.getPrivate();
 
             lib = new ClientLibrary("localhost", 8080, pub, priv);
@@ -65,7 +65,7 @@ public class IntegrityTest {
     @Test
     public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         Announcement[] announcement = lib.readRequest(request);
 
@@ -76,7 +76,7 @@ public class IntegrityTest {
     @Test
     public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.postGeneral(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadGeneralRequest(1);
 
         Announcement[] announcement = lib.readGeneralRequest(request);
 
@@ -301,7 +301,7 @@ public class IntegrityTest {
     @Test
     public void failIntegrityReadCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         PublicKey pub = null;
 
@@ -327,7 +327,7 @@ public class IntegrityTest {
     @Test
     public void failIntegrityReadCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         byte[] publicKey = new byte[0];
         int number = -1;
@@ -342,7 +342,7 @@ public class IntegrityTest {
     @Test
     public void failIntegrityReadCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
         int number = -1;
@@ -357,7 +357,7 @@ public class IntegrityTest {
     @Test
     public void failIntegrityReadGeneralCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.postGeneral(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
         int number = -1;

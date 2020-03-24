@@ -16,7 +16,7 @@ public class FreshnessTest {
     private static ClientLibrary lib;
     private static Contract.RegisterRequest registerRequest;
     private static String s = "message";
-
+    private static PublicKey pub;
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
@@ -27,7 +27,7 @@ public class FreshnessTest {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(2048);
             KeyPair kp = kpg.genKeyPair();
-            PublicKey pub = kp.getPublic();
+            pub = kp.getPublic();
             PrivateKey priv = kp.getPrivate();
 
             lib = new ClientLibrary("localhost", 8080, pub, priv);
@@ -66,7 +66,7 @@ public class FreshnessTest {
     @Test
     public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         Announcement[] announcement = lib.readRequest(request);
 
@@ -77,7 +77,7 @@ public class FreshnessTest {
     @Test
     public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.postGeneral(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         Announcement[] announcement = lib.readGeneralRequest(request);
 
@@ -124,7 +124,7 @@ public class FreshnessTest {
     @Test
     public void failReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         Announcement[] announcement = lib.readRequest(request);
 
@@ -139,7 +139,7 @@ public class FreshnessTest {
     @Test
     public void failReadGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.postGeneral(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         Announcement[] announcement = lib.readGeneralRequest(request);
 
@@ -154,7 +154,7 @@ public class FreshnessTest {
     @Test
     public void failCrossReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
         Announcement[] announcement = lib.readRequest(request);
 

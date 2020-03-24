@@ -205,7 +205,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public Announcement[] read(int number) throws ClientNotRegisteredException, InvalidArgumentException {
+	public Announcement[] read(PublicKey client, int number) throws ClientNotRegisteredException, InvalidArgumentException {
 		checkNumber(number);
 
 		if(!messageHandler.isInSession()){
@@ -213,7 +213,7 @@ public class ClientLibrary {
 		}
 
 		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.read(getReadRequest(number));
+			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.read(getReadRequest(client, number));
 			Contract.ReadResponse response = listenableFuture.get();
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
@@ -237,7 +237,7 @@ public class ClientLibrary {
 		}
 
 		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.readGeneral(getReadRequest(number));
+			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.readGeneral(getReadGeneralRequest(number));
 			Contract.ReadResponse response = listenableFuture.get();
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
@@ -277,7 +277,16 @@ public class ClientLibrary {
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).build();
 	}
 
-	public Contract.ReadRequest getReadRequest(int number){
+	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){
+		byte[] publicKey = SerializationUtils.serialize(clientKey);
+		byte[] numberBytes = Ints.toByteArray(number);
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, numberBytes), freshness);
+
+		return Contract.ReadRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
+	}
+	public Contract.ReadRequest getReadGeneralRequest(int number){
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 		byte[] freshness = messageHandler.getFreshness();
