@@ -23,6 +23,7 @@ import java.nio.file.StandardCopyOption;
 import java.security.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -138,6 +139,12 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
+		try{
+			save("posts");
+		}catch (DatabaseException e){
+			e.getCause();
+		}
+
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
 	}
@@ -187,12 +194,20 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		announcementList.add(new Announcement(post, userKey, announcements));
+		synchronized (this){
+			announcementList.add(new Announcement(post, userKey, announcements));
+		}
 
 		byte[] responseFreshness = messageHandler.getFreshness();
 		byte[] responseSignature = messageHandler.sign(new byte[0], responseFreshness);
 
 		Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+		try{
+			save("posts");
+		}catch (DatabaseException e){
+			e.getCause();
+		}
 
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
@@ -242,12 +257,20 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		//TODO- Announcement can be null, mby test for it? Add try catch?
-		this.generalBoard.add(new Announcement(post, userKey, announcements));
+		synchronized(this){
+			this.generalBoard.add(new Announcement(post, userKey, announcements));
+		}
 
 		byte[] responseFreshness = messageHandler.getFreshness();
 		byte[] responseSignature = messageHandler.sign(new byte[0], responseFreshness);
 
 		Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+		try{
+			save("generalPosts");
+		}catch (DatabaseException e){
+			e.getCause();
+		}
 
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
@@ -255,6 +278,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void read(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
+		System.out.println("read");
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
 		int numPosts = request.getNumber();
 		byte[] number = Ints.toByteArray(numPosts);
@@ -285,17 +309,22 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, number), freshness, signature);
+			System.out.println("7");
 		} catch (SignatureNotValidException e) {
+			System.out.println("8");
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
 		} catch (MessageNotFreshException e) {
+			System.out.println("9");
 			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
 			return;
 		}
+		System.out.println("10");
 
 		byte[] responseAnnouncements;
 		if(numPosts == 0 || numPosts > announcementList.size()){
 			//deserializes the array and transforms it to gRPC
+			System.out.println("0");
 			responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 		}
 		else{
@@ -309,6 +338,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
 
 		Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+		System.out.println("responding");
 
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
@@ -373,24 +403,27 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	private void save(String file) throws DatabaseException{
-
 		try {
 			FileOutputStream myWriter = new FileOutputStream(this.databasePath + "/" + file + "_try.txt");
 
 			/* write in file */
-			switch (file){
+			switch (file) {
 				case "posts":
-					myWriter.write(SerializationUtils.serialize(privateBoard));
+					synchronized(this){
+						myWriter.write(SerializationUtils.serialize(privateBoard));
+					}
 					break;
 				case "generalPosts":
-					myWriter.write(SerializationUtils.serialize(generalBoard));
+					synchronized (this){
+						myWriter.write(SerializationUtils.serialize(generalBoard));
+					}
 					break;
 			}
 			myWriter.close();
 
 			/* File successfully created, transferring to official file */
 			Path src = Paths.get(this.databasePath + "/" + file + "_try.txt");
-			Path dst = Paths.get(this.databasePath + "/"+ file + ".txt");
+			Path dst = Paths.get(this.databasePath + "/" + file + ".txt");
 
 			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
 
@@ -398,18 +431,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			throw new DatabaseException("Unable to save: " + e.getMessage());
 		}
 
+
 	}
 
-	private void load() throws DatabaseException{
-
+	private synchronized void load() throws DatabaseException{
 		try {
-			if(new File(this.databasePath + "/posts.txt").exists()){
+			if (new File(this.databasePath + "/posts.txt").exists()) {
 				/* read from file posts */
 				FileInputStream myReader = new FileInputStream(this.databasePath + "/posts.txt");
 				this.privateBoard = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
 			}
-			if(new File(this.databasePath + "/generalPosts.txt").exists()) {
+			if (new File(this.databasePath + "/generalPosts.txt").exists()) {
 				/* read from file generalPosts */
 				FileInputStream myReader = new FileInputStream(this.databasePath + "/generalPosts.txt");
 				this.generalBoard = SerializationUtils.deserialize(myReader.readAllBytes());
@@ -419,7 +452,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		} catch (IOException e) {
 			throw new DatabaseException("Unable to load: " + e.getMessage());
 		}
-
 	}
 
 	/**********************/
@@ -486,7 +518,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void cleanPosts(Empty request, StreamObserver<Empty> responseObserver) {
 		this.privateBoard = new ConcurrentHashMap<>();
-
+		try{
+			save("posts");
+		}catch (DatabaseException e){
+			e.getCause();
+		}
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
 	}
@@ -494,7 +530,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void cleanGeneralPosts(Empty request, StreamObserver<Empty> responseObserver) {
 		this.generalBoard = new CopyOnWriteArrayList<>();
-
+		try{
+			save("generalPosts");
+		}catch (DatabaseException e){
+			e.getCause();
+		}
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
 	}
