@@ -84,7 +84,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failRegisterIntegrityPublicKey() throws ClientAlreadyRegisteredException, MessageNotFreshException{
+    public void failRegisterIntegrityPublicKey() throws ClientAlreadyRegisteredException, MessageNotFreshException, CertificateInvalidException{
         PublicKey pub;
         Contract.RegisterRequest registerRequest;
         ClientLibrary lib;

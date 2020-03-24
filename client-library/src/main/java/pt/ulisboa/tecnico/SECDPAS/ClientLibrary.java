@@ -13,9 +13,15 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.lang3.SerializationUtils;
 
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.SignatureException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.concurrent.TimeUnit;
 
 public class ClientLibrary {
 
@@ -29,16 +35,30 @@ public class ClientLibrary {
 
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
+	private PublicKey serverPublicKey;
 
-	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException{
+	private long timeout = 2000;
+
+	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
 		checkConstructor(host, port, publicKey, privateKey);
 
 		this.target = host + ":" + port;
 		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-		this.stub = DPASServiceGrpc.newBlockingStub(channel);
+		this.stub = DPASServiceGrpc.newBlockingStub(channel).withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
 		this.messageHandler = new MessageHandler(null);
 		this.publicKey = publicKey;
 		this.privateKey = privateKey;
+
+		try{
+			Path currentRelativePath = Paths.get("");
+
+			CertificateFactory fact = CertificateFactory.getInstance("X.509");
+			FileInputStream is = new FileInputStream (currentRelativePath.toAbsolutePath().toString() + "/src/main/security/certificates/cert.der");
+			X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
+			this.serverPublicKey = cer.getPublicKey();
+		} catch (CertificateException | FileNotFoundException e){
+			throw new CertificateInvalidException(e.getMessage());
+		}
 	}
 
 	public void register() throws ClientAlreadyRegisteredException {
@@ -52,7 +72,7 @@ public class ClientLibrary {
 			Contract.ACK response = stub.register(request);
 			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
 			//TODO- Distribute server key to clients
-			//SignatureHandler.verifyPublicSignature(response.getFreshness(), response.getSignature(), serverKey);
+			SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey);
 		} catch (RuntimeException e){
 			throw new ClientAlreadyRegisteredException(e.getMessage());
 		} catch (MessageNotFreshException e) {
@@ -102,8 +122,7 @@ public class ClientLibrary {
 
 		byte[] serverSignature = response.getSignature().toByteArray();
 
-		//TODO- Provide server key to clients
-		//SignatureHandler.verifyPublicSignature(Bytes.concat(serverAgreement, serverFreshness), serverKey);
+		SignatureHandler.verifyPublicSignature(serverFreshness, serverSignature, this.serverPublicKey);
 
 
 		diffieHellmanClient.execute(response.getServerAgreement().toByteArray());
@@ -151,6 +170,7 @@ public class ClientLibrary {
 
 		try{
 			Contract.ACK response = stub.postGeneral(getPostRequest(message, references));
+
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
@@ -169,6 +189,7 @@ public class ClientLibrary {
 
 		try {
 			Contract.ReadResponse response = stub.read(getReadRequest(number));
+
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -189,6 +210,7 @@ public class ClientLibrary {
 
 		try {
 			Contract.ReadResponse response = stub.readGeneral(getReadRequest(number));
+
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (RuntimeException e){
@@ -340,7 +362,7 @@ public class ClientLibrary {
 			Contract.ACK response = stub.register(request);
 			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
 			//TODO- Distribute server key to clients
-			//SignatureHandler.verifyPublicSignature(response.getFreshness(), response.getSignature(), serverKey);
+			SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey);
 		} catch (RuntimeException e){
 			throw new ClientAlreadyRegisteredException(e.getMessage());
 		}
