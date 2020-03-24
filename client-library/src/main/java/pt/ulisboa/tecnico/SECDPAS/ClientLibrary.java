@@ -148,10 +148,10 @@ public class ClientLibrary {
 	public void post(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-		post(message, new Announcement[0]);
+		post(message, new String[0]);
 	}
 
-	public void post(char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void post(char[] message, String[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -176,11 +176,11 @@ public class ClientLibrary {
 	public void postGeneral(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-			postGeneral(message, new Announcement[0]);
+			postGeneral(message, new String[0]);
 	}
 
 
-	public void postGeneral(char[] message, Announcement[] references) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -255,7 +255,7 @@ public class ClientLibrary {
 	/**** AUX FUNCTIONS ******/
 	/*************************/
 
-	public Contract.PostRequest getPostRequest(char[] message, Announcement[] references) {
+	public Contract.PostRequest getPostRequest(char[] message, String[] references) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] postBytes = post.getBytes();
@@ -267,7 +267,7 @@ public class ClientLibrary {
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
-	public Contract.PostRequest getTestPostRequest(char[] message, Announcement[] references) {
+	public Contract.PostRequest getTestPostRequest(char[] message, String[] references) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
@@ -318,7 +318,7 @@ public class ClientLibrary {
 		return response.getTestResult();
 	}
 
-	public boolean postState(char[] message, Announcement[] references) {
+	public boolean postState(char[] message, String[] references) {
 		try{
 			checkMessage(message);
 
@@ -333,13 +333,13 @@ public class ClientLibrary {
 		try{
 			checkMessage(message);
 
-			return postState(message, new Announcement[0]);
+			return postState(message, new String[0]);
 		}catch (InvalidArgumentException e){
 			return false;
 		}
 	}
 
-	public boolean postGeneralState(char[] message, Announcement[] references) {
+	public boolean postGeneralState(char[] message, String[] references) {
 		try{
 			checkMessage(message);
 
@@ -354,7 +354,7 @@ public class ClientLibrary {
 		try{
 			checkMessage(message);
 
-			return postGeneralState(message, new Announcement[0]);
+			return postGeneralState(message, new String[0]);
 		}catch (InvalidArgumentException e){
 			return false;
 		}

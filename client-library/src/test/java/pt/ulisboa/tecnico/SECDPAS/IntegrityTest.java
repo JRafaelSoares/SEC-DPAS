@@ -50,14 +50,14 @@ public class IntegrityTest {
 
     @Test
     public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
     public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
@@ -119,7 +119,7 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
 
@@ -145,7 +145,7 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
         String post = request.getMessage();
@@ -160,7 +160,7 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -176,12 +176,12 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[1]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
         String post = request.getMessage();
-        byte[] announcements = SerializationUtils.serialize(new Announcement[0]);
+        byte[] announcements = SerializationUtils.serialize(new String[0]);
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
@@ -193,11 +193,11 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[1]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
         String post = "";
-        byte[] announcements = SerializationUtils.serialize(new Announcement[0]);
+        byte[] announcements = SerializationUtils.serialize(new String[0]);
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
@@ -209,7 +209,7 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
 
@@ -235,7 +235,7 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostGeneralCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
         String post = request.getMessage();
@@ -250,7 +250,7 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostGeneralCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -267,12 +267,12 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostGeneralCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[1]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
         String post = request.getMessage();
-        byte[] announcements = SerializationUtils.serialize(new Announcement[0]);
+        byte[] announcements = SerializationUtils.serialize(new String[0]);
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
@@ -284,11 +284,11 @@ public class IntegrityTest {
 
     @Test
     public void failIntegrityPostGeneralCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[1]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
         String post = "";
-        byte[] announcements = SerializationUtils.serialize(new Announcement[0]);
+        byte[] announcements = SerializationUtils.serialize(new String[0]);
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 

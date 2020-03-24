@@ -157,7 +157,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		char[] post = request.getMessage().toCharArray();
 
 		PublicKey userKey;
-		Announcement[] announcements;
+		String[] announcements;
 		try{
 			userKey = SerializationUtils.deserialize(serializedPublicKey);
 			announcements = SerializationUtils.deserialize(serializedAnnouncements);
@@ -216,7 +216,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		char[] post = request.getMessage().toCharArray();
 
 		PublicKey userKey;
-		Announcement[] announcements;
+		String[] announcements;
 		try{
 			userKey = SerializationUtils.deserialize(serializedPublicKey);
 			announcements = SerializationUtils.deserialize(serializedAnnouncements);
@@ -496,7 +496,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void postState(Contract.PostRequest request, StreamObserver<Contract.TestsResponse> responseObserver) {
 		char[] post = request.getMessage().toCharArray();
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
-		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
 		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
 
@@ -521,7 +521,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void postGeneralState(Contract.PostRequest request, StreamObserver<Contract.TestsResponse> responseObserver) {
 		char[] post = request.getMessage().toCharArray();
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
-		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
 		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
 

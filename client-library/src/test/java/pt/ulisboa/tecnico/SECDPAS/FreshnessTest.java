@@ -51,14 +51,14 @@ public class FreshnessTest {
 
     @Test
     public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
     public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
@@ -93,7 +93,7 @@ public class FreshnessTest {
 
     @Test
     public void failPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
         thrown.expect(ClientNotRegisteredException.class);
@@ -103,7 +103,7 @@ public class FreshnessTest {
 
     @Test
     public void failPostGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
         thrown.expect(ClientNotRegisteredException.class);
@@ -113,7 +113,7 @@ public class FreshnessTest {
 
     @Test
     public void failCrossPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
         thrown.expect(ClientNotRegisteredException.class);

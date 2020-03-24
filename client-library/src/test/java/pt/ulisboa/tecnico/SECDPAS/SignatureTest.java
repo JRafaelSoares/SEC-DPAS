@@ -56,14 +56,14 @@ public class SignatureTest {
 
     @Test
     public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
     public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
-        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
@@ -117,7 +117,7 @@ public class SignatureTest {
         PublicKey pub = kp.getPublic();
         PrivateKey priv = kp.getPrivate();
 
-        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new String[0]);
 
         byte[] publicKey = SerializationUtils.serialize(pub);
         byte[] freshness = request.getFreshness().toByteArray();
@@ -137,7 +137,7 @@ public class SignatureTest {
         PublicKey pub = kp.getPublic();
         PrivateKey priv = kp.getPrivate();
 
-        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new Announcement[0]);
+        Contract.PostRequest request = lib.getPostRequest("message".toCharArray(), new String[0]);
 
         byte[] publicKey = SerializationUtils.serialize(pub);
         byte[] freshness = request.getFreshness().toByteArray();
