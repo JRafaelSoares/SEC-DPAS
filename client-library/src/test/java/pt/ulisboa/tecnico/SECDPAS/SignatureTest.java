@@ -50,6 +50,7 @@ public class SignatureTest {
     public static void cleanUp(){
         lib.cleanPosts();
         lib.cleanGeneralPosts();
+        lib.shutDown();
     }
 
 
@@ -70,7 +71,7 @@ public class SignatureTest {
     @Test
     public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.post(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub, 1);
 
         Announcement[] announcement = lib.readRequest(request);
 
@@ -81,7 +82,7 @@ public class SignatureTest {
     @Test
     public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
         lib.postGeneral(s.toCharArray());
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub, 1);
 
         Announcement[] announcement = lib.readGeneralRequest(request);
 
@@ -153,12 +154,12 @@ public class SignatureTest {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
-        PublicKey pub = kp.getPublic();
+        PublicKey pub1 = kp.getPublic();
         PrivateKey priv = kp.getPrivate();
 
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub, 1);
 
-        byte[] publicKey = SerializationUtils.serialize(pub);
+        byte[] publicKey = SerializationUtils.serialize(pub1);
         byte[] freshness = request.getFreshness().toByteArray();
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
 
@@ -173,12 +174,12 @@ public class SignatureTest {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
-        PublicKey pub = kp.getPublic();
+        PublicKey pub1 = kp.getPublic();
         PrivateKey priv = kp.getPrivate();
 
-        Contract.ReadRequest request = lib.getReadRequest(1);
+        Contract.ReadRequest request = lib.getReadRequest(pub, 1);
 
-        byte[] publicKey = SerializationUtils.serialize(pub);
+        byte[] publicKey = SerializationUtils.serialize(pub1);
         byte[] freshness = request.getFreshness().toByteArray();
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
 

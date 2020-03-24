@@ -59,6 +59,8 @@ public class ReadGeneralTest {
 	public static void cleanUp(){
 		lib1.cleanGeneralPosts();
 		lib1.cleanPosts();
+		lib1.shutDown();
+		lib2.shutDown();
 	}
 
 	@Test

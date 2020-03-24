@@ -57,6 +57,11 @@ public class ReadTest {
 	@AfterClass
 	public static void cleanUp(){
 		lib1.cleanPosts();
+		lib2.cleanPosts();
+		lib3.cleanPosts();
+		lib1.shutDown();
+		lib2.shutDown();
+		lib3.shutDown();
 	}
 
 	@Test
@@ -67,7 +72,7 @@ public class ReadTest {
 		lib1.post(s1.toCharArray());
 		lib1.post(s2.toCharArray());
 
-		Announcement[] announcement = lib1.read(1);
+		Announcement[] announcement = lib1.read(pub,1);
 		String readPost = new String(announcement[0].getPost());
 
 		assertEquals(announcement.length, 1);
@@ -82,7 +87,7 @@ public class ReadTest {
 		//lib1.post(s1.toCharArray());
 		lib1.post(s2.toCharArray());
 
-		Announcement[] announcement = lib1.read(0);
+		Announcement[] announcement = lib1.read(pub,0);
 
 		assertEquals(announcement.length, 2);
 
@@ -98,7 +103,7 @@ public class ReadTest {
 		lib1.post(s1.toCharArray());
 		lib2.post(s2.toCharArray());
 
-		Announcement[] announcement = lib1.read(0);
+		Announcement[] announcement = lib1.read(pub,0);
 
 		assertEquals(announcement.length, 1);
 
@@ -113,7 +118,7 @@ public class ReadTest {
 		//lib1.post(s1.toCharArray());
 		//lib1.post(s2.toCharArray());
 
-		Announcement[] announcement = lib1.read(3);
+		Announcement[] announcement = lib1.read(pub,3);
 
 		assertEquals(announcement.length, 2);
 
@@ -125,7 +130,7 @@ public class ReadTest {
 	public void readInvalidNumberTest() throws ClientNotRegisteredException {
 		Announcement[] announcements = null;
 		try{
-			announcements = lib1.read(-1);
+			announcements = lib1.read(pub,-1);
 			fail("Exception InvalidArguments should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException e){
@@ -137,7 +142,7 @@ public class ReadTest {
 	public void readClientNotExistsTest() throws InvalidArgumentException{
 		Announcement[] announcements = null;
 		try{
-			announcements = lib3.read(1);
+			announcements = lib3.read(pub,1);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
 		}catch(ClientNotRegisteredException e){
@@ -149,7 +154,7 @@ public class ReadTest {
 	public void readAllClientNotExistsTest() throws InvalidArgumentException{
 		Announcement[] announcements = null;
 		try{
-			announcements = lib3.read(0);
+			announcements = lib3.read(pub,0);
 			fail("Exception ClientNotRegisteredException should have been thrown");
 
 		}catch(ClientNotRegisteredException e){
