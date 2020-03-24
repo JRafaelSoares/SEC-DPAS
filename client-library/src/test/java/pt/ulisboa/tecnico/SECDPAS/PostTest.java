@@ -66,7 +66,7 @@ public class PostTest {
 	@Test
 	public void postCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		String s1 = "NoAnnouncement";
-		Announcement a = new Announcement(s1.toCharArray(), pub1);
+		Announcement a = new Announcement(s1.toCharArray(), pub1, 0);
 		Announcement[] announcements = {a};
 
 		lib1.post(s1.toCharArray());

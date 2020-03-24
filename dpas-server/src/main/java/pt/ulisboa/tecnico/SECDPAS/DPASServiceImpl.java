@@ -31,11 +31,15 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private ConcurrentHashMap<PublicKey, ArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
 	private CopyOnWriteArrayList<Announcement> generalBoard = new CopyOnWriteArrayList<>();
 	private ConcurrentHashMap<PublicKey, MessageHandler> clientSessions = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Integer, Announcement> announcementIDs = new ConcurrentHashMap<>();
+
 
 	private String databasePath;
 	private long initialTime;
 
 	private PrivateKey privateKey;
+
+	private int announcementID = 0;
 
 	public DPASServiceImpl(PrivateKey privateKey) throws DatabaseException{
 		this.initialTime = System.currentTimeMillis();
@@ -187,7 +191,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		announcementList.add(new Announcement(post, userKey, announcements));
+		int announcementID = addCounter();
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID);
+		announcementList.add(announcement);
+		this.announcementIDs.put(announcementID, announcement);
 
 		byte[] responseFreshness = messageHandler.getFreshness();
 		byte[] responseSignature = messageHandler.sign(new byte[0], responseFreshness);
@@ -242,7 +249,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		//TODO- Announcement can be null, mby test for it? Add try catch?
-		this.generalBoard.add(new Announcement(post, userKey, announcements));
+		int announcementID = addCounter();
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID);
+		this.generalBoard.add(announcement);
+		this.announcementIDs.put(announcementID, announcement);
 
 		byte[] responseFreshness = messageHandler.getFreshness();
 		byte[] responseSignature = messageHandler.sign(new byte[0], responseFreshness);
@@ -434,6 +444,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	}
 
+	private synchronized int addCounter(){
+		return announcementID++;
+	}
+
 	/**********************/
 	/** TESTING FUNCTION **/
 	/**********************/
@@ -456,7 +470,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements);
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 
@@ -481,7 +495,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		Announcement[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements);
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 

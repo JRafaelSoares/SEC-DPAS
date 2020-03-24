@@ -14,14 +14,17 @@ public class Announcement implements Serializable {
 
     private PublicKey publicKey;
 
-    public Announcement(char[] post, PublicKey publicKey, Announcement[] announcements){
+    private int announcementID;
+
+    public Announcement(char[] post, PublicKey publicKey, Announcement[] announcements, int announcementID){
         this.post = post;
         this.publicKey = publicKey;
         this.announcements = announcements;
+        this.announcementID = announcementID;
     }
 
-    public Announcement(char[] post, PublicKey publicKey){
-        this(post, publicKey, new Announcement[0]);
+    public Announcement(char[] post, PublicKey publicKey, int announcementID){
+        this(post, publicKey, new Announcement[0], announcementID);
     }
 
     public char[] getPost(){
