@@ -69,6 +69,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		// Check that request is fresh
 		MessageHandler messageHandler = clientSessions.get(userKey);
 
+		if(messageHandler == null) messageHandler = new MessageHandler(null, this.initialTime);
+
 		try {
 			messageHandler.verifyFreshness(clientFreshness);
 		} catch (MessageNotFreshException e) {
