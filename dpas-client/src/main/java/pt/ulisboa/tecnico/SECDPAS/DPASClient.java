@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyStore;
-import java.util.Scanner;
 
 
 public class DPASClient {
@@ -20,9 +19,9 @@ public class DPASClient {
 		Path currentRelativePath = Paths.get("");
 		InputStream keyStoreData = new FileInputStream(currentRelativePath.toAbsolutePath().toString() + "/src/main/security/keys/clientKeyStore.jks");
 
-		keyStore.load(keyStoreData, args[2].toCharArray());
-		KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(args[2].toCharArray());
-		KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(args[3], entryPassword);
+		keyStore.load(keyStoreData, args[1].toCharArray());
+		KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(args[1].toCharArray());
+		KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(args[2], entryPassword);
 
 		ClientLibrary api = new ClientLibrary(host, port, privateKeyEntry.getCertificate().getPublicKey(), privateKeyEntry.getPrivateKey());
 
@@ -44,7 +43,6 @@ public class DPASClient {
 		menu.showMenu();
 
 		String selectedOption;
-		Scanner s = new Scanner(System.in);
 
 		do {
 			selectedOption = menu.selectOption();
@@ -58,74 +56,8 @@ public class DPASClient {
 						System.out.println("You are already registered!");
 					}
 					break;
-				case "Post on personal board":
-					System.out.println("Write the post right here:");
-					char[] message = s.nextLine().toCharArray();
-					System.out.println("Do you want to reference announcements? (Y/N)");
-					String ref = s.nextLine();
-
-					if(ref.equals("Y")){
-						System.out.println("You may enter the announcements seperated by a comma (,):");
-						ref = s.nextLine();
-						String[] announcements = ref.split(",");
-
-						api.post(message, announcements);
-
-						System.out.println("Posted successfully");
-						break;
-					}
-					if(ref.equals("N")){
-						api.post(message);
-						System.out.println("Posted successfully");
-						break;
-					}
-
-					System.out.println("Unexpected input");
-					break;
-				case "Post on general board":
-					System.out.println("Write the post right here:");
-					message = s.nextLine().toCharArray();
-					System.out.println("Do you want to reference announcements? (Y/N)");
-					ref = s.nextLine();
-
-					if(ref.equals("Y")){
-						System.out.println("You may enter the announcements seperated by a comma (,):");
-						ref = s.nextLine();
-						String[] announcements = ref.split(",");
-
-						api.postGeneral(message, announcements);
-						System.out.println("Posted successfully");
-						break;
-					}
-					if(ref.equals("N")){
-						api.postGeneral(message);
-						System.out.println("Posted successfully");
-						break;
-					}
-
-					System.out.println("Unexpected input");
-					break;
 				case "Read from a personal board":
-					System.out.println("Indicate the public key of the client you wish to read from: ");
-					String client = s.nextLine();
-					System.out.println("Please indicate the number of last posts you wish to see (0 for all):");
-					int number = s.nextInt();
-					Announcement[] announcements = api.read(privateKeyEntry.getCertificate().getPublicKey(), number);
-					int i=1;
-					System.out.println("Posts: ");
-					for(Announcement a : announcements){
-						System.out.println(i++ + ". " + new String(a.getPost()));
-					}
-					break;
-				case "Read from the general board":
-					System.out.println("Please indicate the number of last posts you wish to see (0 for all):");
-					number = s.nextInt();
-					announcements = api.readGeneral(number);
-					i=1;
-					System.out.println("Posts: ");
-					for(Announcement a : announcements){
-						System.out.println(i++ + ". " + new String(a.getPost()));
-					}
+
 					break;
 				case "Update System No Data Integrity":
 					break;
