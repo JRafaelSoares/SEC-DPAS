@@ -168,6 +168,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
 		byte[] message = request.getMessage().getBytes();
+		byte[] messageSignature = request.getMessageSignature().toByteArray();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
@@ -180,6 +181,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			userKey = SerializationUtils.deserialize(serializedPublicKey);
 			announcements = SerializationUtils.deserialize(serializedAnnouncements);
 		}catch(SerializationException e){
+			System.out.println("1");
 			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
 			return;
 		}
@@ -187,6 +189,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
 		if(announcementList == null){
+			System.out.println("2");
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;
 		}
@@ -195,27 +198,35 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		MessageHandler messageHandler = clientSessions.get(userKey);
 
 		if(!messageHandler.isInSession()){
+			System.out.println("3");
 			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
 			return;
 		}
 
 		try {
-			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), freshness, signature);
+			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
 		} catch (SignatureNotValidException e) {
+			System.out.println("4");
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
 		} catch (MessageNotFreshException e) {
+			System.out.println("5");
 			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
 			return;
 		}
 
-		int announcementID = addCounter();
-		Announcement announcement = new Announcement(post, userKey, announcements, announcementID);
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(message, serializedAnnouncements), messageSignature, userKey)){
+			System.out.println("6");
+			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
+			return;
+		}
 
+		int announcementID = addCounter();
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, messageSignature);
+		
 		synchronized (this) {
 			announcementList.add(announcement);
 		}
-
 		this.announcementIDs.put(announcementID, announcement);
 
 		byte[] responseFreshness = messageHandler.getFreshness();
@@ -226,6 +237,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			save("posts");
 		}catch (DatabaseException e){
+			System.out.println("7");
 			e.getCause();
 		}
 
@@ -237,6 +249,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
 		byte[] message = request.getMessage().getBytes();
+		byte[] messageSignature = request.getMessageSignature().toByteArray();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
@@ -267,7 +280,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		try {
-			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), freshness, signature);
+			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
@@ -276,14 +289,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(message, serializedAnnouncements), messageSignature, userKey)){
+			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
+			return;
+		}
+
 		//TODO- Announcement can be null, mby test for it? Add try catch?
 		int announcementID = addCounter();
-		Announcement announcement = new Announcement(post, userKey, announcements, announcementID);
-
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, messageSignature);
+		
 		synchronized(this) {
 			this.generalBoard.add(announcement);
 		}
-
 		this.announcementIDs.put(announcementID, announcement);
 
 		byte[] responseFreshness = messageHandler.getFreshness();
@@ -343,8 +360,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		try {
-			byte[] keys = Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey);
-			messageHandler.verifyMessage(Bytes.concat(keys, number), freshness, signature);
+			messageHandler.verifyMessage(Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey, number), freshness, signature);
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
@@ -539,7 +555,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter(), null);
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 
@@ -564,7 +580,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter(), null);
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 

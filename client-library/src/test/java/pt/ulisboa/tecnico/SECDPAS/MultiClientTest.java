@@ -79,7 +79,7 @@ public class MultiClientTest {
                 //System.out.println("\n\nT1 done");
                 assertTrue(result);
 
-            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
+            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -124,7 +124,7 @@ public class MultiClientTest {
 
                 assertTrue(result);
 
-            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
+            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -161,7 +161,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT3 done");
 
-            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
+            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -197,7 +197,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT4 done");
 
-            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
+            }catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -231,7 +231,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT5 done");
 
-            }catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
+            }catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -278,7 +278,7 @@ public class MultiClientTest {
 
                 assertTrue(result);
 
-            }catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException e){
+            }catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureException e){
                 System.out.println(e.getMessage());
             }
         }

@@ -64,7 +64,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
+	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -81,7 +81,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
+	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -98,7 +98,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAzNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
+	public void readAzNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -115,7 +115,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readInvalidNumberTest() throws ClientNotRegisteredException {
+	public void readInvalidNumberTest() throws ClientNotRegisteredException, ClientSignatureException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib1.readGeneral(-1);
@@ -127,7 +127,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readClientNotExistsTest() throws InvalidArgumentException{
+	public void readClientNotExistsTest() throws InvalidArgumentException, ClientSignatureException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib3.readGeneral(1);
@@ -139,7 +139,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllClientNotExistsTest() throws InvalidArgumentException{
+	public void readAllClientNotExistsTest() throws InvalidArgumentException, ClientSignatureException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib3.readGeneral(0);

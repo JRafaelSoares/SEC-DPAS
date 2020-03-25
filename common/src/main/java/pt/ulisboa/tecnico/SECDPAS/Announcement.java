@@ -16,15 +16,18 @@ public class Announcement implements Serializable {
 
     private int announcementID;
 
-    public Announcement(char[] post, PublicKey publicKey, String[] references, int announcementID){
+    private byte[] signature;
+
+    public Announcement(char[] post, PublicKey publicKey, String[] references, int announcementID, byte[] signature){
         this.post = post;
         this.publicKey = publicKey;
         this.references = references;
         this.announcementID = announcementID;
+        this.signature = signature;
     }
 
-    public Announcement(char[] post, PublicKey publicKey, int announcementID){
-        this(post, publicKey, new String[0], announcementID);
+    public Announcement(char[] post, PublicKey publicKey, int announcementID, byte[] signature){
+        this(post, publicKey, new String[0], announcementID, signature);
     }
 
     public char[] getPost(){
@@ -41,6 +44,10 @@ public class Announcement implements Serializable {
 
     public PublicKey getPublicKey(){
         return this.publicKey;
+    }
+
+    public byte[] getSignature() {
+        return signature;
     }
 
     @Override
