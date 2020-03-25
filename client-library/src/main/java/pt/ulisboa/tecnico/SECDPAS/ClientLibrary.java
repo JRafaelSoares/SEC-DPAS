@@ -176,7 +176,7 @@ public class ClientLibrary {
 	public void postGeneral(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
 		checkMessage(message);
 
-			postGeneral(message, new String[0]);
+		postGeneral(message, new String[0]);
 	}
 
 
@@ -203,7 +203,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public Announcement[] read(PublicKey client, int number) throws ClientNotRegisteredException, InvalidArgumentException {
+	public Announcement[] read(PublicKey client, int number) throws ClientNotRegisteredException, InvalidArgumentException, ClientSignatureException {
 		checkNumber(number);
 
 		if(!messageHandler.isInSession()){
@@ -214,7 +214,16 @@ public class ClientLibrary {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.read(getReadRequest(client, number));
 			Contract.ReadResponse response = listenableFuture.get();
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
-			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
+			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
+			for(Announcement announcement : announcements){
+				if(!SignatureHandler.verifyPublicSignature(announcement.getPost().toString().getBytes(), announcement.getSignature(), )){
+
+				}
+			}
+
+			return announcements;
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
 		} catch (SignatureNotValidException | MessageNotFreshException e) {
@@ -262,9 +271,11 @@ public class ClientLibrary {
 		byte[] announcements = SerializationUtils.serialize(references);
 
 		byte[] freshness = messageHandler.getFreshness();
-		byte[] signature = messageHandler.sign(Bytes.concat(publicKey, postBytes, announcements), freshness);
+		byte[] integrity = messageHandler.sign(Bytes.concat(publicKey, postBytes, announcements), freshness);
 
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		byte[] messageSignature = SignatureHandler.publicSign(message.toString().getBytes(), privateKey);
+
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
 	}
 
 	public Contract.PostRequest getTestPostRequest(char[] message, String[] references) {

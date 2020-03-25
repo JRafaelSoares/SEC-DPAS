@@ -150,6 +150,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
 		byte[] message = request.getMessage().getBytes();
+		byte[] messageSignature = request.getMessageSignature().toByteArray();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
@@ -191,8 +192,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
+		if(!SignatureHandler.verifyPublicSignature(message, messageSignature, userKey)){
+			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
+			return;
+		}
+
 		int announcementID = addCounter();
-		Announcement announcement = new Announcement(post, userKey, announcements, announcementID);
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, messageSignature);
 		announcementList.add(announcement);
 		this.announcementIDs.put(announcementID, announcement);
 
@@ -209,6 +215,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
 		byte[] message = request.getMessage().getBytes();
+		byte[] messageSignature = request.getMessageSignature().toByteArray();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
@@ -248,9 +255,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
+		if(!SignatureHandler.verifyPublicSignature(message, messageSignature, userKey)){
+			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
+			return;
+		}
+
 		//TODO- Announcement can be null, mby test for it? Add try catch?
 		int announcementID = addCounter();
-		Announcement announcement = new Announcement(post, userKey, announcements, announcementID);
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, messageSignature);
 		this.generalBoard.add(announcement);
 		this.announcementIDs.put(announcementID, announcement);
 
@@ -305,8 +317,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		try {
-			byte[] keys = Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey);
-			messageHandler.verifyMessage(Bytes.concat(keys, number), freshness, signature);
+			messageHandler.verifyMessage(Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey, number), freshness, signature);
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
@@ -498,7 +509,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter(), null);
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 
@@ -523,7 +534,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter());
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter(), null);
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 

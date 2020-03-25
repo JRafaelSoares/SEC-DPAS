@@ -36,10 +36,11 @@ message PostRequest {
     bytes publicKey = 1;
     //Char[256]
     string message = 2;
+    bytes messageSignature = 3;
     //Array Announcements
-    bytes announcements = 3;
-    bytes freshness = 4;
-    bytes signature = 5;
+    bytes announcements = 4;
+    bytes freshness = 5;
+    bytes signature = 6;
 }
 
 message ReadRequest {
