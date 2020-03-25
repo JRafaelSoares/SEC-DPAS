@@ -64,7 +64,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
+	public void postCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException, ClientSignatureException {
 		String s1 = "NoAnnouncement";
 
 		lib1.post(s1.toCharArray());

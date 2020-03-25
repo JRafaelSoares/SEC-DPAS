@@ -65,7 +65,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
+	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -80,7 +80,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
+	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -96,7 +96,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readAAOnlyMyAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
+	public void readAAOnlyMyAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -111,7 +111,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readAzNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException {
+	public void readAzNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -133,13 +133,13 @@ public class ReadTest {
 			announcements = lib1.read(pub,-1);
 			fail("Exception InvalidArguments should have been thrown");
 
-		}catch(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException e){
+		}catch(InvalidArgumentException | ClientSignatureException e){
 			assertNull(announcements);
 		}
 	}
 
 	@Test
-	public void readClientNotExistsTest() throws InvalidArgumentException{
+	public void readClientNotExistsTest() throws InvalidArgumentException, ClientSignatureException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib3.read(pub,1);
@@ -151,7 +151,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readAllClientNotExistsTest() throws InvalidArgumentException{
+	public void readAllClientNotExistsTest() throws InvalidArgumentException, ClientSignatureException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib3.read(pub,0);
