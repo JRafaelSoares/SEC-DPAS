@@ -111,21 +111,13 @@ public class DPASClient {
 					System.out.println("Please indicate the number of last posts you wish to see (0 for all):");
 					int number = s.nextInt();
 					Announcement[] announcements = api.read(privateKeyEntry.getCertificate().getPublicKey(), number);
-					int i=1;
-					System.out.println("Posts: ");
-					for(Announcement a : announcements){
-						System.out.println(i++ + ". " + new String(a.getPost()));
-					}
+					printRead(announcements);
 					break;
 				case "Read from the general board":
 					System.out.println("Please indicate the number of last posts you wish to see (0 for all):");
 					number = s.nextInt();
 					announcements = api.readGeneral(number);
-					i=1;
-					System.out.println("Posts: ");
-					for(Announcement a : announcements){
-						System.out.println(i++ + ". " + new String(a.getPost()));
-					}
+					printRead(announcements);
 					break;
 				case "Update System No Data Integrity":
 					break;
@@ -134,6 +126,23 @@ public class DPASClient {
 			}
 		} while(!selectedOption.equals("Exit"));
 		api.shutDown();
+	}
+
+	private static void printRead(Announcement[] announcements){
+		System.out.println("Posts: ");
+		for(Announcement a : announcements){
+			System.out.println("Id: " + a.getAnnouncementID());
+			System.out.println("Public key: " + a.getPublicKey());
+			System.out.println("Post: " + new String(a.getPost()));
+			if(a.getAnnouncements().length != 0){
+				System.out.println("References: ");
+				for(String reference : a.getAnnouncements()){
+					System.out.println("\t" + reference);
+				}
+			}else{
+				System.out.println("No references.");
+			}
+		}
 	}
 
 

@@ -58,7 +58,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] clientFreshness = request.getFreshness().toByteArray();
 		byte[] clientSignature = request.getSignature().toByteArray();
 
-		PublicKey userKey = SerializationUtils.deserialize(encodedClientKey);
+		PublicKey userKey;
+		try{
+			userKey = SerializationUtils.deserialize(encodedClientKey);
+		}catch(SerializationException e){
+			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			return;
+		}
 
 		// Check that the client exists
 		if(!this.privateBoard.containsKey(userKey)){
@@ -69,7 +75,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		// Check that request is fresh
 		MessageHandler messageHandler = clientSessions.get(userKey);
 
-		if(messageHandler == null) messageHandler = new MessageHandler(null, this.initialTime);
+		if(messageHandler == null){
+			messageHandler = new MessageHandler(null, this.initialTime);
+			clientSessions.put(userKey, messageHandler);
+		}
 
 		try {
 			messageHandler.verifyFreshness(clientFreshness);
@@ -495,6 +504,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				FileInputStream myReader = new FileInputStream(this.databasePath + "/announcementsID.txt");
 				this.announcementIDs = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
+				this.announcementID = this.announcementIDs.size();
 			}
 
 
