@@ -154,7 +154,6 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
-			System.out.println("set up");
 			setupConnection();
 		}
 
