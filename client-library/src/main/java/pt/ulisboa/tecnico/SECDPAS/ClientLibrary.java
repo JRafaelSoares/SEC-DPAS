@@ -188,7 +188,6 @@ public class ClientLibrary {
 		}
 
 		try{
-
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub.postGeneral(getPostRequest(message, references));
 			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -216,6 +215,17 @@ public class ClientLibrary {
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 
 			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
+			for(Announcement announcement : announcements){
+				byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
+				byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
+				byte[] messageBytes = new String(announcement.getPost()).getBytes();
+
+				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
+					throw new ClientSignatureException("An announcement was not properly signed");
+				}
+			}
+
 			return announcements;
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
@@ -242,6 +252,17 @@ public class ClientLibrary {
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 
 			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
+			for(Announcement announcement : announcements){
+				byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
+				byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
+				byte[] messageBytes = new String(announcement.getPost()).getBytes();
+
+				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
+					throw new ClientSignatureException("An announcement was not properly signed");
+				}
+			}
+
 			return announcements;
 		} catch (RuntimeException e){
 			throw new ClientNotRegisteredException(e.getMessage());
@@ -265,8 +286,7 @@ public class ClientLibrary {
 		byte[] postBytes = post.getBytes();
 		byte[] announcements = SerializationUtils.serialize(references);
 
-		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(postBytes, announcements), privateKey);
-
+		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
 		byte[] freshness = messageHandler.getFreshness();
 		byte[] integrity = messageHandler.sign(Bytes.concat(publicKey, postBytes, messageSignature, announcements), freshness);
 

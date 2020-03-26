@@ -172,7 +172,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			userKey = SerializationUtils.deserialize(serializedPublicKey);
 			announcements = SerializationUtils.deserialize(serializedAnnouncements);
 		}catch(SerializationException e){
-			System.out.println("1");
 			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
 			return;
 		}
@@ -180,7 +179,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
 		if(announcementList == null){
-			System.out.println("2");
 			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
 			return;
 		}
@@ -189,7 +187,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		MessageHandler messageHandler = clientSessions.get(userKey);
 
 		if(!messageHandler.isInSession()){
-			System.out.println("3");
 			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
 			return;
 		}
@@ -197,17 +194,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
 		} catch (SignatureNotValidException e) {
-			System.out.println("4");
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
 		} catch (MessageNotFreshException e) {
-			System.out.println("5");
 			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
 			return;
 		}
 
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(message, serializedAnnouncements), messageSignature, userKey)){
-			System.out.println("6");
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
 			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
 			return;
 		}
@@ -228,7 +222,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			save("posts");
 		}catch (DatabaseException e){
-			System.out.println("7");
 			e.getCause();
 		}
 
@@ -280,7 +273,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(message, serializedAnnouncements), messageSignature, userKey)){
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
 			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
 			return;
 		}
