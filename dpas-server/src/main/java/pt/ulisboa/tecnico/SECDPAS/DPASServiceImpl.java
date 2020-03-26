@@ -546,7 +546,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private void referencesExist(String[] references) throws ServerInvalidReference{
 		for(String reference: references){
 			if(!announcementIDs.containsKey(Integer.valueOf(reference))){
-				System.out.println("reference does not exist");
 				throw new ServerInvalidReference("Reference does not exist!");
 			}
 		}
