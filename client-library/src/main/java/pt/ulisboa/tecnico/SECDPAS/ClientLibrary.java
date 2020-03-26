@@ -112,7 +112,6 @@ public class ClientLibrary {
 
 		Contract.DHResponse response;
 		try{
-
 			ListenableFuture<Contract.DHResponse> listenable = futureStub.setupConnection(request);
 			response = listenable.get();
 		}catch (RuntimeException e){

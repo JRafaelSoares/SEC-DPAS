@@ -59,31 +59,32 @@ public class DPASClient {
 		MenuInterface menu = new MenuInterface();
 
 		menu.addOption("Register");
-		menu.addOption("See registred clients");
+		menu.addOption("See registered clients");
 		menu.addOption("Post on personal board");
 		menu.addOption("Post on general board");
 		menu.addOption("Read from a personal board");
 		menu.addOption("Read from the general board");
 		menu.addOption("Exit");
 
-		menu.showMenu();
 
 		String selectedOption;
 		Scanner s = new Scanner(System.in);
 
 		do {
+			menu.showMenu();
+
 			selectedOption = menu.selectOption();
 
 			switch(selectedOption){
 				case "Register":
 					try{
 						api.register();
-						System.out.println("Registred successfuly!");
+						System.out.println("Registered successfully!");
 					} catch (ClientAlreadyRegisteredException e){
 						System.out.println("You are already registered!");
 					}
 					break;
-				case "See registred clients":
+				case "See registered clients":
 					System.out.println("My Key 0:");
 					System.out.println(myPublicKey);
 					int currentKey = 1;
@@ -98,22 +99,30 @@ public class DPASClient {
 					System.out.println("Do you want to reference announcements? (Y/N)");
 					String ref = s.nextLine();
 
-					if(ref.equals("Y")){
-						System.out.println("You may enter the announcements seperated by a comma (,):");
-						ref = s.nextLine();
-						String[] announcements = ref.split(",");
+					try{
+						if(ref.equals("Y")){
+							System.out.println("You may enter the announcements separated by a comma (,):");
+							ref = s.nextLine();
+							String[] announcements = ref.split(",");
 
-						api.post(message, announcements);
+							api.post(message, announcements);
 
-						System.out.println("Posted successfully");
+							System.out.println("Posted successfully");
+							break;
+						}
+						if(ref.equals("N")){
+							System.out.println("API");
+							api.post(message);
+							System.out.println("Posted successfully");
+							break;
+						}
+					}catch(InvalidArgumentException e){
+						System.out.println(e.getMessage());
+						break;
+					}catch(ClientNotRegisteredException e){
+						System.out.println("Client not registered");
 						break;
 					}
-					if(ref.equals("N")){
-						api.post(message);
-						System.out.println("Posted successfully");
-						break;
-					}
-
 					System.out.println("Unexpected input");
 					break;
 				case "Post on general board":
@@ -122,21 +131,28 @@ public class DPASClient {
 					System.out.println("Do you want to reference announcements? (Y/N)");
 					ref = s.nextLine();
 
-					if(ref.equals("Y")){
-						System.out.println("You may enter the announcements seperated by a comma (,):");
-						ref = s.nextLine();
-						String[] announcements = ref.split(",");
+					try{
+						if(ref.equals("Y")){
+							System.out.println("You may enter the announcements seperated by a comma (,):");
+							ref = s.nextLine();
+							String[] announcements = ref.split(",");
 
-						api.postGeneral(message, announcements);
-						System.out.println("Posted successfully");
+							api.postGeneral(message, announcements);
+							System.out.println("Posted successfully");
+							break;
+						}
+						if(ref.equals("N")){
+							api.postGeneral(message);
+							System.out.println("Posted successfully");
+							break;
+						}
+					}catch(InvalidArgumentException e){
+						System.out.println(e.getMessage());
+						break;
+					}catch(ClientNotRegisteredException e){
+						System.out.println("Client not registered");
 						break;
 					}
-					if(ref.equals("N")){
-						api.postGeneral(message);
-						System.out.println("Posted successfully");
-						break;
-					}
-
 					System.out.println("Unexpected input");
 					break;
 
@@ -147,26 +163,43 @@ public class DPASClient {
 					int number = s.nextInt();
 					Announcement[] announcements;
 
-					if(client == 0){
-						announcements = api.read(myPublicKey, number);
-					} else {
-						if(client-1 <= clientKeys.size()){
-							announcements = api.read(clientKeys.get(client), number);
+					try{
+						if(client == 0){
+							announcements = api.read(myPublicKey, number);
+						} else {
+							if(client-1 <= clientKeys.size()){
+								announcements = api.read(clientKeys.get(client), number);
+							}
+							else{
+								System.out.println("Invalid public key!");
+								break;
+							}
 						}
-						else{
-							System.out.println("Invalid public key!");
-							break;
-						}
+						printRead(announcements);
+
+					}catch(InvalidArgumentException e){
+						System.out.println(e.getMessage());
+						break;
+					}catch (ClientNotRegisteredException e){
+						System.out.println("Client not registered");
+						break;
 					}
-					printRead(announcements);
 					break;
 				case "Read from the general board":
 					System.out.println("Please indicate the number of last posts you wish to see (0 for all):");
 					number = s.nextInt();
-					announcements = api.readGeneral(number);
-					printRead(announcements);
-					break;
-				case "Update System No Data Integrity":
+
+					try{
+						announcements = api.readGeneral(number);
+						printRead(announcements);
+
+					}catch(InvalidArgumentException | ClientSignatureException e){
+						System.out.println(e.getMessage());
+						break;
+					}catch (ClientNotRegisteredException e){
+						System.out.println("Client not registered");
+						break;
+					}
 					break;
 				default:
 					break;
@@ -176,18 +209,22 @@ public class DPASClient {
 	}
 
 	private static void printRead(Announcement[] announcements){
-		System.out.println("Posts: ");
+		if(announcements.length == 0){
+			System.out.println("Posts: Empty");
+			return;
+		}
+		System.out.println("Posts: \n");
 		for(Announcement a : announcements){
 			System.out.println("Id: " + a.getAnnouncementID());
-			System.out.println("Public key: " + a.getPublicKey());
-			System.out.println("Post: " + new String(a.getPost()));
+			System.out.println("\tPublic key: " + a.getPublicKey());
+			System.out.println("\tPost: " + new String(a.getPost()));
 			if(a.getAnnouncements().length != 0){
 				System.out.println("References: ");
 				for(String reference : a.getAnnouncements()){
-					System.out.println("\t" + reference);
+					System.out.println("\t\t" + reference);
 				}
 			}else{
-				System.out.println("No references.");
+				System.out.println("\tNo references.");
 			}
 		}
 	}
