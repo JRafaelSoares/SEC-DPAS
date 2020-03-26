@@ -1,10 +1,15 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyStore;
+import java.security.PublicKey;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 
@@ -24,10 +29,29 @@ public class DPASClient {
 		KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(args[2].toCharArray());
 		KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(args[3], entryPassword);
 
-		ClientLibrary api = new ClientLibrary(host, port, privateKeyEntry.getCertificate().getPublicKey(), privateKeyEntry.getPrivateKey());
+		PublicKey myPublicKey = privateKeyEntry.getCertificate().getPublicKey();
+		ArrayList<PublicKey> clientKeys = new ArrayList<>();
+
+		File dir = new File(currentRelativePath.toAbsolutePath().toString() + "/src/main/security/certificates/clients");
+		File[] directoryListing = dir.listFiles();
+
+		if (directoryListing != null) {
+			for (File child : directoryListing) {
+				CertificateFactory fact = CertificateFactory.getInstance("X.509");
+				FileInputStream is = new FileInputStream (child);
+				X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
+				PublicKey client = cer.getPublicKey();
+				if(!client.equals(myPublicKey)){
+					clientKeys.add(cer.getPublicKey());
+				}
+			}
+		}
+
+
+		ClientLibrary api = new ClientLibrary(host, port, myPublicKey, privateKeyEntry.getPrivateKey());
 
 		System.out.println("------------------------------------------------------------");
-		System.out.println("                        Manufacturer                        ");
+		System.out.println("                         DPAS-Client                        ");
 		System.out.println("------------------------------------------------------------");
 		System.out.println();
 
@@ -35,6 +59,7 @@ public class DPASClient {
 		MenuInterface menu = new MenuInterface();
 
 		menu.addOption("Register");
+		menu.addOption("See registred clients");
 		menu.addOption("Post on personal board");
 		menu.addOption("Post on general board");
 		menu.addOption("Read from a personal board");
@@ -56,6 +81,15 @@ public class DPASClient {
 						System.out.println("Registred successfuly!");
 					} catch (ClientAlreadyRegisteredException e){
 						System.out.println("You are already registered!");
+					}
+					break;
+				case "See registred clients":
+					System.out.println("My Key 0:");
+					System.out.println(myPublicKey);
+					int currentKey = 1;
+					for(PublicKey clientKey: clientKeys){
+						System.out.println(String.format("%d: %s", currentKey, clientKey));
+						currentKey++;
 					}
 					break;
 				case "Post on personal board":
@@ -105,12 +139,25 @@ public class DPASClient {
 
 					System.out.println("Unexpected input");
 					break;
+
 				case "Read from a personal board":
 					System.out.println("Indicate the public key of the client you wish to read from: ");
-					String client = s.nextLine();
+					int client = s.nextInt();
 					System.out.println("Please indicate the number of last posts you wish to see (0 for all):");
 					int number = s.nextInt();
-					Announcement[] announcements = api.read(privateKeyEntry.getCertificate().getPublicKey(), number);
+					Announcement[] announcements;
+
+					if(client == 0){
+						announcements = api.read(myPublicKey, number);
+					} else {
+						if(client-1 <= clientKeys.size()){
+							announcements = api.read(clientKeys.get(client), number);
+						}
+						else{
+							System.out.println("Invalid public key!");
+							break;
+						}
+					}
 					printRead(announcements);
 					break;
 				case "Read from the general board":
