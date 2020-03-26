@@ -30,7 +30,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private ConcurrentHashMap<PublicKey, ArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
-	private CopyOnWriteArrayList<Announcement> generalBoard = new CopyOnWriteArrayList<>();
+	private ArrayList<Announcement> generalBoard = new ArrayList<>();
 	private ConcurrentHashMap<PublicKey, MessageHandler> clientSessions = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<Integer, Announcement> announcementIDs = new ConcurrentHashMap<>();
 
@@ -626,7 +626,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void cleanGeneralPosts(Empty request, StreamObserver<Empty> responseObserver) {
-		this.generalBoard = new CopyOnWriteArrayList<>();
+		this.generalBoard = new ArrayList<>();
 		try{
 			save("generalPosts");
 		}catch (DatabaseException e){
