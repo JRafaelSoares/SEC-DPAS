@@ -151,7 +151,7 @@ public class DPASClient {
 						announcements = api.read(myPublicKey, number);
 					} else {
 						if(client-1 <= clientKeys.size()){
-							announcements = api.read(clientKeys.get(client), number);
+							announcements = api.read(clientKeys.get(client-1), number);
 						}
 						else{
 							System.out.println("Invalid public key!");
