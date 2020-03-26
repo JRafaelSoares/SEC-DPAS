@@ -111,7 +111,6 @@ public class DPASClient {
 							break;
 						}
 						if(ref.equals("N")){
-							System.out.println("API");
 							api.post(message);
 							System.out.println("Posted successfully");
 							break;
@@ -120,7 +119,7 @@ public class DPASClient {
 						System.out.println(e.getMessage());
 						break;
 					}catch(ClientNotRegisteredException e){
-						System.out.println("Client not registered");
+						System.out.println("Client not registered or unexpected exception");
 						break;
 					}
 					System.out.println("Unexpected input");
@@ -150,7 +149,7 @@ public class DPASClient {
 						System.out.println(e.getMessage());
 						break;
 					}catch(ClientNotRegisteredException e){
-						System.out.println("Client not registered");
+						System.out.println("Client not registered or unexpected exception");
 						break;
 					}
 					System.out.println("Unexpected input");
@@ -168,7 +167,7 @@ public class DPASClient {
 							announcements = api.read(myPublicKey, number);
 						} else {
 							if(client-1 <= clientKeys.size()){
-								announcements = api.read(clientKeys.get(client), number);
+								announcements = api.read(clientKeys.get(client-1), number);
 							}
 							else{
 								System.out.println("Invalid public key!");
@@ -181,7 +180,7 @@ public class DPASClient {
 						System.out.println(e.getMessage());
 						break;
 					}catch (ClientNotRegisteredException e){
-						System.out.println("Client not registered");
+						System.out.println("Client not registered or unexpected exception");
 						break;
 					}
 					break;
@@ -197,7 +196,7 @@ public class DPASClient {
 						System.out.println(e.getMessage());
 						break;
 					}catch (ClientNotRegisteredException e){
-						System.out.println("Client not registered");
+						System.out.println("Client not registered or unexpected exception");
 						break;
 					}
 					break;
