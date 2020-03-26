@@ -202,6 +202,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
+
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
 			return;
@@ -210,14 +211,22 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
+		try{
+			referencesExist(announcements);
+		} catch (ServerInvalidReference e){
+			responseObserver.onError(e);
+			return;
+		}
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
 			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
 			return;
 		}
 
 		int announcementID = addCounter();
+
+		//Check if references exist
+
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, messageSignature);
-		
 		synchronized (this) {
 			announcementList.add(announcement);
 		}
@@ -288,6 +297,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		//TODO- Announcement can be null, mby test for it? Add try catch?
+
+		try{
+			referencesExist(announcements);
+		} catch (ServerInvalidReference e){
+			responseObserver.onError(e);
+			return;
+		}
+
 		int announcementID = addCounter();
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, messageSignature);
 		
@@ -526,6 +543,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return announcementID++;
 	}
 
+	private void referencesExist(String[] references) throws ServerInvalidReference{
+		for(String reference: references){
+			if(!announcementIDs.containsKey(reference)){
+				throw new ServerInvalidReference("Reference does not exist!");
+			}
+		}
+
+	}
 	/**********************/
 	/** TESTING FUNCTION **/
 	/**********************/
