@@ -1,4 +1,4 @@
-#Error Codes Returned by the Server
+# Error Codes Returned by the Server
 
 | Status Code       | Status Description           | Explanation of Error                                                         |
 |-------------------|------------------------------|------------------------------------------------------------------------------|
