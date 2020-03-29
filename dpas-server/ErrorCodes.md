@@ -4,7 +4,7 @@
 |-------------------|------------------------------|------------------------------------------------------------------------------|
 | INVALID_ARGUMENT  | PublicKey                        | The public key could not be deserialised on the server                       |
 | INVALID_ARGUMENT  | ClientAlreadyRegistered          | This client was already registered                                                                |
-| INVALID_ARGUMENT  | NonExistentAnnouncementReference | There is an inexistent announcement referenced in this post                                                                |
+| INVALID_ARGUMENT  | NonExistentAnnouncementReference | There is an non-existent announcement referenced in this post                                                                |
 | PERMISSION_DENIED | ClientNotRegistered              | The client wasn't registered yet                                             |
 | PERMISSION_DENIED | TargetClientNotRegistered        | The read target client wasn't registered yet                                 |
 | PERMISSION_DENIED | ClientRequestNotFresh            | The request received from the client wasn't fresh                            |
