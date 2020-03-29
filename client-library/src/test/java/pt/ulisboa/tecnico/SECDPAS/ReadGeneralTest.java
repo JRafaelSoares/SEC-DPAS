@@ -64,7 +64,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
+	public void readTest() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -81,7 +81,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
+	public void readAllAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -98,7 +98,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAzNumberBiggerThanPostsTest() throws pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ClientNotRegisteredException, ClientSignatureException {
+	public void readAzNumberBiggerThanPostsTest() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, TargetClientNotRegisteredException, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -115,11 +115,11 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readInvalidNumberTest() throws ClientNotRegisteredException, ClientSignatureException {
+	public void readInvalidNumberTest() throws ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, TargetClientNotRegisteredException, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib1.readGeneral(-1);
-			fail("Exception InvalidArguments should have been thrown");
+			fail("Exception InvalidArgument should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException e){
 			assertNull(announcements);
@@ -127,7 +127,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readClientNotExistsTest() throws InvalidArgumentException, ClientSignatureException {
+	public void readClientNotExistsTest() throws InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, TargetClientNotRegisteredException, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib3.readGeneral(1);
@@ -139,7 +139,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllClientNotExistsTest() throws InvalidArgumentException, ClientSignatureException {
+	public void readAllClientNotExistsTest() throws InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, TargetClientNotRegisteredException, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib3.readGeneral(0);

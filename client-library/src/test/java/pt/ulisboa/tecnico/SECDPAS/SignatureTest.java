@@ -55,21 +55,21 @@ public class SignatureTest {
 
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
 
     @Test
-    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub, 1);
 
@@ -80,7 +80,7 @@ public class SignatureTest {
     }
 
     @Test
-    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadGeneralRequest( 1);
 
@@ -91,7 +91,7 @@ public class SignatureTest {
     }
 
     @Test
-    public void failRegisterSignature() throws ClientAlreadyRegisteredException, MessageNotFreshException, NoSuchAlgorithmException{
+    public void failRegisterSignature() throws ClientAlreadyRegisteredException, MessageNotFreshException, NoSuchAlgorithmException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -105,12 +105,12 @@ public class SignatureTest {
 
         Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(pub2))).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientAlreadyRegisteredException.class);
+        thrown.expect(ClientSignatureInvalidException.class);
         lib.registerRequest(request);
     }
 
     @Test
-    public void failPostSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException{
+    public void failPostSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -125,12 +125,12 @@ public class SignatureTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(request.getPublicKey()).setMessage(request.getMessage()).setAnnouncements(request.getAnnouncements()).setFreshness(request.getFreshness()).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientIntegrityViolationException.class);
         lib.postRequest(request);
     }
 
     @Test
-    public void failPostGeneralSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException{
+    public void failPostGeneralSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -145,12 +145,12 @@ public class SignatureTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(request.getPublicKey()).setMessage(request.getMessage()).setAnnouncements(request.getAnnouncements()).setFreshness(request.getFreshness()).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientIntegrityViolationException.class);
         lib.postGeneralRequest(request);
     }
 
     @Test
-    public void failReadSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException{
+    public void failReadSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, TargetClientNotRegisteredException {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -165,12 +165,12 @@ public class SignatureTest {
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientIntegrityViolationException.class);
         lib.readRequest(request);
     }
 
     @Test
-    public void failReadGeneralSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException{
+    public void failReadGeneralSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, TargetClientNotRegisteredException {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -185,7 +185,7 @@ public class SignatureTest {
 
         request = Contract.ReadRequest.newBuilder().setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientIntegrityViolationException.class);
         lib.readGeneralRequest(request);
     }
 
