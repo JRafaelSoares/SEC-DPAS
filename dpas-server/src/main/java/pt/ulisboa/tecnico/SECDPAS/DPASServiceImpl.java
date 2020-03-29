@@ -7,6 +7,8 @@ import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
+import io.grpc.Metadata;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
@@ -33,7 +35,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private CopyOnWriteArrayList<Announcement> generalBoard = new CopyOnWriteArrayList<>();
 	private ConcurrentHashMap<PublicKey, MessageHandler> clientSessions = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<Integer, Announcement> announcementIDs = new ConcurrentHashMap<>();
-
 
 	private String databasePath;
 	private long initialTime;
@@ -62,13 +63,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			userKey = SerializationUtils.deserialize(encodedClientKey);
 		}catch(SerializationException e){
-			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
 			return;
 		}
 
 		// Check that the client exists
 		if(!this.privateBoard.containsKey(userKey)){
-			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientNotRegistered").asRuntimeException());
 			return;
 		}
 
@@ -83,13 +84,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try {
 			messageHandler.verifyFreshness(clientFreshness);
 		} catch (MessageNotFreshException e) {
-			responseObserver.onError(new ServerRequestNotFreshException("Diffie-Hellman request not fresh"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
 			return;
 		}
 
 		// Check that the signature is valid and matches the user
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(encodedClientKey, clientAgreement, clientFreshness), clientSignature, userKey)){
-			responseObserver.onError(new ServerInvalidSignatureException("Request signature not valid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientSignatureInvalid").asRuntimeException());
 			return;
 		}
 
@@ -112,21 +113,62 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	@Override
+	public void closeSession(Contract.CloseSessionRequest request, StreamObserver<Contract.ACK> responseObserver){
+		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
+		byte[] freshness = request.getFreshness().toByteArray();
+		byte[] signature = request.getSignature().toByteArray();
+
+		PublicKey userKey;
+		try{
+			userKey = SerializationUtils.deserialize(serializedPublicKey);
+		}catch(SerializationException e){
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
+			return;
+		}
+
+		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
+
+		if(announcementList == null){
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientNotRegistered").asRuntimeException());
+			return;
+		}
+
+		MessageHandler messageHandler = clientSessions.get(userKey);
+
+		if(!messageHandler.isInSession()){
+			responseObserver.onError(Status.UNAUTHENTICATED.withDescription("SessionNotInitiated").asRuntimeException());
+			return;
+		}
+
+		try {
+			messageHandler.verifyMessage(serializedPublicKey, freshness, signature);
+		} catch (SignatureNotValidException e) {
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
+			return;
+		} catch (MessageNotFreshException e) {
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
+			return;
+		}
+
+		messageHandler.resetSignature(null);
+	}
+
+	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		byte[] encodedClientKey = request.getPublicKey().toByteArray();
 		byte[] clientFreshness = request.getFreshness().toByteArray();
 		byte[] clientSignature = request.getSignature().toByteArray();
+
 		PublicKey userKey;
 		try{
 			userKey = SerializationUtils.deserialize(encodedClientKey);
 		}catch(SerializationException e){
-			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
 			return;
 		}
 
 		if(this.privateBoard.get(userKey) != null){
-			//TODO- Add freshness check here
-			responseObserver.onError(new ServerAlreadyRegisteredException("Client is already registered"));
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("ClientAlreadyRegistered").asRuntimeException());
 			return;
 		}
 
@@ -139,13 +181,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try {
 			messageHandler.verifyFreshness(clientFreshness);
 		} catch (MessageNotFreshException e) {
-			responseObserver.onError(new ServerRequestNotFreshException("Diffie-Hellman request not fresh"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
 			return;
 		}
 
 		// Check that the signature is valid and matches the user
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(encodedClientKey, clientFreshness), clientSignature, userKey)){
-			responseObserver.onError(new ServerInvalidSignatureException("Request signature not valid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientSignatureInvalid").asRuntimeException());
 			return;
 		}
 
@@ -181,14 +223,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			userKey = SerializationUtils.deserialize(serializedPublicKey);
 			announcements = SerializationUtils.deserialize(serializedAnnouncements);
 		}catch(SerializationException e){
-			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
 			return;
 		}
 
 		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
 		if(announcementList == null){
-			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientNotRegistered").asRuntimeException());
 			return;
 		}
 
@@ -196,22 +238,22 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		MessageHandler messageHandler = clientSessions.get(userKey);
 
 		if(!messageHandler.isInSession()){
-			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
+			responseObserver.onError(Status.UNAUTHENTICATED.withDescription("SessionNotInitiated").asRuntimeException());
 			return;
 		}
 
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
 		} catch (SignatureNotValidException e) {
-			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
 			return;
 		} catch (MessageNotFreshException e) {
-			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
 			return;
 		}
 
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
-			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("AnnouncementSignatureInvalid").asRuntimeException());
 			return;
 		}
 
@@ -255,12 +297,12 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			userKey = SerializationUtils.deserialize(serializedPublicKey);
 			announcements = SerializationUtils.deserialize(serializedAnnouncements);
 		}catch(SerializationException e){
-			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
 			return;
 		}
 
 		if(!this.privateBoard.containsKey(userKey)){
-			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientNotRegistered").asRuntimeException());
 			return;
 		}
 
@@ -268,22 +310,22 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		MessageHandler messageHandler = clientSessions.get(userKey);
 
 		if(!messageHandler.isInSession()){
-			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
+			responseObserver.onError(Status.UNAUTHENTICATED.withDescription("SessionNotInitiated").asRuntimeException());
 			return;
 		}
 
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
 		} catch (SignatureNotValidException e) {
-			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
 			return;
 		} catch (MessageNotFreshException e) {
-			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
 			return;
 		}
 
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
-			responseObserver.onError(new ServerInvalidSignatureException("Post signature invalid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("AnnouncementSignatureInvalid").asRuntimeException());
 			return;
 		}
 
@@ -327,38 +369,38 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			targetUserKey = SerializationUtils.deserialize(serializedTargetPublicKey);
 			clientUserKey = SerializationUtils.deserialize(serializedClientPublicKey);
 		}catch(SerializationException e){
-			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
 			return;
 		}
 
 		ArrayList<Announcement> clientAnnouncementList = this.privateBoard.get(clientUserKey);
 
 		if(clientAnnouncementList == null){
-			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientNotRegistered").asRuntimeException());
 			return;
 		}
 
 		ArrayList<Announcement> announcementList = this.privateBoard.get(targetUserKey);
 
 		if(announcementList == null){
-			responseObserver.onError(new ServerNotRegisteredException("Target user not yet registered"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("TargetClientNotRegistered").asRuntimeException());
 			return;
 		}
 
 		MessageHandler messageHandler = clientSessions.get(clientUserKey);
 
 		if(!messageHandler.isInSession()){
-			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
+			responseObserver.onError(Status.UNAUTHENTICATED.withDescription("SessionNotInitiated").asRuntimeException());
 			return;
 		}
 
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey, number), freshness, signature);
 		} catch (SignatureNotValidException e) {
-			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
 			return;
 		} catch (MessageNotFreshException e) {
-			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
 			return;
 		}
 
@@ -395,29 +437,29 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			clientUserKey = SerializationUtils.deserialize(serializedClientPublicKey);
 		}catch(SerializationException e){
-			responseObserver.onError(new ServerInvalidSignatureException("Deserialization not possible"));
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
 			return;
 		}
 
 		if(!this.privateBoard.containsKey(clientUserKey)){
-			responseObserver.onError(new ServerNotRegisteredException("Client not yet registered"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientNotRegistered").asRuntimeException());
 			return;
 		}
 
 		MessageHandler messageHandler = clientSessions.get(clientUserKey);
 
 		if(!messageHandler.isInSession()){
-			responseObserver.onError(new ServerNoSessionException("No Diffie-Hellman session is established"));
+			responseObserver.onError(Status.UNAUTHENTICATED.withDescription("SessionNotInitiated").asRuntimeException());
 			return;
 		}
 
 		try {
 			messageHandler.verifyMessage(Bytes.concat(serializedClientPublicKey, number), freshness, signature);
 		} catch (SignatureNotValidException e) {
-			responseObserver.onError(new ServerInvalidSignatureException("Request signature invalid"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
 			return;
 		} catch (MessageNotFreshException e) {
-			responseObserver.onError(new ServerRequestNotFreshException("Request is not fresh"));
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
 			return;
 		}
 

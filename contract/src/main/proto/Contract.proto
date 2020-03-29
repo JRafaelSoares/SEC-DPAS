@@ -71,6 +71,13 @@ message ACK {
     bytes signature = 2;
 }
 
+message CloseSessionRequest {
+    //PublicKey
+    bytes publicKey = 1;
+    bytes freshness = 5;
+    bytes signature = 6;
+}
+
 // Defining a Service, a Service can have multiple RPC operations
 service DPASService {
     // Define a RPC operation
@@ -80,6 +87,7 @@ service DPASService {
     rpc postGeneral(PostRequest) returns (ACK);
     rpc read(ReadRequest) returns (ReadResponse);
     rpc readGeneral(ReadRequest) returns (ReadResponse);
+    rpc closeSession(CloseSessionRequest) returns (ACK);
 
     // Testing Functions
     rpc clientRegisteredState(RegisterRequest) returns (TestsResponse);

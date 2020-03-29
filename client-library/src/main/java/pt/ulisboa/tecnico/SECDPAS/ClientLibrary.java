@@ -11,6 +11,8 @@ import com.google.protobuf.Empty;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.FileInputStream;
@@ -22,7 +24,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 public class ClientLibrary {
 
@@ -66,7 +67,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public void register() throws ClientAlreadyRegisteredException {
+	public void register() throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientAlreadyRegisteredException {
 		//Serializes key and changes to ByteString
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] freshness = messageHandler.getFreshness();
@@ -77,19 +78,25 @@ public class ClientLibrary {
 			ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
 			Contract.ACK response = listenable.get();
 			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
-			//TODO- Distribute server key to clients
-			SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey);
-		} catch (RuntimeException e){
-			throw new ClientAlreadyRegisteredException(e.getMessage());
+
+			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey)){
+				throw new ServerSignatureInvalidException("Server signature was invalid");
+			}
+		} catch (StatusRuntimeException e){
+			handleRegistrationError(e.getStatus());
 		} catch (InterruptedException | ExecutionException e){
-			//TODO - Check if better way to handle
-			throw new ClientAlreadyRegisteredException(e.getMessage());
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handleRegistrationError(exception.getStatus());
+			}
+
+			throw new ServerConnectionException(e.getMessage());
 		} catch (MessageNotFreshException e) {
-			System.out.println("Message not fresh");
+			throw new ServerResponseNotFreshException("Server response was not fresh");
 		}
 	}
 
-	protected void setupConnection() throws ClientNotRegisteredException{
+	protected void setupConnection() throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException {
 		// Create Diffie-Hellman agreement
 		DiffieHellmanClient diffieHellmanClient = new DiffieHellmanClient();
 
@@ -110,16 +117,20 @@ public class ClientLibrary {
 
 		Contract.DHRequest request = Contract.DHRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientAgreement(ByteString.copyFrom(clientAgreement)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-		Contract.DHResponse response;
-		try{
+		Contract.DHResponse response = null;
 
+		try{
 			ListenableFuture<Contract.DHResponse> listenable = futureStub.setupConnection(request);
 			response = listenable.get();
-		}catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (StatusRuntimeException e){
+			handleSetupConnectionError(e.getStatus());
 		} catch (InterruptedException | ExecutionException e){
-			//TODO - Check if better way to handle
-			throw new ClientNotRegisteredException(e.getMessage());
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handleSetupConnectionError(exception.getStatus());
+			}
+
+			throw new ServerConnectionException(e.getMessage());
 		}
 
 		byte[] serverAgreement = response.getServerAgreement().toByteArray();
@@ -130,27 +141,28 @@ public class ClientLibrary {
 		try {
 			messageHandler.verifyFreshness(serverFreshness);
 		} catch (MessageNotFreshException e) {
-			//TODO- Handle exceptions properly
-			e.printStackTrace();
+			throw new ServerResponseNotFreshException("Server response was not fresh");
 		}
 
 		byte[] serverSignature = response.getSignature().toByteArray();
 
-		SignatureHandler.verifyPublicSignature(serverFreshness, serverSignature, this.serverPublicKey);
+		if(!SignatureHandler.verifyPublicSignature(serverFreshness, serverSignature, this.serverPublicKey)){
+			throw new ServerSignatureInvalidException("Server signature was not valid");
+		}
 
 
-		diffieHellmanClient.execute(response.getServerAgreement().toByteArray());
+		diffieHellmanClient.execute(serverAgreement);
 
 		messageHandler.resetSignature(diffieHellmanClient.getSharedHMACKey());
 	}
 
-	public void post(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void post(char[] message) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
 		checkMessage(message);
 
 		post(message, new String[0]);
 	}
 
-	public void post(char[] message, String[] references) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void post(char[] message, String[] references) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -161,25 +173,29 @@ public class ClientLibrary {
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub.post(getPostRequest(message, references));
 			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException | MessageNotFreshException e) {
-			//TODO- Handle exceptions properly
-			e.printStackTrace();
+		} catch (StatusRuntimeException e){
+			handlePostError(e.getStatus());
+		} catch (SignatureNotValidException e) {
+			throw new ServerIntegrityViolation("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ServerResponseNotFreshException("Server response was not fresh");
 		} catch (InterruptedException | ExecutionException e){
-			//TODO - Check if better way to handle
-			throw new ClientNotRegisteredException(e.getMessage());
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handlePostError(exception.getStatus());
+			}
+
+			throw new ServerConnectionException(e.getMessage());
 		}
 	}
 
-	public void postGeneral(char[] message) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void postGeneral(char[] message) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
 		checkMessage(message);
 
 		postGeneral(message, new String[0]);
 	}
 
-
-	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ClientNotRegisteredException {
+	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -190,18 +206,23 @@ public class ClientLibrary {
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub.postGeneral(getPostRequest(message, references));
 			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException | MessageNotFreshException e) {
-			//TODO- Handle exceptions properly
-			e.printStackTrace();
+		} catch (StatusRuntimeException e){
+			handlePostError(e.getStatus());
+		} catch (SignatureNotValidException e) {
+			throw new ServerIntegrityViolation("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ServerResponseNotFreshException("Server response was not fresh");
 		} catch (InterruptedException | ExecutionException e){
-			//TODO - Check if better way to handle
-			throw new ClientNotRegisteredException(e.getMessage());
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handlePostError(exception.getStatus());
+			}
+
+			throw new ServerConnectionException(e.getMessage());
 		}
 	}
 
-	public Announcement[] read(PublicKey client, int number) throws ClientNotRegisteredException, InvalidArgumentException, ClientSignatureException {
+	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
 		checkNumber(number);
 
 		if(!messageHandler.isInSession()){
@@ -221,24 +242,30 @@ public class ClientLibrary {
 				byte[] messageBytes = new String(announcement.getPost()).getBytes();
 
 				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
-					throw new ClientSignatureException("An announcement was not properly signed");
+					throw new AnnouncementSignatureInvalidException("An announcement was not properly signed");
 				}
 			}
 
 			return announcements;
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException | MessageNotFreshException e) {
-			//TODO- Handle exceptions properly
-			e.printStackTrace();
-			return null;
+		} catch (StatusRuntimeException e){
+			handleReadError(e.getStatus());
+		} catch (SignatureNotValidException e) {
+			throw new ServerIntegrityViolation("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ServerResponseNotFreshException("Server response was not fresh");
 		} catch (InterruptedException | ExecutionException e){
-			//TODO - Check if better way to handle
-			throw new ClientNotRegisteredException(e.getMessage());
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handleReadError(exception.getStatus());
+			}
+
+			throw new ServerConnectionException(e.getMessage());
 		}
+
+		throw new RuntimeException("Unknown error");
 	}
 
-	public Announcement[] readGeneral(int number) throws ClientNotRegisteredException, InvalidArgumentException, ClientSignatureException {
+	public Announcement[] readGeneral(int number) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
 		checkNumber(number);
 
 		if(!messageHandler.isInSession()){
@@ -258,20 +285,58 @@ public class ClientLibrary {
 				byte[] messageBytes = new String(announcement.getPost()).getBytes();
 
 				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
-					throw new ClientSignatureException("An announcement was not properly signed");
+					throw new AnnouncementSignatureInvalidException("An announcement was not properly signed");
 				}
 			}
 
 			return announcements;
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
-		} catch (SignatureNotValidException | MessageNotFreshException e) {
-			//TODO- Handle exceptions properly
-			e.printStackTrace();
-			return null;
+		} catch (StatusRuntimeException e){
+			handleReadError(e.getStatus());
+		} catch (SignatureNotValidException e) {
+			throw new ServerIntegrityViolation("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ServerResponseNotFreshException("Server response was not fresh");
 		} catch (InterruptedException | ExecutionException e){
-			//TODO - Check if better way to handle
-			throw new ClientNotRegisteredException(e.getMessage());
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handleReadError(exception.getStatus());
+			}
+
+			throw new ServerConnectionException(e.getMessage());
+		}
+
+		throw new RuntimeException("Unknown error");
+	}
+
+	public void closeConnection() throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientRequestNotFreshException, ClientNotRegisteredException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
+		if(!messageHandler.isInSession()){
+			return;
+		}
+
+		try{
+			byte[] serializedPublicKey = SerializationUtils.serialize(publicKey);
+			byte[] freshness = messageHandler.getFreshness();
+			byte[] signature = messageHandler.sign(serializedPublicKey, freshness);
+
+			Contract.CloseSessionRequest closeSessionRequest = Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(serializedPublicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(closeSessionRequest);
+			Contract.ACK response = listenableFuture.get();
+
+			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.resetSignature(null);
+		} catch (StatusRuntimeException e){
+			handleCloseConnectionError(e.getStatus());
+		} catch (SignatureNotValidException e) {
+			throw new ServerIntegrityViolation("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ServerResponseNotFreshException("Server response was not fresh");
+		} catch (InterruptedException | ExecutionException e){
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handleCloseConnectionError(exception.getStatus());
+			}
+
+			throw new ServerConnectionException(e.getMessage());
 		}
 	}
 
@@ -311,6 +376,7 @@ public class ClientLibrary {
 		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
+
 	public Contract.ReadRequest getReadGeneralRequest(int number){
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
@@ -384,52 +450,58 @@ public class ClientLibrary {
 		}
 	}
 
-	public void postRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+	public void postRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
 		try{
 			Contract.ACK response = stub.post(request);
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (StatusRuntimeException e){
+			handlePostError(e.getStatus());
 		}
 	}
 
-	public void postGeneralRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+	public void postGeneralRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
 		try{
 			Contract.ACK response = stub.postGeneral(request);
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (StatusRuntimeException e){
+			handlePostError(e.getStatus());
 		}
 	}
 
-	public Announcement[] readRequest(Contract.ReadRequest request) throws ClientNotRegisteredException ,SignatureNotValidException, MessageNotFreshException {
+	public Announcement[] readRequest(Contract.ReadRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, TargetClientNotRegisteredException {
 		try {
 			Contract.ReadResponse response = stub.read(request);
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (StatusRuntimeException e){
+			handleReadError(e.getStatus());
 		}
+
+		throw new RuntimeException("Unexpected Error");
 	}
 
-	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ClientNotRegisteredException ,SignatureNotValidException, MessageNotFreshException {
+	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, TargetClientNotRegisteredException {
 		try {
 			Contract.ReadResponse response = stub.readGeneral(request);
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-		} catch (RuntimeException e){
-			throw new ClientNotRegisteredException(e.getMessage());
+		} catch (StatusRuntimeException e){
+			handleReadError(e.getStatus());
 		}
+
+		throw new RuntimeException("Unexpected error");
 	}
 
-	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, MessageNotFreshException {
+	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, MessageNotFreshException, ClientSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ServerSignatureInvalidException {
 		try{
 			Contract.ACK response = stub.register(request);
 			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
-			//TODO- Distribute server key to clients
-			SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey);
-		} catch (RuntimeException e){
-			throw new ClientAlreadyRegisteredException(e.getMessage());
+
+			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey)){
+				throw new ServerSignatureInvalidException("Server signature was invalid");
+			}
+		} catch (StatusRuntimeException e){
+			handleRegistrationError(e.getStatus());
 		}
 	}
 
@@ -465,6 +537,116 @@ public class ClientLibrary {
 			throw new InvalidArgumentException("Number can not be negative");
 		}
 	}
+
+	/******************************/
+	/** ERROR HANDLING FUNCTIONS **/
+	/******************************/
+
+	private void handleRegistrationError(Status status) throws InvalidArgumentException, ClientAlreadyRegisteredException, ClientSignatureInvalidException, ClientRequestNotFreshException {
+		switch(status.getCode()){
+			case INVALID_ARGUMENT:
+				switch(status.getDescription()){
+					case "PublicKey":
+						throw new InvalidArgumentException("The public key could not be deserialised on the server");
+					case "ClientAlreadyRegistered":
+						throw new ClientAlreadyRegisteredException("This client was already registered");
+				}
+			case PERMISSION_DENIED:
+				switch(status.getDescription()){
+					case "ClientRequestNotFresh":
+						throw new ClientRequestNotFreshException("The request received from the client wasn't fresh");
+					case "ClientSignatureInvalid":
+						throw new ClientSignatureInvalidException("The signature of the request wasn't valid");
+				}
+		}
+	}
+
+	private void handleSetupConnectionError(Status status) throws InvalidArgumentException, ClientSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException {
+		switch(status.getCode()){
+			case INVALID_ARGUMENT:
+				if ("PublicKey".equals(status.getDescription())) {
+					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+				}
+			case PERMISSION_DENIED:
+				switch(status.getDescription()){
+					case "ClientNotRegistered":
+						throw new ClientNotRegisteredException("The client wasn't registered yet");
+					case "ClientRequestNotFresh":
+						throw new ClientRequestNotFreshException("The request received from the client wasn't fresh");
+					case "ClientSignatureInvalid":
+						throw new ClientSignatureInvalidException("The signature of the request wasn't valid");
+				}
+		}
+	}
+
+	private void handlePostError(Status status) throws InvalidArgumentException, ClientRequestNotFreshException, ClientNotRegisteredException, ClientSessionNotInitiatedException, ClientIntegrityViolationException, AnnouncementSignatureInvalidException {
+		switch(status.getCode()){
+			case INVALID_ARGUMENT:
+				if ("PublicKey".equals(status.getDescription())) {
+					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+				}
+			case PERMISSION_DENIED:
+				switch(status.getDescription()){
+					case "ClientNotRegistered":
+						throw new ClientNotRegisteredException("The client wasn't registered yet");
+					case "ClientRequestNotFresh":
+						throw new ClientRequestNotFreshException("The request received from the client wasn't fresh");
+					case "ClientIntegrityViolation":
+						throw new ClientIntegrityViolationException("The integrity of the request was violated");
+					case "AnnouncementSignatureInvalid":
+						throw new AnnouncementSignatureInvalidException("The signature of the request wasn't valid");
+				}
+			case UNAUTHENTICATED:
+				if ("SessionNotInitiated".equals(status.getDescription())) {
+					throw new ClientSessionNotInitiatedException("The client hasn't initiated a session with the server yet (or it is invalid");
+				}
+		}
+	}
+
+	private void handleReadError(Status status) throws InvalidArgumentException, ClientRequestNotFreshException, ClientNotRegisteredException, ClientSessionNotInitiatedException, ClientIntegrityViolationException, TargetClientNotRegisteredException {
+		switch(status.getCode()){
+			case INVALID_ARGUMENT:
+				if ("PublicKey".equals(status.getDescription())) {
+					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+				}
+			case PERMISSION_DENIED:
+				switch(status.getDescription()){
+					case "ClientNotRegistered":
+						throw new ClientNotRegisteredException("The client wasn't registered yet");
+					case "TargetClientNotRegistered":
+						throw new TargetClientNotRegisteredException("The read target client wasn't registered yet");
+					case "ClientRequestNotFresh":
+						throw new ClientRequestNotFreshException("The request received from the client wasn't fresh");
+					case "ClientIntegrityViolation":
+						throw new ClientIntegrityViolationException("The integrity of the request was violated");
+				}
+			case UNAUTHENTICATED:
+				if ("SessionNotInitiated".equals(status.getDescription())) {
+					throw new ClientSessionNotInitiatedException("The client hasn't initiated a session with the server yet (or it is invalid");
+				}
+		}
+	}
+
+	private void handleCloseConnectionError(Status status) throws InvalidArgumentException, ClientNotRegisteredException, ClientRequestNotFreshException, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
+		switch(status.getCode()){
+			case INVALID_ARGUMENT:
+				if ("PublicKey".equals(status.getDescription())) {
+					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+				}
+			case PERMISSION_DENIED:
+				switch(status.getDescription()){
+					case "ClientNotRegistered":
+						throw new ClientNotRegisteredException("The client wasn't registered yet");
+					case "ClientRequestNotFresh":
+						throw new ClientRequestNotFreshException("The request received from the client wasn't fresh");
+					case "ClientIntegrityViolation":
+						throw new ClientIntegrityViolationException("The integrity of the request was violated");
+				}
+			case UNAUTHENTICATED:
+				if ("SessionNotInitiated".equals(status.getDescription())) {
+					throw new ClientSessionNotInitiatedException("The client hasn't initiated a session with the server yet (or it is invalid");
+				}
+		}	}
 
 	/***********************/
 	/** Channel Shut Down **/

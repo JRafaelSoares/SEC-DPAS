@@ -37,8 +37,9 @@ public class FreshnessTest {
 
             lib.setupConnection();
 
-        }catch(Exception e){
-            System.out.println("Unable to set up test");
+        } catch (Exception e){
+            System.out.println("// Exception message: " + e.getMessage());
+            System.out.println("Unable to obtain public key for testing");
         }
     }
 
@@ -50,21 +51,21 @@ public class FreshnessTest {
     }
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
 
     @Test
-    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -75,7 +76,7 @@ public class FreshnessTest {
     }
 
     @Test
-    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadGeneralRequest(1);
 
@@ -86,43 +87,43 @@ public class FreshnessTest {
     }
 
     @Test
-    public void failRegisterFreshness() throws ClientAlreadyRegisteredException, MessageNotFreshException{
+    public void failRegisterFreshness() throws ClientAlreadyRegisteredException, MessageNotFreshException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
         thrown.expect(ClientAlreadyRegisteredException.class);
         lib.registerRequest(registerRequest);
     }
 
     @Test
-    public void failPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void failPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientRequestNotFreshException.class);
         lib.postRequest(request);
 
     }
 
     @Test
-    public void failPostGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void failPostGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientRequestNotFreshException.class);
         lib.postGeneralRequest(request);
 
     }
 
     @Test
-    public void failCrossPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException{
+    public void failCrossPostFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientRequestNotFreshException.class);
         lib.postGeneralRequest(request);
 
     }
 
     @Test
-    public void failReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+    public void failReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientRequestNotFreshException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, ServerIntegrityViolation, ServerConnectionException, ServerResponseNotFreshException, ClientSignatureInvalidException, AnnouncementSignatureInvalidException, ServerSignatureInvalidException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -131,13 +132,13 @@ public class FreshnessTest {
         assertEquals(1, announcement.length);
         assertEquals(s, new String(announcement[0].getPost()));
 
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientRequestNotFreshException.class);
         lib.readRequest(request);
 
     }
 
     @Test
-    public void failReadGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+    public void failReadGeneralFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadGeneralRequest(1);
 
@@ -146,13 +147,13 @@ public class FreshnessTest {
         assertEquals(1, announcement.length);
         assertEquals(s, new String(announcement[0].getPost()));
 
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientRequestNotFreshException.class);
         lib.readGeneralRequest(request);
 
     }
 
     @Test
-    public void failCrossReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException{
+    public void failCrossReadFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -161,7 +162,7 @@ public class FreshnessTest {
         assertEquals(1, announcement.length);
         assertEquals(s, new String(announcement[0].getPost()));
 
-        thrown.expect(ClientNotRegisteredException.class);
+        thrown.expect(ClientRequestNotFreshException.class);
         lib.readGeneralRequest(request);
 
     }

@@ -56,7 +56,7 @@ public class PostTest {
 
 
 	@Test
-	public void postCorrectNoAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException {
+	public void postCorrectNoAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		String s = "NoAnnouncement";
 		lib1.post(s.toCharArray());
 
@@ -64,7 +64,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException, ClientSignatureException {
+	public void postCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
 		String s1 = "NoAnnouncement";
 
 		lib1.post(s1.toCharArray());
@@ -78,7 +78,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageLimitTest() throws ClientNotRegisteredException, InvalidArgumentException {
+	public void postMessageLimitTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
@@ -89,7 +89,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageEmptyTest() throws ClientNotRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException{
+	public void postMessageEmptyTest() throws ClientNotRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		char[] emptyMessage = new char[0];
 		lib1.post(emptyMessage);
 
@@ -97,7 +97,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postClientNotRegisteredTest() throws InvalidArgumentException {
+	public void postClientNotRegisteredTest() throws InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		try{
 			lib2.post("Client Not Registered".toCharArray());
 			fail("Exception ClientNotRegisteredException should have been thrown");
@@ -108,7 +108,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageTooLongTest() throws ClientNotRegisteredException {
+	public void postMessageTooLongTest() throws ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 		char[] messageTooLong = new char[256];
 		for (int i = 0; i< 256; i++){
 			messageTooLong[i] = 'a';
@@ -124,7 +124,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageNullTest() throws ClientNotRegisteredException {
+	public void postMessageNullTest() throws ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
 
 		try {
 			lib1.post(null);
