@@ -118,7 +118,6 @@ public class ClientLibrary {
 		Contract.DHRequest request = Contract.DHRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientAgreement(ByteString.copyFrom(clientAgreement)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 		Contract.DHResponse response = null;
-
 		try{
 			ListenableFuture<Contract.DHResponse> listenable = futureStub.setupConnection(request);
 			response = listenable.get();

@@ -78,7 +78,17 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageLimitTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
+	public void postAnnouncementsDoesNotExistTest() throws ClientNotRegisteredException, InvalidArgumentException, ClientSignatureException {
+		String[] announcements = { Integer.toString(12345678) };
+
+		String s2 = "WithAnnouncement";
+
+		thrown.expect(ClientNotRegisteredException.class);
+		lib1.post(s2.toCharArray(), announcements);
+	}
+
+	@Test
+	public void postMessageLimitTest() throws ClientNotRegisteredException, InvalidArgumentException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
