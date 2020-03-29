@@ -256,7 +256,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			referencesExist(announcements);
 		} catch (ServerInvalidReference e){
-			responseObserver.onError(e);
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("NonExistentAnnouncementReference").asRuntimeException());
 			return;
 		}
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
@@ -343,7 +343,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			referencesExist(announcements);
 		} catch (ServerInvalidReference e){
-			responseObserver.onError(e);
+			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("NonExistentAnnouncementReference").asRuntimeException());
 			return;
 		}
 

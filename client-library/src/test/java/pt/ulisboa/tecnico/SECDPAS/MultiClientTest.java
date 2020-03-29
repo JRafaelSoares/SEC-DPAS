@@ -79,7 +79,7 @@ public class MultiClientTest {
                 //System.out.println("\n\nT1 done");
                 assertTrue(result);
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureInvalidException | TargetClientNotRegisteredException | ServerIntegrityViolation | AnnouncementSignatureInvalidException | ServerResponseNotFreshException | ClientRequestNotFreshException | ClientIntegrityViolationException | ServerSignatureInvalidException | ClientSessionNotInitiatedException | ServerConnectionException e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ClientSignatureInvalidException | TargetClientNotRegisteredException | ServerIntegrityViolation | AnnouncementSignatureInvalidException | ServerResponseNotFreshException | ClientRequestNotFreshException | ClientIntegrityViolationException | ServerSignatureInvalidException | ClientSessionNotInitiatedException | ServerConnectionException | NonExistentAnnouncementReferenceException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -124,7 +124,7 @@ public class MultiClientTest {
 
                 assertTrue(result);
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ServerResponseNotFreshException | ServerConnectionException | ClientSignatureInvalidException | ServerSignatureInvalidException | ClientRequestNotFreshException | AnnouncementSignatureInvalidException | TargetClientNotRegisteredException | ClientIntegrityViolationException | ClientSessionNotInitiatedException | ServerIntegrityViolation e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ServerResponseNotFreshException | ServerConnectionException | ClientSignatureInvalidException | ServerSignatureInvalidException | ClientRequestNotFreshException | AnnouncementSignatureInvalidException | TargetClientNotRegisteredException | ClientIntegrityViolationException | ClientSessionNotInitiatedException | ServerIntegrityViolation | NonExistentAnnouncementReferenceException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -161,7 +161,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT3 done");
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ServerResponseNotFreshException | ServerConnectionException | ClientSignatureInvalidException | ServerSignatureInvalidException | ClientRequestNotFreshException | AnnouncementSignatureInvalidException | ServerIntegrityViolation | ClientIntegrityViolationException | ClientSessionNotInitiatedException | TargetClientNotRegisteredException e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ServerResponseNotFreshException | ServerConnectionException | ClientSignatureInvalidException | ServerSignatureInvalidException | ClientRequestNotFreshException | AnnouncementSignatureInvalidException | ServerIntegrityViolation | ClientIntegrityViolationException | ClientSessionNotInitiatedException | TargetClientNotRegisteredException | NonExistentAnnouncementReferenceException e){
                 System.out.println(e.getMessage());
             }
         }
@@ -197,7 +197,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT4 done");
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ServerResponseNotFreshException | ServerConnectionException | ClientSignatureInvalidException | ServerSignatureInvalidException | ClientRequestNotFreshException | AnnouncementSignatureInvalidException | ServerIntegrityViolation | ClientIntegrityViolationException | ClientSessionNotInitiatedException | TargetClientNotRegisteredException e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | CertificateInvalidException | ServerResponseNotFreshException | ServerConnectionException | ClientSignatureInvalidException | ServerSignatureInvalidException | ClientRequestNotFreshException | AnnouncementSignatureInvalidException | ServerIntegrityViolation | ClientIntegrityViolationException | ClientSessionNotInitiatedException | TargetClientNotRegisteredException | NonExistentAnnouncementReferenceException e){
                 System.out.println(e.getMessage());
             }
         }

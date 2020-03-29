@@ -50,21 +50,21 @@ public class IntegrityTest {
     }
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
 
     @Test
-    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -75,7 +75,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadGeneralRequest(1);
 
@@ -119,7 +119,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
@@ -145,7 +145,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
@@ -160,7 +160,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
@@ -176,7 +176,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
@@ -193,7 +193,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -209,7 +209,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
@@ -234,7 +234,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostGeneralCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
@@ -248,7 +248,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostGeneralCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
@@ -265,7 +265,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostGeneralCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
@@ -282,7 +282,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+    public void failIntegrityPostGeneralCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -298,7 +298,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityReadCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+    public void failIntegrityReadCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -324,7 +324,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityReadCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+    public void failIntegrityReadCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -339,7 +339,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityReadCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+    public void failIntegrityReadCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -354,7 +354,7 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+    public void failIntegrityReadGeneralCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 

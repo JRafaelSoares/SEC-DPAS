@@ -155,13 +155,13 @@ public class ClientLibrary {
 		messageHandler.resetSignature(diffieHellmanClient.getSharedHMACKey());
 	}
 
-	public void post(char[] message) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
+	public void post(char[] message) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
 		checkMessage(message);
 
 		post(message, new String[0]);
 	}
 
-	public void post(char[] message, String[] references) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
+	public void post(char[] message, String[] references) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -188,13 +188,13 @@ public class ClientLibrary {
 		}
 	}
 
-	public void postGeneral(char[] message) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
+	public void postGeneral(char[] message) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
 		checkMessage(message);
 
 		postGeneral(message, new String[0]);
 	}
 
-	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException {
+	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientNotRegisteredException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ClientIntegrityViolationException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
 		checkMessage(message);
 
 		if(!messageHandler.isInSession()){
@@ -449,7 +449,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public void postRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+	public void postRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
 		try{
 			Contract.ACK response = stub.post(request);
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -458,7 +458,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public void postGeneralRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException {
+	public void postGeneralRequest(Contract.PostRequest request) throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
 		try{
 			Contract.ACK response = stub.postGeneral(request);
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -578,11 +578,14 @@ public class ClientLibrary {
 		}
 	}
 
-	private void handlePostError(Status status) throws InvalidArgumentException, ClientRequestNotFreshException, ClientNotRegisteredException, ClientSessionNotInitiatedException, ClientIntegrityViolationException, AnnouncementSignatureInvalidException {
+	private void handlePostError(Status status) throws InvalidArgumentException, ClientRequestNotFreshException, ClientNotRegisteredException, ClientSessionNotInitiatedException, ClientIntegrityViolationException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
 		switch(status.getCode()){
 			case INVALID_ARGUMENT:
-				if ("PublicKey".equals(status.getDescription())) {
-					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+				switch (status.getDescription()){
+					case "PublicKey":
+						throw new InvalidArgumentException("The public key could not be deserialised on the server");
+					case "NonExistentAnnouncementReference":
+						throw new NonExistentAnnouncementReferenceException("There is a non-existent announcement referenced in this post");
 				}
 			case PERMISSION_DENIED:
 				switch(status.getDescription()){

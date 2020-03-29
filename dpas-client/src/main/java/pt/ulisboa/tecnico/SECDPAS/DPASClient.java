@@ -192,7 +192,7 @@ public class DPASClient {
 						announcements = api.readGeneral(number);
 						printRead(announcements);
 
-					}catch(InvalidArgumentException | ClientSignatureException e){
+					}catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
 					}catch (ClientNotRegisteredException e){

@@ -64,7 +64,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readTest() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+	public void readTest() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -81,7 +81,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException {
+	public void readAllAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
 		String s1 = "post1";
 		String s2 = "post2";
 
