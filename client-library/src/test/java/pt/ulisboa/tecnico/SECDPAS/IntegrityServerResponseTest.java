@@ -6,20 +6,26 @@ import com.google.common.primitives.Bytes;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.runners.MethodSorters;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.security.*;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class FreshnessServerResponseTest {
+public class IntegrityServerResponseTest {
 
     private static MessageHandler messageHandler;
     private static PublicKey pubClient;
@@ -214,9 +220,10 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void failFreshnessRegister() throws ClientAlreadyRegisteredException, InvalidArgumentException, ServerConnectionException, ClientRequestNotFreshException, ServerResponseNotFreshException, ClientSignatureInvalidException, ServerSignatureInvalidException {
+    public void failIntegrityRegisterCompromiseFreshness() throws ClientAlreadyRegisteredException, InvalidArgumentException, ServerConnectionException, ClientRequestNotFreshException, ServerResponseNotFreshException, ClientSignatureInvalidException, ServerSignatureInvalidException {
         byte[] freshness = messageHandler.getFreshness();
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
+        freshness = messageHandler.getFreshness();
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -224,24 +231,35 @@ public class FreshnessServerResponseTest {
 
         try{
             when(listenableFuture.get()).thenReturn(response);
+
+
         }catch (Exception e){
-            fail(e.getMessage());
+            System.out.println(e.getMessage());
+            fail();
         }
 
         when(stub.register(isA(Contract.RegisterRequest.class))).thenReturn(listenableFuture);
 
+        thrown.expect(ServerSignatureInvalidException.class);
         lib.register();
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.register();
+
     }
 
     @Test
-    public void failFreshnessPost() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
-        setUpConnection();
-        lib.setupConnection();
+    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        byte[] publicKey = SerializationUtils.serialize(pubClient);
+        byte[] postBytes = "message".getBytes();
+        byte[] announcements = SerializationUtils.serialize(new String[0]);
+        messageSignaturePost = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
         byte[] freshness = messageHandler.getFreshness();
         byte[] signature = messageHandler.sign(new byte[0], freshness);
+        freshness = messageHandler.getFreshness();
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -255,21 +273,26 @@ public class FreshnessServerResponseTest {
 
         when(stub.post(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
-        lib.post("message".toCharArray());
-        thrown.expect(ServerResponseNotFreshException.class);
+        thrown.expect(ServerIntegrityViolation.class);
         lib.post("message".toCharArray());
     }
 
     @Test
-    public void failFreshnessPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
             lib.setupConnection();
         }
 
+        byte[] publicKey = SerializationUtils.serialize(pubClient);
+        byte[] postBytes = "message".getBytes();
+        byte[] announcements = SerializationUtils.serialize(new String[0]);
+        messageSignaturePostGeneral = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
+
         byte[] freshness = messageHandler.getFreshness();
         byte[] signature = messageHandler.sign(new byte[0], freshness);
+        freshness = messageHandler.getFreshness();
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -283,42 +306,12 @@ public class FreshnessServerResponseTest {
 
         when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
-        lib.postGeneral("message".toCharArray());
-        thrown.expect(ServerResponseNotFreshException.class);
+        thrown.expect(ServerIntegrityViolation.class);
         lib.postGeneral("message".toCharArray());
     }
 
     @Test
-    public void failFreshnessCrossPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
-
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
-        byte[] freshness = messageHandler.getFreshness();
-        byte[] signature = messageHandler.sign(new byte[0], freshness);
-
-        Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
-        ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
-
-        try{
-            when(listenableFuture.get()).thenReturn(response);
-        }catch (Exception e){
-            fail(e.getMessage());
-        }
-
-        when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
-        when(stub.post(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
-
-        lib.postGeneral("message".toCharArray());
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.post("message".toCharArray());
-    }
-
-    @Test
-    public void zfailFreshnessRead() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseFreshness() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -327,6 +320,40 @@ public class FreshnessServerResponseTest {
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
         announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+
+        byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
+        responseFreshness = messageHandler.getFreshness();
+
+        Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+        ListenableFuture<Contract.ReadResponse> listenableFuture = mock(ListenableFuture.class);
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
+
+        thrown.expect(ServerIntegrityViolation.class);
+        lib.read(pubClient, 0);
+
+    }
+
+    @Test
+    public void failIntegrityReadCompromiseAnnouncementsMessage() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ArrayList<Announcement> announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("wrong message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -345,13 +372,13 @@ public class FreshnessServerResponseTest {
 
         when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
+        thrown.expect(AnnouncementSignatureInvalidException.class);
         lib.read(pubClient, 0);
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.read(pubClient, 0);
+
     }
 
     @Test
-    public void zfailFreshnessReadGeneral() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseAnnouncementsReferences() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -359,7 +386,112 @@ public class FreshnessServerResponseTest {
         }
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePostGeneral));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[1], 0, messageSignaturePost));
+
+        byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
+
+        Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+        ListenableFuture<Contract.ReadResponse> listenableFuture = mock(ListenableFuture.class);
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
+
+        thrown.expect(AnnouncementSignatureInvalidException.class);
+        lib.read(pubClient, 0);
+
+    }
+
+    @Test
+    public void failIntegrityReadCompromiseAnnouncementsID() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ArrayList<Announcement> announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+
+        byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
+
+        announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 1, messageSignaturePost));
+
+        responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+        ListenableFuture<Contract.ReadResponse> listenableFuture = mock(ListenableFuture.class);
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
+
+        thrown.expect(ServerIntegrityViolation.class);
+        lib.read(pubClient, 0);
+
+    }
+
+    @Test
+    public void failIntegrityReadGeneralCompromiseFreshness() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ArrayList<Announcement> announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+
+        byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
+        responseFreshness = messageHandler.getFreshness();
+
+        Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+        ListenableFuture<Contract.ReadResponse> listenableFuture = mock(ListenableFuture.class);
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
+
+        thrown.expect(ServerIntegrityViolation.class);
+        lib.readGeneral(0);
+
+    }
+
+    @Test
+    public void failIntegrityReadGeneralCompromiseAnnouncementsMessage() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ArrayList<Announcement> announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("wrong message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -378,10 +510,82 @@ public class FreshnessServerResponseTest {
 
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
+        thrown.expect(AnnouncementSignatureInvalidException.class);
         lib.readGeneral(0);
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.readGeneral(0);
+
     }
+
+    @Test
+    public void failIntegrityReadGeneralCompromiseAnnouncementsReferences() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ArrayList<Announcement> announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[1], 0, messageSignaturePost));
+
+        byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
+
+        Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+        ListenableFuture<Contract.ReadResponse> listenableFuture = mock(ListenableFuture.class);
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
+
+        thrown.expect(AnnouncementSignatureInvalidException.class);
+        lib.readGeneral( 0);
+
+    }
+
+    @Test
+    public void failIntegrityReadGeneralCompromiseAnnouncementsID() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ArrayList<Announcement> announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+
+        byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
+
+        announcementList = new ArrayList<>();
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 1, messageSignaturePost));
+
+        responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+
+        Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
+
+        ListenableFuture<Contract.ReadResponse> listenableFuture = mock(ListenableFuture.class);
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
+
+        thrown.expect(ServerIntegrityViolation.class);
+        lib.readGeneral(0);
+
+    }
+
 
     private void setUpConnection(){
 
@@ -412,4 +616,5 @@ public class FreshnessServerResponseTest {
             }
         });
     }
+
 }
