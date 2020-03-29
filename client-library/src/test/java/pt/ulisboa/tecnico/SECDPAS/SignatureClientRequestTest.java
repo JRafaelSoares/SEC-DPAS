@@ -14,7 +14,7 @@ import java.security.*;
 
 import static org.junit.Assert.assertEquals;
 
-public class SignatureTest {
+public class SignatureClientRequestTest {
 
     private static ClientLibrary lib;
     private static Contract.RegisterRequest registerRequest;
