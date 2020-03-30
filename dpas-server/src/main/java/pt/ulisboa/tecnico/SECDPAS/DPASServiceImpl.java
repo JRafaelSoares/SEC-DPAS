@@ -12,12 +12,14 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
-import javax.crypto.SecretKey;
+
+import javax.crypto.*;
 import javax.xml.crypto.Data;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -209,20 +211,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
-		byte[] message = request.getMessage().getBytes();
+		byte[] encryptedMessage = request.getMessage().toByteArray();
 		byte[] messageSignature = request.getMessageSignature().toByteArray();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
-
-		char[] post = request.getMessage().toCharArray();
 
 		PublicKey userKey;
 		String[] announcements;
 		try{
 			userKey = SerializationUtils.deserialize(serializedPublicKey);
 			announcements = SerializationUtils.deserialize(serializedAnnouncements);
-		}catch(SerializationException e){
+		} catch(SerializationException e){
 			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("PublicKey").asRuntimeException());
 			return;
 		}
@@ -243,7 +243,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		try {
-			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
+			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, encryptedMessage, messageSignature, serializedAnnouncements), freshness, signature);
 
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
@@ -259,10 +259,30 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("NonExistentAnnouncementReference").asRuntimeException());
 			return;
 		}
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
+
+		byte[] postBytes = null;
+		try {
+			Cipher decrypt=Cipher.getInstance("RSA/ECB/PKCS1Padding");
+			decrypt.init(Cipher.DECRYPT_MODE, privateKey);
+			postBytes = decrypt.doFinal(encryptedMessage);
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		}
+
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, postBytes, serializedAnnouncements), messageSignature, userKey)){
 			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("AnnouncementSignatureInvalid").asRuntimeException());
 			return;
 		}
+
+		char[] post = new String(postBytes, StandardCharsets.UTF_8).toCharArray();
 
 		int announcementID = addCounter();
 
@@ -281,7 +301,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		try{
 			save("posts");
-		}catch (DatabaseException e){
+		} catch (DatabaseException e){
 			e.getCause();
 		}
 
@@ -292,13 +312,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
-		byte[] message = request.getMessage().getBytes();
+		byte[] encryptedMessage = request.getMessage().toByteArray();
 		byte[] messageSignature = request.getMessageSignature().toByteArray();
 		byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
-
-		char[] post = request.getMessage().toCharArray();
 
 		PublicKey userKey;
 		String[] announcements;
@@ -324,7 +342,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		try {
-			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, message, messageSignature, serializedAnnouncements), freshness, signature);
+			messageHandler.verifyMessage(Bytes.concat(serializedPublicKey, encryptedMessage, messageSignature, serializedAnnouncements), freshness, signature);
 		} catch (SignatureNotValidException e) {
 			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
 			return;
@@ -333,19 +351,36 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, message, serializedAnnouncements), messageSignature, userKey)){
-			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("AnnouncementSignatureInvalid").asRuntimeException());
-			return;
-		}
-
-		//TODO- Announcement can be null, mby test for it? Add try catch?
-
 		try{
 			referencesExist(announcements);
 		} catch (ServerInvalidReference e){
 			responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("NonExistentAnnouncementReference").asRuntimeException());
 			return;
 		}
+
+		byte[] postBytes = null;
+		try {
+			Cipher decrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+			decrypt.init(Cipher.DECRYPT_MODE, privateKey);
+			postBytes = decrypt.doFinal(encryptedMessage);
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		}
+
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, postBytes, serializedAnnouncements), messageSignature, userKey)){
+			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("AnnouncementSignatureInvalid").asRuntimeException());
+			return;
+		}
+
+		char[] post = new String(postBytes, StandardCharsets.UTF_8).toCharArray();
 
 		int announcementID = addCounter();
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, messageSignature);
@@ -611,7 +646,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void postState(Contract.PostRequest request, StreamObserver<Contract.TestsResponse> responseObserver) {
-		char[] post = request.getMessage().toCharArray();
+		char[] post = new String(request.getMessage().toByteArray()).toCharArray();
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
@@ -636,7 +671,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void postGeneralState(Contract.PostRequest request, StreamObserver<Contract.TestsResponse> responseObserver) {
-		char[] post = request.getMessage().toCharArray();
+		char[] post = new String(request.getMessage().toByteArray()).toCharArray();
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 

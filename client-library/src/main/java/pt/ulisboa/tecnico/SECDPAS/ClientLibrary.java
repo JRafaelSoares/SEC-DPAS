@@ -15,8 +15,13 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
@@ -346,14 +351,25 @@ public class ClientLibrary {
 	public Contract.PostRequest getPostRequest(char[] message, String[] references) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
-		byte[] postBytes = post.getBytes();
 		byte[] announcements = SerializationUtils.serialize(references);
+
+		byte[] postBytes = post.getBytes();
+
+		byte[] encryptedMessage = null;
+		try {
+			Cipher encrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+			encrypt.init(Cipher.ENCRYPT_MODE, serverPublicKey);
+			encryptedMessage = encrypt.doFinal(post.getBytes(StandardCharsets.UTF_8));
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
+			System.out.println("Unexpected error while encrypting message");
+			e.printStackTrace();
+		}
 
 		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
 		byte[] freshness = messageHandler.getFreshness();
-		byte[] integrity = messageHandler.sign(Bytes.concat(publicKey, postBytes, messageSignature, announcements), freshness);
+		byte[] integrity = messageHandler.sign(Bytes.concat(publicKey, encryptedMessage, messageSignature, announcements), freshness);
 
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(encryptedMessage)).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
 	}
 
 	public Contract.PostRequest getTestPostRequest(char[] message, String[] references) {
@@ -361,7 +377,7 @@ public class ClientLibrary {
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
 
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).build();
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post.getBytes())).setAnnouncements(ByteString.copyFrom(announcements)).build();
 	}
 
 	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){

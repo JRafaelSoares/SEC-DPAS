@@ -35,7 +35,7 @@ message PostRequest {
     //PublicKey
     bytes publicKey = 1;
     //Char[256]
-    string message = 2;
+    bytes message = 2;
     bytes messageSignature = 3;
     //Array Announcements
     bytes announcements = 4;

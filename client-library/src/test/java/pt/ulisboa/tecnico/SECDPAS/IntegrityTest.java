@@ -129,15 +129,15 @@ public class IntegrityTest {
             kpg.initialize(2048);
             KeyPair kp = kpg.genKeyPair();
             pub = kp.getPublic();
-        }catch(NoSuchAlgorithmException e){
+        } catch(NoSuchAlgorithmException e){
             System.out.println("Unable to create public key for testing");
         }
 
         byte[] publicKey = SerializationUtils.serialize(pub);
-        String post = request.getMessage();
+        byte[] post = request.getMessage().toByteArray();
         byte[] announcements = request.getAnnouncements().toByteArray();
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.postRequest(request);
@@ -149,10 +149,10 @@ public class IntegrityTest {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
-        String post = request.getMessage();
+        byte[] post = request.getMessage().toByteArray();
         byte[] announcements = request.getAnnouncements().toByteArray();
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(InvalidArgumentException.class);
         lib.postRequest(request);
@@ -165,10 +165,10 @@ public class IntegrityTest {
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
-        String post = "";
+        byte[] post = "".getBytes();
         byte[] announcements = request.getAnnouncements().toByteArray();
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientIntegrityViolationException.class);
         lib.postRequest(request);
@@ -181,10 +181,10 @@ public class IntegrityTest {
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
-        String post = request.getMessage();
+        byte[] post = request.getMessage().toByteArray();
         byte[] announcements = SerializationUtils.serialize(new String[0]);
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientIntegrityViolationException.class);
 
@@ -197,10 +197,10 @@ public class IntegrityTest {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
-        String post = "";
+        byte[] post = "".getBytes();
         byte[] announcements = SerializationUtils.serialize(new String[0]);
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientIntegrityViolationException.class);
 
@@ -224,10 +224,10 @@ public class IntegrityTest {
         }
 
         byte[] publicKey = SerializationUtils.serialize(pub);
-        String post = request.getMessage();
+        byte[] post = request.getMessage().toByteArray();
         byte[] announcements = request.getAnnouncements().toByteArray();
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.postGeneralRequest(request);
@@ -238,10 +238,10 @@ public class IntegrityTest {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
-        String post = request.getMessage();
+        byte[] post = request.getMessage().toByteArray();
         byte[] announcements = request.getAnnouncements().toByteArray();
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(InvalidArgumentException.class);
         lib.postGeneralRequest(request);
@@ -253,10 +253,10 @@ public class IntegrityTest {
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
-        String post = "";
+        byte[] post = "".getBytes();
         byte[] announcements = request.getAnnouncements().toByteArray();
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientIntegrityViolationException.class);
 
@@ -270,10 +270,10 @@ public class IntegrityTest {
 
 
         byte[] publicKey = request.getPublicKey().toByteArray();
-        String post = request.getMessage();
+        byte[] post = request.getMessage().toByteArray();
         byte[] announcements = SerializationUtils.serialize(new String[0]);
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientIntegrityViolationException.class);
 
@@ -286,10 +286,10 @@ public class IntegrityTest {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
-        String post = "";
+        byte[] post = "".getBytes();
         byte[] announcements = SerializationUtils.serialize(new String[0]);
 
-        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         thrown.expect(ClientIntegrityViolationException.class);
 
