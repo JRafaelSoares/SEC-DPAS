@@ -72,7 +72,7 @@ public class DPASServer {
 			Server server = ServerBuilder.forPort(portClient).addService(impl).build();
 			server.start();
 
-			System.out.println("Server started");
+			System.out.println("[SERVER] Server started");
 
 			// Do not exit the main thread. Wait until server is terminated.
 			server.awaitTermination();
