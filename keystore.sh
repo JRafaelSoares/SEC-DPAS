@@ -7,6 +7,7 @@ keytool -genkeypair \
         -alias serverKeyPair \
         -dname "CN=localhost" \
         -keyalg RSA \
+        -keysize 4096 \
         -validity 365 \
         -storepass serverKeyStore \
         -keystore serverKeyStore.jks
@@ -16,6 +17,7 @@ keytool -genkeypair \
         -alias clientKeyPair1 \
         -dname "CN=localhost" \
         -keyalg RSA \
+        -keysize 4096 \
         -validity 365 \
         -storepass clientKeyStore \
         -keystore clientKeyStore.jks
@@ -25,6 +27,7 @@ keytool -genkeypair \
         -alias clientKeyPair2 \
         -dname "CN=localhost" \
         -keyalg RSA \
+        -keysize 4096 \
         -validity 365 \
         -storepass clientKeyStore \
         -keystore clientKeyStore.jks
@@ -34,6 +37,7 @@ keytool -genkeypair \
         -alias clientKeyPair3 \
         -dname "CN=localhost" \
         -keyalg RSA \
+        -keysize 4096 \
         -validity 365 \
         -storepass clientKeyStore \
         -keystore clientKeyStore.jks

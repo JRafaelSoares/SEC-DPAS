@@ -11,7 +11,7 @@ import java.security.*;
 
 import static org.junit.Assert.assertEquals;
 
-public class FreshnessTest {
+public class FreshnessClientRequestTest {
 
     private static ClientLibrary lib;
     private static Contract.RegisterRequest registerRequest;

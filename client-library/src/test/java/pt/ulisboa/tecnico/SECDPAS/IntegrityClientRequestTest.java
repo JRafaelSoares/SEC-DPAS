@@ -13,7 +13,7 @@ import java.security.*;
 
 import static org.junit.Assert.assertEquals;
 
-public class IntegrityTest {
+public class IntegrityClientRequestTest {
 
     private static ClientLibrary lib;
     private static String s = "message";
@@ -86,7 +86,38 @@ public class IntegrityTest {
     }
 
     @Test
-    public void failRegisterIntegrityPublicKey() throws ClientAlreadyRegisteredException, MessageNotFreshException, CertificateInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
+    public void failRegisterIntegrityCompromiseFreshness() throws ClientAlreadyRegisteredException, MessageNotFreshException, CertificateInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
+        PublicKey pub;
+        Contract.RegisterRequest registerRequest;
+        ClientLibrary lib;
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            pub = kp.getPublic();
+            PrivateKey priv = kp.getPrivate();
+
+            lib = new ClientLibrary("localhost", 8080, pub, priv);
+            registerRequest = lib.getRegisterRequest();
+
+        }catch(NoSuchAlgorithmException | InvalidArgumentException e){
+            System.out.println("Unable to create public key for testing");
+            return;
+        }
+
+        byte[] publicKey = SerializationUtils.serialize(pub);
+
+        MessageHandler handler = new MessageHandler(null);
+        byte[] freshness = handler.getFreshness();
+
+        registerRequest = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(registerRequest.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientSignatureInvalidException.class);
+        lib.registerRequest(registerRequest);
+    }
+
+    @Test
+    public void failRegisterIntegrityCompromisePublicKey() throws ClientAlreadyRegisteredException, MessageNotFreshException, CertificateInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
         PublicKey pub;
         Contract.RegisterRequest registerRequest;
         ClientLibrary lib;
@@ -116,6 +147,20 @@ public class IntegrityTest {
 
         thrown.expect(ClientSignatureInvalidException.class);
         lib.registerRequest(registerRequest);
+    }
+
+    @Test
+    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
+
+        MessageHandler handler = new MessageHandler(null);
+        byte[] freshness = handler.getFreshness();
+
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(request.getPublicKey().toByteArray())).setMessage(request.getMessage()).setMessageSignature(ByteString.copyFrom(request.getMessageSignature().toByteArray())).setAnnouncements(ByteString.copyFrom(request.getAnnouncements().toByteArray())).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientIntegrityViolationException.class);
+        lib.postRequest(request);
+
     }
 
     @Test
@@ -209,6 +254,20 @@ public class IntegrityTest {
     }
 
     @Test
+    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+        Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
+
+        MessageHandler handler = new MessageHandler(null);
+        byte[] freshness = handler.getFreshness();
+
+        request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(request.getPublicKey().toByteArray())).setMessage(request.getMessage()).setMessageSignature(ByteString.copyFrom(request.getMessageSignature().toByteArray())).setAnnouncements(ByteString.copyFrom(request.getAnnouncements().toByteArray())).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientIntegrityViolationException.class);
+        lib.postGeneralRequest(request);
+
+    }
+
+    @Test
     public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
@@ -298,6 +357,21 @@ public class IntegrityTest {
     }
 
     @Test
+    public void failIntegrityReadCompromiseFreshness() throws TargetClientNotRegisteredException, ServerConnectionException, ServerIntegrityViolation, ClientSignatureInvalidException, ServerResponseNotFreshException, ServerSignatureInvalidException, ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+        lib.post(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
+
+        MessageHandler handler = new MessageHandler(null);
+        byte[] freshness = handler.getFreshness();
+
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientIntegrityViolationException.class);
+        lib.readRequest(request);
+
+    }
+
+    @Test
     public void failIntegrityReadCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
@@ -350,6 +424,21 @@ public class IntegrityTest {
 
         thrown.expect(ClientIntegrityViolationException.class);
         lib.readRequest(request);
+
+    }
+
+    @Test
+    public void failIntegrityReadGeneralCompromiseFreshness() throws TargetClientNotRegisteredException, ServerConnectionException, ServerIntegrityViolation, ClientSignatureInvalidException, ServerResponseNotFreshException, ServerSignatureInvalidException, ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+        lib.postGeneral(s.toCharArray());
+        Contract.ReadRequest request = lib.getReadRequest(pub,1);
+
+        MessageHandler handler = new MessageHandler(null);
+        byte[] freshness = handler.getFreshness();
+
+        request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
+
+        thrown.expect(ClientIntegrityViolationException.class);
+        lib.readGeneralRequest(request);
 
     }
 

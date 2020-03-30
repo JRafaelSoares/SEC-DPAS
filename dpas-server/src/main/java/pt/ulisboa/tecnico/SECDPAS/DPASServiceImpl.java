@@ -692,6 +692,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void cleanPosts(Empty request, StreamObserver<Empty> responseObserver) {
 		this.privateBoard = new ConcurrentHashMap<>();
+		this.announcementIDs = new ConcurrentHashMap<>();
 		try{
 			save("posts");
 		}catch (DatabaseException e){
@@ -704,6 +705,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void cleanGeneralPosts(Empty request, StreamObserver<Empty> responseObserver) {
 		this.generalBoard = new ArrayList<>();
+		this.announcementIDs = new ConcurrentHashMap<>();
 		try{
 			save("generalPosts");
 		}catch (DatabaseException e){

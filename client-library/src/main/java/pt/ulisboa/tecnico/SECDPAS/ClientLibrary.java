@@ -72,6 +72,17 @@ public class ClientLibrary {
 		}
 	}
 
+
+	/* constructor only for tests */
+	public ClientLibrary(DPASServiceGrpc.DPASServiceFutureStub futureStub, PublicKey publicKeyClient, PrivateKey privateKeyClient, PublicKey publicKeyServer) throws InvalidArgumentException, CertificateInvalidException{
+		this.futureStub = futureStub;//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
+
+		this.messageHandler = new MessageHandler(null);
+		this.publicKey = publicKeyClient;
+		this.privateKey = privateKeyClient;
+		this.serverPublicKey = publicKeyServer;
+	}
+
 	public void register() throws InvalidArgumentException, ServerResponseNotFreshException, ServerConnectionException, ClientSignatureInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientAlreadyRegisteredException {
 		//Serializes key and changes to ByteString
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
@@ -82,6 +93,7 @@ public class ClientLibrary {
 		try{
 			ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
 			Contract.ACK response = listenable.get();
+
 			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
 
 			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey)){
