@@ -336,21 +336,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		responseObserver.onCompleted();
 	}
 
-	private void save(String file) throws DatabaseException{
+	private synchronized void save(String file) throws DatabaseException{
 		try {
+
 			FileOutputStream myWriter = new FileOutputStream(this.databasePath + "/" + file + "_try.txt");
 
 			/* write in file */
 			switch (file) {
 				case "posts":
-					synchronized(this){
 						myWriter.write(SerializationUtils.serialize(privateBoard));
-					}
 					break;
 				case "generalPosts":
-					synchronized (this){
 						myWriter.write(SerializationUtils.serialize(generalBoard));
-					}
 					break;
 			}
 			myWriter.close();
@@ -360,9 +357,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			Path dst = Paths.get(this.databasePath + "/" + file + ".txt");
 
 			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
-			//Saves the IDs persisantly
+			//Saves the IDs persistently
 			saveIDs();
-
 		} catch (IOException e) {
 			throw new DatabaseException("Unable to save: " + e.getMessage());
 		}
@@ -451,7 +447,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			decrypt.init(Cipher.DECRYPT_MODE, privateKey);
 			postBytes = decrypt.doFinal(encryptedMessage);
 		} catch (IllegalBlockSizeException | BadPaddingException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-			System.out.println("[REGISTER] ERROR - Decrypting -  " + e.getMessage() + "\n");
+			System.out.println("[POST] ERROR - Decrypting -  " + e.getMessage() + "\n");
 		}
 
 		/* Verify signature of announcements */

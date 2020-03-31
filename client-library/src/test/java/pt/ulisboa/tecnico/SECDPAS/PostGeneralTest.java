@@ -57,7 +57,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralCorrectNoAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+	public void postGeneralCorrectNoAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
 		String s = "NoAnnouncement";
 		lib1.postGeneral(s.toCharArray());
 
@@ -65,7 +65,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralCorrectWithAnnouncementsTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+	public void postGeneralCorrectWithAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
 		String s1 = "NoAnnouncement";
 		//Announcement a = new Announcement(s1.toCharArray(), pub1, 0);
 		lib1.postGeneral(s1.toCharArray());
@@ -82,18 +82,23 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralAnnouncementsDoesNotExistTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+	public void postGeneralAnnouncementsDoesNotExistTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
 		String[] announcements = { Integer.toString(12345678) };
 
 		String s2 = "WithAnnouncement";
 
-		thrown.expect(NonExistentAnnouncementReferenceException.class);
-		lib1.postGeneral(s2.toCharArray(), announcements);
+		try{
+            lib1.postGeneral(s2.toCharArray(), announcements);
+            fail("Communication exception - There is a non-existent announcement referenced in this post - should have been thrown.");
+
+        }catch (ComunicationException e){
+		    assertEquals("There is a non-existent announcement referenced in this post", e.getMessage());
+        }
 	}
 
 
 	@Test
-	public void postGeneralMessageLimitTest() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+	public void postGeneralMessageLimitTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
@@ -104,7 +109,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageEmptyTest() throws ClientNotRegisteredException, pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+	public void postGeneralMessageEmptyTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
 		char[] emptyMessage = new char[0];
 		lib1.postGeneral(emptyMessage);
 
@@ -112,7 +117,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralClientNotRegisteredTest() throws NonExistentAnnouncementReferenceException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException {
+	public void postGeneralClientNotRegisteredTest() throws InvalidArgumentException, ComunicationException {
 		try{
 			lib2.postGeneral("Client Not Registered".toCharArray());
 			fail("Exception ClientNotRegisteredException should have been thrown");
@@ -123,7 +128,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageTooLongTest() throws ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+	public void postGeneralMessageTooLongTest() throws ClientNotRegisteredException, ComunicationException {
 		char[] messageTooLong = new char[256];
 		for (int i = 0; i<256; i++){
 			messageTooLong[i] = 'a';
@@ -138,7 +143,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageNullTest() throws ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+	public void postGeneralMessageNullTest() throws ClientNotRegisteredException, ComunicationException {
 
 		try {
 			lib1.postGeneral(null);

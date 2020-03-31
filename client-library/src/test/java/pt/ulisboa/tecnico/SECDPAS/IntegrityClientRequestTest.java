@@ -12,6 +12,7 @@ import org.junit.rules.ExpectedException;
 import java.security.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class IntegrityClientRequestTest {
 
@@ -50,21 +51,21 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void successPost() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void successPostGeneral() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
 
     @Test
-    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successRead() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -75,7 +76,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successReadGeneral() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadGeneralRequest(1);
 
@@ -86,7 +87,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failRegisterIntegrityCompromiseFreshness() throws ClientAlreadyRegisteredException, MessageNotFreshException, CertificateInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
+    public void failRegisterIntegrityCompromiseFreshness() throws ClientAlreadyRegisteredException, InvalidArgumentException, CertificateInvalidException {
         PublicKey pub;
         Contract.RegisterRequest registerRequest;
         ClientLibrary lib;
@@ -112,12 +113,16 @@ public class IntegrityClientRequestTest {
 
         registerRequest = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(registerRequest.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientSignatureInvalidException.class);
-        lib.registerRequest(registerRequest);
+        try{
+            lib.registerRequest( registerRequest);
+            fail("Communication exception - The signature of the request wasn't valid - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The signature of the request wasn't valid", e.getMessage());
+        }
     }
 
     @Test
-    public void failRegisterIntegrityCompromisePublicKey() throws ClientAlreadyRegisteredException, MessageNotFreshException, CertificateInvalidException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
+    public void failRegisterIntegrityCompromisePublicKey() throws ClientAlreadyRegisteredException, InvalidArgumentException, CertificateInvalidException {
         PublicKey pub;
         Contract.RegisterRequest registerRequest;
         ClientLibrary lib;
@@ -145,12 +150,16 @@ public class IntegrityClientRequestTest {
 
         registerRequest = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(registerRequest.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(registerRequest.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientSignatureInvalidException.class);
-        lib.registerRequest(registerRequest);
+        try{
+            lib.registerRequest( registerRequest);
+            fail("Communication exception - The signature of the request wasn't valid - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The signature of the request wasn't valid", e.getMessage());
+        }
     }
 
     @Test
-    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         MessageHandler handler = new MessageHandler(null);
@@ -158,13 +167,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(request.getPublicKey().toByteArray())).setMessage(request.getMessage()).setMessageSignature(ByteString.copyFrom(request.getMessageSignature().toByteArray())).setAnnouncements(ByteString.copyFrom(request.getAnnouncements().toByteArray())).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.postRequest(request);
+        try{
+            lib.postRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityPostCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostCompromisePublicKey() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
@@ -190,7 +203,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostCompromisePublicKeyEmpty() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
@@ -205,7 +218,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostCompromiseMessage() throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
@@ -215,13 +228,16 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.postRequest(request);
-
+        try{
+            lib.postRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
     }
 
     @Test
-    public void failIntegrityPostCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostCompromiseAnnouncements() throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
@@ -231,14 +247,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-
-        lib.postRequest(request);
+        try{
+            lib.postRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityPostCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostCompromiseMessageAnnouncements() throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -247,14 +266,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-
-        lib.postRequest(request);
+        try{
+            lib.postRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         MessageHandler handler = new MessageHandler(null);
@@ -262,13 +284,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(request.getPublicKey().toByteArray())).setMessage(request.getMessage()).setMessageSignature(ByteString.copyFrom(request.getMessageSignature().toByteArray())).setAnnouncements(ByteString.copyFrom(request.getAnnouncements().toByteArray())).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.postGeneralRequest(request);
+        try{
+            lib.postGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
@@ -293,7 +319,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromisePublicKeyEmpty() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
@@ -307,7 +333,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseMessage() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromiseMessage() throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
@@ -317,14 +343,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-
-        lib.postGeneralRequest(request);
+        try{
+            lib.postGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromiseAnnouncements() throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
@@ -334,14 +363,16 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-
-        lib.postGeneralRequest(request);
-
+        try{
+            lib.postGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseMessageAnnouncements() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromiseMessageAnnouncements()throws ClientNotRegisteredException, InvalidArgumentException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -350,14 +381,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-
-        lib.postGeneralRequest(request);
+        try{
+            lib.postGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadCompromiseFreshness() throws TargetClientNotRegisteredException, ServerConnectionException, ServerIntegrityViolation, ClientSignatureInvalidException, ServerResponseNotFreshException, ServerSignatureInvalidException, ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseFreshness() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -366,13 +400,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.readRequest(request);
+        try{
+            lib.readRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadCompromisePublicKey() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromisePublicKey() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -398,7 +436,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityReadCompromisePublicKeyEmpty() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromisePublicKeyEmpty() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -413,7 +451,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityReadCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseNumber() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -422,13 +460,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(ByteString.copyFrom(publicKey)).setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.readRequest(request);
+        try{
+            lib.readRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseFreshness() throws TargetClientNotRegisteredException, ServerConnectionException, ServerIntegrityViolation, ClientSignatureInvalidException, ServerResponseNotFreshException, ServerSignatureInvalidException, ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadGeneralCompromiseFreshness() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -437,13 +479,17 @@ public class IntegrityClientRequestTest {
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.readGeneralRequest(request);
+        try{
+            lib.readGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseNumber() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadGeneralCompromiseNumber() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
@@ -452,8 +498,12 @@ public class IntegrityClientRequestTest {
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(ByteString.copyFrom(publicKey)).setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.readGeneralRequest(request);
+        try{
+            lib.readGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
 
     }
 

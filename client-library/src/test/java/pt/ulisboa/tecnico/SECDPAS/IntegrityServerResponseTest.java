@@ -20,6 +20,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
@@ -91,7 +92,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void successPost() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         if(!messageHandler.isInSession()){
             setUpConnection();
             lib.setupConnection();
@@ -121,7 +122,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void successPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -152,7 +153,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void successRead() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -186,7 +187,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void successReadGeneral() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -220,7 +221,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityRegisterCompromiseFreshness() throws ClientAlreadyRegisteredException, InvalidArgumentException, ServerConnectionException, ClientRequestNotFreshException, ServerResponseNotFreshException, ClientSignatureInvalidException, ServerSignatureInvalidException {
+    public void failIntegrityRegisterCompromiseFreshness() throws ClientAlreadyRegisteredException, InvalidArgumentException{
         byte[] freshness = messageHandler.getFreshness();
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         freshness = messageHandler.getFreshness();
@@ -240,13 +241,17 @@ public class IntegrityServerResponseTest {
 
         when(stub.register(isA(Contract.RegisterRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(ServerSignatureInvalidException.class);
-        lib.register();
+        try{
+            lib.register();
+            fail("Communication exception - Server signature was invalid - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("Server signature was invalid", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         if(!messageHandler.isInSession()){
             setUpConnection();
             lib.setupConnection();
@@ -273,12 +278,16 @@ public class IntegrityServerResponseTest {
 
         when(stub.post(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(ServerIntegrityViolation.class);
-        lib.post("message".toCharArray());
+        try{
+            lib.post("message".toCharArray());
+            fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the server response was violated", e.getMessage());
+        }
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -306,12 +315,16 @@ public class IntegrityServerResponseTest {
 
         when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(ServerIntegrityViolation.class);
-        lib.postGeneral("message".toCharArray());
+        try{
+            lib.postGeneral("message".toCharArray());
+            fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the server response was violated", e.getMessage());
+        }
     }
 
     @Test
-    public void failIntegrityReadCompromiseFreshness() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -339,13 +352,17 @@ public class IntegrityServerResponseTest {
 
         when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(ServerIntegrityViolation.class);
-        lib.read(pubClient, 0);
+        try{
+            lib.read(pubClient, 0);
+            fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the server response was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadCompromiseAnnouncementsMessage() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseAnnouncementsMessage() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -372,13 +389,17 @@ public class IntegrityServerResponseTest {
 
         when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(AnnouncementSignatureInvalidException.class);
-        lib.read(pubClient, 0);
+        try{
+            lib.read(pubClient, 0);
+            fail("Communication exception - An announcement was not properly signed - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("An announcement was not properly signed", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadCompromiseAnnouncementsReferences() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseAnnouncementsReferences() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -405,13 +426,17 @@ public class IntegrityServerResponseTest {
 
         when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(AnnouncementSignatureInvalidException.class);
-        lib.read(pubClient, 0);
+        try{
+            lib.read(pubClient, 0);
+            fail("Communication exception - An announcement was not properly signed - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("An announcement was not properly signed", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadCompromiseAnnouncementsID() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadCompromiseAnnouncementsID() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -443,13 +468,17 @@ public class IntegrityServerResponseTest {
 
         when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(ServerIntegrityViolation.class);
-        lib.read(pubClient, 0);
+        try{
+            lib.read(pubClient, 0);
+            fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the server response was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseFreshness() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -477,13 +506,17 @@ public class IntegrityServerResponseTest {
 
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(ServerIntegrityViolation.class);
-        lib.readGeneral(0);
+        try{
+            lib.readGeneral(0);
+            fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the server response was violated", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseAnnouncementsMessage() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadGeneralCompromiseAnnouncementsMessage() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -510,13 +543,17 @@ public class IntegrityServerResponseTest {
 
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(AnnouncementSignatureInvalidException.class);
-        lib.readGeneral(0);
+        try{
+            lib.readGeneral(0);
+            fail("Communication exception - An announcement was not properly signed - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("An announcement was not properly signed", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseAnnouncementsReferences() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadGeneralCompromiseAnnouncementsReferences() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -543,13 +580,16 @@ public class IntegrityServerResponseTest {
 
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(AnnouncementSignatureInvalidException.class);
-        lib.readGeneral( 0);
-
+        try{
+            lib.readGeneral(0);
+            fail("Communication exception - An announcement was not properly signed - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("An announcement was not properly signed", e.getMessage());
+        }
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseAnnouncementsID() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void failIntegrityReadGeneralCompromiseAnnouncementsID() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -581,8 +621,12 @@ public class IntegrityServerResponseTest {
 
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        thrown.expect(ServerIntegrityViolation.class);
-        lib.readGeneral(0);
+        try{
+            lib.readGeneral(0);
+            fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the server response was violated", e.getMessage());
+        }
 
     }
 

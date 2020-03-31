@@ -52,13 +52,13 @@ public class RegisterTest {
 	}
 
 	@Test
-	public void registerCorrectTest() throws ClientAlreadyRegisteredException, InvalidArgumentException, ServerConnectionException, ClientRequestNotFreshException, ServerResponseNotFreshException, ClientSignatureInvalidException, ServerSignatureInvalidException {
+	public void registerCorrectTest() throws ClientAlreadyRegisteredException, InvalidArgumentException, ComunicationException {
 		lib1.register();
 		assertTrue(lib1.clientRegisteredState());
 	}
 
 	@Test
-	public void registerClientAlreadyRegisteredTest() throws ClientAlreadyRegisteredException, InvalidArgumentException, ServerConnectionException, ClientRequestNotFreshException, ServerResponseNotFreshException, ClientSignatureInvalidException, ServerSignatureInvalidException {
+	public void registerClientAlreadyRegisteredTest() throws ClientAlreadyRegisteredException, InvalidArgumentException, ComunicationException {
 		lib2.register();
 		thrown.expect(ClientAlreadyRegisteredException.class);
 		lib2.register();

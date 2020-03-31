@@ -13,6 +13,7 @@ import org.junit.rules.ExpectedException;
 import java.security.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SignatureClientRequestTest {
 
@@ -55,21 +56,21 @@ public class SignatureClientRequestTest {
 
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void successPost() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void successPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
     }
 
     @Test
-    public void successRead() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub, 1);
 
@@ -80,7 +81,7 @@ public class SignatureClientRequestTest {
     }
 
     @Test
-    public void successReadGeneral() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadGeneralRequest( 1);
 
@@ -91,7 +92,7 @@ public class SignatureClientRequestTest {
     }
 
     @Test
-    public void failRegisterSignature() throws ClientAlreadyRegisteredException, MessageNotFreshException, NoSuchAlgorithmException, ServerSignatureInvalidException, ClientRequestNotFreshException, InvalidArgumentException, ClientSignatureInvalidException {
+    public void failRegisterSignature() throws NoSuchAlgorithmException, ClientAlreadyRegisteredException, InvalidArgumentException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -105,12 +106,16 @@ public class SignatureClientRequestTest {
 
         Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(pub2))).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientSignatureInvalidException.class);
-        lib.registerRequest(request);
+        try{
+            lib.registerRequest(request);
+            fail("Communication exception - The signature of the request wasn't valid - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The signature of the request wasn't valid", e.getMessage());
+        }
     }
 
     @Test
-    public void failPostSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failPostSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -125,12 +130,16 @@ public class SignatureClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(request.getPublicKey()).setMessage(request.getMessage()).setAnnouncements(request.getAnnouncements()).setFreshness(request.getFreshness()).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.postRequest(request);
+        try{
+            lib.postRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
     }
 
     @Test
-    public void failPostGeneralSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, AnnouncementSignatureInvalidException, NonExistentAnnouncementReferenceException {
+    public void failPostGeneralSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -145,12 +154,16 @@ public class SignatureClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(request.getPublicKey()).setMessage(request.getMessage()).setAnnouncements(request.getAnnouncements()).setFreshness(request.getFreshness()).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.postGeneralRequest(request);
+        try{
+            lib.postGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
     }
 
     @Test
-    public void failReadSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, TargetClientNotRegisteredException {
+    public void failReadSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -165,12 +178,16 @@ public class SignatureClientRequestTest {
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.readRequest(request);
+        try{
+            lib.readRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
     }
 
     @Test
-    public void failReadGeneralSignature() throws ClientNotRegisteredException, SignatureNotValidException, MessageNotFreshException, NoSuchAlgorithmException, InvalidArgumentException, ClientIntegrityViolationException, ClientSessionNotInitiatedException, ClientRequestNotFreshException, TargetClientNotRegisteredException {
+    public void failReadGeneralSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -185,8 +202,12 @@ public class SignatureClientRequestTest {
 
         request = Contract.ReadRequest.newBuilder().setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
-        thrown.expect(ClientIntegrityViolationException.class);
-        lib.readGeneralRequest(request);
+        try{
+            lib.readGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
     }
 
 }

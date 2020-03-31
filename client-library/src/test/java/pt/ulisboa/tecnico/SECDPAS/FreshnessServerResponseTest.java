@@ -15,6 +15,7 @@ import org.mockito.stubbing.Answer;
 import java.security.*;
 import java.util.ArrayList;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
 
@@ -85,7 +86,7 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void successPost() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
         if(!messageHandler.isInSession()){
             setUpConnection();
             lib.setupConnection();
@@ -115,7 +116,7 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void successPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -146,7 +147,7 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void successRead() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -180,7 +181,7 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void successReadGeneral() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void successReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -214,7 +215,7 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void failFreshnessRegister() throws ClientAlreadyRegisteredException, InvalidArgumentException, ServerConnectionException, ClientRequestNotFreshException, ServerResponseNotFreshException, ClientSignatureInvalidException, ServerSignatureInvalidException {
+    public void failFreshnessRegister() throws ClientAlreadyRegisteredException, InvalidArgumentException, ComunicationException {
         byte[] freshness = messageHandler.getFreshness();
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
@@ -231,12 +232,16 @@ public class FreshnessServerResponseTest {
         when(stub.register(isA(Contract.RegisterRequest.class))).thenReturn(listenableFuture);
 
         lib.register();
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.register();
+        try{
+            lib.register();
+            fail("Communication exception - Server response was not fresh - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("Server response was not fresh", e.getMessage());
+        }
     }
 
     @Test
-    public void failFreshnessPost() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void failFreshnessPost() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
         setUpConnection();
         lib.setupConnection();
 
@@ -256,12 +261,16 @@ public class FreshnessServerResponseTest {
         when(stub.post(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
         lib.post("message".toCharArray());
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.post("message".toCharArray());
+        try{
+            lib.post("message".toCharArray());
+            fail("Communication exception - Server response was not fresh - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("Server response was not fresh", e.getMessage());
+        }
     }
 
     @Test
-    public void failFreshnessPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void failFreshnessPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -284,12 +293,16 @@ public class FreshnessServerResponseTest {
         when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
         lib.postGeneral("message".toCharArray());
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.postGeneral("message".toCharArray());
+        try{
+            lib.postGeneral("message".toCharArray());
+            fail("Communication exception - Server response was not fresh - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("Server response was not fresh", e.getMessage());
+        }
     }
 
     @Test
-    public void failFreshnessCrossPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, NonExistentAnnouncementReferenceException {
+    public void failFreshnessCrossPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -313,12 +326,16 @@ public class FreshnessServerResponseTest {
         when(stub.post(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
         lib.postGeneral("message".toCharArray());
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.post("message".toCharArray());
+        try{
+            lib.post("message".toCharArray());
+            fail("Communication exception - Server response was not fresh - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("Server response was not fresh", e.getMessage());
+        }
     }
 
     @Test
-    public void zfailFreshnessRead() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void zfailFreshnessRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -346,12 +363,16 @@ public class FreshnessServerResponseTest {
         when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
         lib.read(pubClient, 0);
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.read(pubClient, 0);
+        try{
+            lib.read(pubClient, 0);
+            fail("Communication exception - Server response was not fresh - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("Server response was not fresh", e.getMessage());
+        }
     }
 
     @Test
-    public void zfailFreshnessReadGeneral() throws InvalidArgumentException, ClientNotRegisteredException, ServerResponseNotFreshException, AnnouncementSignatureInvalidException, ServerIntegrityViolation, ServerConnectionException, ClientSignatureInvalidException, ClientIntegrityViolationException, ServerSignatureInvalidException, ClientRequestNotFreshException, ClientSessionNotInitiatedException, TargetClientNotRegisteredException, NonExistentAnnouncementReferenceException {
+    public void zfailFreshnessReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -379,8 +400,12 @@ public class FreshnessServerResponseTest {
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
         lib.readGeneral(0);
-        thrown.expect(ServerResponseNotFreshException.class);
-        lib.readGeneral(0);
+        try{
+            lib.readGeneral( 0);
+            fail("Communication exception - Server response was not fresh - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("Server response was not fresh", e.getMessage());
+        }
     }
 
     private void setUpConnection(){
