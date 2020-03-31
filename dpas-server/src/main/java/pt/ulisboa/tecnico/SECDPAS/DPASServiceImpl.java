@@ -327,7 +327,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			responseAnnouncements = SerializationUtils.serialize(this.generalBoard.toArray(new Announcement[0]));
 		}
 		else{
-			//TODO - Check if subList is done correctly
 			List<Announcement> toSent =  this.generalBoard.subList(this.generalBoard.size()-numPosts, this.generalBoard.size());
 			responseAnnouncements = SerializationUtils.serialize(toSent.toArray(new Announcement[0]));
 		}
