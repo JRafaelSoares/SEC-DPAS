@@ -88,6 +88,29 @@ public class FreshnessClientRequestTest {
     }
 
     @Test
+    public void successCloseConnection() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+        ClientLibrary lib = null;
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            PublicKey pub = kp.getPublic();
+            PrivateKey priv = kp.getPrivate();
+
+            lib = new ClientLibrary("localhost", 8080, pub, priv);
+
+            lib.register();
+            lib.setupConnection();
+
+        } catch (Exception e){
+            System.out.println("// Exception message: " + e.getMessage());
+            System.out.println("Unable to obtain public key for testing");
+        }
+
+        lib.closeConnection();
+    }
+
+    @Test
     public void failRegisterFreshness() throws ClientAlreadyRegisteredException, ComunicationException, InvalidArgumentException {
         thrown.expect(ClientAlreadyRegisteredException.class);
         lib.registerRequest(registerRequest);
@@ -192,6 +215,37 @@ public class FreshnessClientRequestTest {
             assertEquals("The request received from the client wasn't fresh", e.getMessage());
         }
 
+    }
+
+    @Test
+    public void failCloseConnectionFreshness() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+        ClientLibrary lib = null;
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            PublicKey pub = kp.getPublic();
+            PrivateKey priv = kp.getPrivate();
+
+            lib = new ClientLibrary("localhost", 8080, pub, priv);
+
+            lib.register();
+            lib.setupConnection();
+
+        } catch (Exception e){
+            System.out.println("// Exception message: " + e.getMessage());
+            System.out.println("Unable to obtain public key for testing");
+        }
+        Contract.CloseSessionRequest request = lib.getCloseSessionRequest();
+        lib.closeConnectionRequest(request);
+
+        try{
+            lib.setupConnection();
+            lib.closeConnectionRequest(request);
+            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+        }
     }
 
 }

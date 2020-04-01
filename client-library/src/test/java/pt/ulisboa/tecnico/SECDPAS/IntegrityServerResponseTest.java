@@ -20,8 +20,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -221,7 +220,37 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityRegisterCompromiseFreshness() throws ClientAlreadyRegisteredException, InvalidArgumentException{
+    public void successCloseSession() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
+
+        byte[] freshness = messageHandler.getFreshness();
+        byte[] signature = messageHandler.sign(new byte[0], freshness);
+
+        Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.closeSession(isA(Contract.CloseSessionRequest.class))).thenReturn(listenableFuture);
+
+        lib.closeConnection();
+
+        messageHandler.resetSignature(null);
+        assertFalse(messageHandler.isInSession());
+
+    }
+
+    @Test
+    public void failIntegrityRegisterCompromiseFreshness() throws ClientAlreadyRegisteredException{
         byte[] freshness = messageHandler.getFreshness();
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         freshness = messageHandler.getFreshness();
@@ -625,6 +654,40 @@ public class IntegrityServerResponseTest {
             lib.readGeneral(0);
             fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
         }catch (ComunicationException e){
+            assertEquals("The integrity of the server response was violated", e.getMessage());
+        }
+
+    }
+
+    @Test
+    public void failCloseSessionCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+
+        if(!messageHandler.isInSession()){
+            setUpConnection();
+            lib.setupConnection();
+        }
+
+        ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
+
+        byte[] freshness = messageHandler.getFreshness();
+        byte[] signature = messageHandler.sign(new byte[0], freshness);
+
+        freshness = messageHandler.getFreshness();
+
+        Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
+        try{
+            when(listenableFuture.get()).thenReturn(response);
+        }catch (Exception e){
+            fail(e.getMessage());
+        }
+
+        when(stub.closeSession(isA(Contract.CloseSessionRequest.class))).thenReturn(listenableFuture);
+
+        try{
+            lib.closeConnection();
+            fail("Communication exception - The integrity of the server response was violated - should have been thrown.");
+        } catch (ComunicationException e){
             assertEquals("The integrity of the server response was violated", e.getMessage());
         }
 

@@ -56,14 +56,14 @@ public class SignatureClientRequestTest {
 
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void successPost() throws ClientNotRegisteredException, ComunicationException{
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void successPostGeneral() throws ClientNotRegisteredException, ComunicationException{
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
@@ -92,7 +92,7 @@ public class SignatureClientRequestTest {
     }
 
     @Test
-    public void failRegisterSignature() throws NoSuchAlgorithmException, ClientAlreadyRegisteredException, InvalidArgumentException{
+    public void failRegisterSignature() throws NoSuchAlgorithmException, ClientAlreadyRegisteredException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -115,7 +115,7 @@ public class SignatureClientRequestTest {
     }
 
     @Test
-    public void failPostSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failPostSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -139,7 +139,7 @@ public class SignatureClientRequestTest {
     }
 
     @Test
-    public void failPostGeneralSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failPostGeneralSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -163,7 +163,7 @@ public class SignatureClientRequestTest {
     }
 
     @Test
-    public void failReadSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failReadSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -187,7 +187,7 @@ public class SignatureClientRequestTest {
     }
 
     @Test
-    public void failReadGeneralSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failReadGeneralSignature() throws NoSuchAlgorithmException, ClientNotRegisteredException{
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair kp = kpg.genKeyPair();
@@ -204,6 +204,43 @@ public class SignatureClientRequestTest {
 
         try{
             lib.readGeneralRequest(request);
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+        }catch (ComunicationException e){
+            assertEquals("The integrity of the request was violated", e.getMessage());
+        }
+    }
+
+    @Test
+    public void failCloseConnectionSignature() throws ClientNotRegisteredException, InvalidArgumentException {
+        ClientLibrary lib = null;
+        PrivateKey priv = null;
+        PublicKey pub = null;
+        try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            pub = kp.getPublic();
+            priv = kp.getPrivate();
+
+            lib = new ClientLibrary("localhost", 8080, pub, priv);
+
+            lib.register();
+            lib.setupConnection();
+
+        } catch (Exception e){
+            System.out.println("// Exception message: " + e.getMessage());
+            System.out.println("Unable to obtain public key for testing");
+        }
+        Contract.CloseSessionRequest request = lib.getCloseSessionRequest();
+
+        byte[] publicKey = SerializationUtils.serialize(pub);
+        byte[] freshness = request.getFreshness().toByteArray();
+        byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
+
+        request = Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
+        try{
+            lib.closeConnectionRequest(request);
             fail("Communication exception - The integrity of the request was violated - should have been thrown.");
         }catch (ComunicationException e){
             assertEquals("The integrity of the request was violated", e.getMessage());
