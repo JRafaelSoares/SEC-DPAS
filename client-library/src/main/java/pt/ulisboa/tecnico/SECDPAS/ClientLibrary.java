@@ -86,7 +86,7 @@ public class ClientLibrary {
 		this.serverPublicKey = publicKeyServer;
 	}
 
-	public void register() throws InvalidArgumentException, ComunicationException, ClientAlreadyRegisteredException {
+	public void register() throws ComunicationException, ClientAlreadyRegisteredException {
 		if(debug != 0) System.out.println("[REGISTER] Request from client.\n");
 
 		/* Serializes key and changes to ByteString */
@@ -126,7 +126,7 @@ public class ClientLibrary {
 		}
 	}
 
-	protected void setupConnection() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	protected void setupConnection() throws ClientNotRegisteredException, ComunicationException {
 		if(debug != 0) System.out.println("[SETUP CONNECTION] Request from client.\n");
 
 		/* Create Diffie-Hellman agreement */
@@ -354,21 +354,16 @@ public class ClientLibrary {
 		throw new RuntimeException("Unknown error");
 	}
 
-	public void closeConnection() throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	public void closeConnection() throws ComunicationException, ClientNotRegisteredException, InvalidArgumentException {
 		if(debug != 0) System.out.println("[CLOSE CONNECTION] Request from client.\n");
 
 		/* Check if client is in session */
 		if(!messageHandler.isInSession()){
-			return;
+			throw new InvalidArgumentException("Session already closed");
 		}
 
 		try{
-			byte[] serializedPublicKey = SerializationUtils.serialize(publicKey);
-			byte[] freshness = messageHandler.getFreshness();
-			byte[] signature = messageHandler.sign(serializedPublicKey, freshness);
-
-			Contract.CloseSessionRequest closeSessionRequest = Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(serializedPublicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(closeSessionRequest);
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(getCloseSessionRequest());
 			Contract.ACK response = listenableFuture.get();
 
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -455,6 +450,14 @@ public class ClientLibrary {
 		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
+	public Contract.CloseSessionRequest getCloseSessionRequest(){
+		byte[] serializedPublicKey = SerializationUtils.serialize(publicKey);
+		byte[] freshness = messageHandler.getFreshness();
+		byte[] signature = messageHandler.sign(serializedPublicKey, freshness);
+
+		return Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(serializedPublicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+	}
+
 	/********************/
 	/** TEST FUNCTIONS **/
 	/********************/
@@ -510,7 +513,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public void postRequest(Contract.PostRequest request) throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+	public void postRequest(Contract.PostRequest request) throws ClientNotRegisteredException, ComunicationException {
 		try{
 			Contract.ACK response = stub.post(request);
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -524,7 +527,7 @@ public class ClientLibrary {
 
 	}
 
-	public void postGeneralRequest(Contract.PostRequest request) throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+	public void postGeneralRequest(Contract.PostRequest request) throws ClientNotRegisteredException, ComunicationException {
 		try{
 			Contract.ACK response = stub.postGeneral(request);
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -537,7 +540,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public Announcement[] readRequest(Contract.ReadRequest request) throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+	public Announcement[] readRequest(Contract.ReadRequest request) throws ClientNotRegisteredException, ComunicationException {
 		try {
 			Contract.ReadResponse response = stub.read(request);
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -553,7 +556,7 @@ public class ClientLibrary {
 		throw new RuntimeException("Unexpected Error");
 	}
 
-	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ClientNotRegisteredException, ComunicationException {
 		try {
 			Contract.ReadResponse response = stub.readGeneral(request);
 			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
@@ -569,7 +572,7 @@ public class ClientLibrary {
 		throw new RuntimeException("Unexpected error");
 	}
 
-	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, ComunicationException, InvalidArgumentException {
+	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, ComunicationException {
 		try{
 			Contract.ACK response = stub.register(request);
 			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
@@ -581,6 +584,36 @@ public class ClientLibrary {
 			handleRegistrationError(e.getStatus());
 		} catch (MessageNotFreshException e) {
 			throw new ComunicationException("Server response was not fresh");
+		}
+	}
+
+	public void closeConnectionRequest(Contract.CloseSessionRequest request) throws ComunicationException, ClientNotRegisteredException, InvalidArgumentException {
+		if(debug != 0) System.out.println("[CLOSE CONNECTION] Request from client.\n");
+
+		/* Check if client is in session */
+		if(!messageHandler.isInSession()){
+			throw new InvalidArgumentException("Session already closed");
+		}
+
+		try{
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(request);
+			Contract.ACK response = listenableFuture.get();
+
+			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.resetSignature(null);
+		} catch (StatusRuntimeException e){
+			handleCloseConnectionError(e.getStatus());
+		} catch (SignatureNotValidException e) {
+			throw new ComunicationException("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ComunicationException("Server response was not fresh");
+		} catch (InterruptedException | ExecutionException e){
+			if(e.getCause() instanceof StatusRuntimeException){
+				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				handleCloseConnectionError(exception.getStatus());
+			}
+
+			throw new ComunicationException(e.getMessage());
 		}
 	}
 
@@ -625,13 +658,13 @@ public class ClientLibrary {
 	/** ERROR HANDLING FUNCTIONS **/
 	/******************************/
 
-	private void handleRegistrationError(Status status) throws InvalidArgumentException, ClientAlreadyRegisteredException, ComunicationException {
+	private void handleRegistrationError(Status status) throws ClientAlreadyRegisteredException, ComunicationException {
 		switch(status.getCode()){
 			case INVALID_ARGUMENT:
 				switch(status.getDescription()){
 					case "PublicKey":
 						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-						throw new InvalidArgumentException("The public key could not be deserialised on the server");
+						throw new ComunicationException("The public key could not be deserialised on the server");
 					case "ClientAlreadyRegistered":
 						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - This client was already registered \n");
 						throw new ClientAlreadyRegisteredException("This client was already registered");
@@ -648,12 +681,12 @@ public class ClientLibrary {
 		}
 	}
 
-	private void handleSetupConnectionError(Status status) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	private void handleSetupConnectionError(Status status) throws ComunicationException, ClientNotRegisteredException {
 		switch(status.getCode()){
 			case INVALID_ARGUMENT:
 				if ("PublicKey".equals(status.getDescription())) {
 					if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+					throw new ComunicationException("The public key could not be deserialised on the server");
 				}
 			case PERMISSION_DENIED:
 				switch(status.getDescription()){
@@ -670,13 +703,13 @@ public class ClientLibrary {
 		}
 	}
 
-	private void handlePostError(Status status) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	private void handlePostError(Status status) throws ComunicationException, ClientNotRegisteredException {
 		switch(status.getCode()){
 			case INVALID_ARGUMENT:
 				switch (status.getDescription()){
 					case "PublicKey":
 						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-						throw new InvalidArgumentException("The public key could not be deserialised on the server");
+						throw new ComunicationException("The public key could not be deserialised on the server");
 					case "NonExistentAnnouncementReference":
 						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - There is a non-existent announcement referenced in this post \n");
 						throw new ComunicationException("There is a non-existent announcement referenced in this post");
@@ -704,11 +737,11 @@ public class ClientLibrary {
 		}
 	}
 
-	private void handleReadError(Status status) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException{
+	private void handleReadError(Status status) throws ComunicationException, ClientNotRegisteredException{
 		switch(status.getCode()){
 			case INVALID_ARGUMENT:
 				if ("PublicKey".equals(status.getDescription())) {
-					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+					throw new ComunicationException("The public key could not be deserialised on the server");
 				}
 			case PERMISSION_DENIED:
 				switch(status.getDescription()){
@@ -733,11 +766,11 @@ public class ClientLibrary {
 		}
 	}
 
-	private void handleCloseConnectionError(Status status) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	private void handleCloseConnectionError(Status status) throws ComunicationException, ClientNotRegisteredException {
 		switch(status.getCode()){
 			case INVALID_ARGUMENT:
 				if ("PublicKey".equals(status.getDescription())) {
-					throw new InvalidArgumentException("The public key could not be deserialised on the server");
+					throw new ComunicationException("The public key could not be deserialised on the server");
 				}
 			case PERMISSION_DENIED:
 				switch(status.getDescription()){

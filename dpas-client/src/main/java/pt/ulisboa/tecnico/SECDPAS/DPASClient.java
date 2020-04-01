@@ -64,6 +64,7 @@ public class DPASClient {
 		menu.addOption("Post on general board");
 		menu.addOption("Read from a personal board");
 		menu.addOption("Read from the general board");
+		menu.addOption("Close connection");
 		menu.addOption("Exit");
 
 
@@ -82,6 +83,8 @@ public class DPASClient {
 						System.out.println("Registered successfully!");
 					} catch (ClientAlreadyRegisteredException e){
 						System.out.println("You are already registered!");
+					} catch(ComunicationException e){
+						System.out.println("Error in the communication - " + e.getMessage());
 					}
 					break;
 				case "See registered clients":
@@ -115,11 +118,14 @@ public class DPASClient {
 							System.out.println("Posted successfully");
 							break;
 						}
-					}catch(InvalidArgumentException e){
+					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
-					}catch(ClientNotRegisteredException e){
-						System.out.println("Client not registered or unexpected exception");
+					} catch(ClientNotRegisteredException e){
+						System.out.println("Client not registered");
+						break;
+					} catch(ComunicationException e){
+						System.out.println("Error in the communication - " + e.getMessage());
 						break;
 					}
 					System.out.println("Unexpected input");
@@ -132,7 +138,7 @@ public class DPASClient {
 
 					try{
 						if(ref.equals("Y")){
-							System.out.println("You may enter the announcements seperated by a comma (,):");
+							System.out.println("You may enter the announcements separated by a comma (,):");
 							ref = s.nextLine();
 							String[] announcements = ref.split(",");
 
@@ -145,18 +151,22 @@ public class DPASClient {
 							System.out.println("Posted successfully");
 							break;
 						}
-					}catch(InvalidArgumentException e){
+					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
-					}catch(ClientNotRegisteredException e){
-						System.out.println("Client not registered or unexpected exception");
+					} catch(ClientNotRegisteredException e){
+						System.out.println("Client not registered");
+						break;
+					} catch(ComunicationException e){
+						System.out.println("Error in the communication - " + e.getMessage());
 						break;
 					}
+
 					System.out.println("Unexpected input");
 					break;
 
 				case "Read from a personal board":
-					System.out.println("Indicate the public key of the client you wish to read from: ");
+					System.out.println("Indicate the id of the client you wish to read from: ");
 					int client = s.nextInt();
 					System.out.println("Please indicate the number of last posts you wish to see (0 for all):");
 					int number = s.nextInt();
@@ -180,7 +190,10 @@ public class DPASClient {
 						System.out.println(e.getMessage());
 						break;
 					}catch (ClientNotRegisteredException e){
-						System.out.println("Client not registered or unexpected exception");
+						System.out.println("Client not registered");
+						break;
+					} catch(ComunicationException e){
+						System.out.println("Error in the communication - " + e.getMessage());
 						break;
 					}
 					break;
@@ -192,13 +205,31 @@ public class DPASClient {
 						announcements = api.readGeneral(number);
 						printRead(announcements);
 
-					}catch(InvalidArgumentException e){
+					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
-					}catch (ClientNotRegisteredException e){
-						System.out.println("Client not registered or unexpected exception");
+					} catch (ClientNotRegisteredException e){
+						System.out.println("Client not registered");
+						break;
+					} catch(ComunicationException e){
+						System.out.println("Error in the communication - " + e.getMessage());
 						break;
 					}
+					break;
+				case "Close connection":
+					System.out.println("Closing session...");
+					try{
+						api.closeConnection();
+					} catch (ClientNotRegisteredException e){
+						System.out.println("Client not registered");
+						break;
+					} catch(ComunicationException e){
+						System.out.println("Error in the communication - " + e.getMessage());
+						break;
+					} catch (InvalidArgumentException e){
+						System.out.println("Session already closed");
+					}
+					System.out.println("Success");
 					break;
 				default:
 					break;

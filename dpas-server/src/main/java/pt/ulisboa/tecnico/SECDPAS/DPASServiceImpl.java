@@ -123,7 +123,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		responseObserver.onNext(buildACKresponse(messageHandler, "publicSign"));
+		responseObserver.onNext(buildACKresponse(messageHandler, "hmac"));
 
 		/* Closing session */
 		messageHandler.resetSignature(null);
@@ -365,7 +365,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	private void saveIDs() throws DatabaseException{
-
 		try {
 			FileOutputStream myWriter = new FileOutputStream(this.databasePath + "/announcementsID_try.txt");
 			myWriter.write(SerializationUtils.serialize(this.announcementIDs));
@@ -515,7 +514,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyIsInSession(MessageHandler messageHandler, StreamObserver<?> responseObserver){
 		if(!messageHandler.isInSession()){
-			if(debug != 0) System.out.println("\t [CLOSE SESSION] Error: UNAUTHENTICATED - SessionNotInitiated.");
+			if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - SessionNotInitiated.");
 			responseObserver.onError(Status.UNAUTHENTICATED.withDescription("SessionNotInitiated").asRuntimeException());
 			return false;
 		}
@@ -526,11 +525,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try {
 			messageHandler.verifyMessage(supposedMessage, freshness, signature);
 		} catch (SignatureNotValidException e) {
-			if(debug != 0) System.out.println("\t [CLOSE SESSION] Error: PERMISSION_DENIED - ClientIntegrityViolation.");
+			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientIntegrityViolation.");
 			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientIntegrityViolation").asRuntimeException());
 			return false;
 		} catch (MessageNotFreshException e) {
-			if(debug != 0) System.out.println("\t [CLOSE SESSION] Error: PERMISSION_DENIED - ClientRequestNotFresh.");
+			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
 			responseObserver.onError(Status.PERMISSION_DENIED.withDescription("ClientRequestNotFresh").asRuntimeException());
 			return false;
 		}
