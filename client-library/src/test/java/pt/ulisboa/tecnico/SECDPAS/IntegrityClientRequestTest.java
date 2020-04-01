@@ -107,6 +107,7 @@ public class IntegrityClientRequestTest {
         }
 
         lib.closeConnection();
+        lib.shutDown();
     }
 
     @Test
@@ -143,6 +144,7 @@ public class IntegrityClientRequestTest {
             assertEquals("The signature of the request wasn't valid", e.getMessage());
         }
         lib.shutDown();
+
     }
 
     @Test
@@ -584,6 +586,7 @@ public class IntegrityClientRequestTest {
 
         thrown.expect(ClientNotRegisteredException.class);
         lib.closeConnectionRequest(request);
+        lib.shutDown();
     }
 
     @Test
@@ -619,6 +622,8 @@ public class IntegrityClientRequestTest {
         }catch (ComunicationException e){
             assertEquals("The public key could not be deserialised on the server", e.getMessage());
         }
+        lib.shutDown();
+
     }
 
     @Test
@@ -655,6 +660,8 @@ public class IntegrityClientRequestTest {
         }catch (ComunicationException e){
             assertEquals("The integrity of the request was violated", e.getMessage());
         }
+        lib.shutDown();
+
     }
 
 }

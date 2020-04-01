@@ -245,6 +245,8 @@ public class SignatureClientRequestTest {
         }catch (ComunicationException e){
             assertEquals("The integrity of the request was violated", e.getMessage());
         }
+        lib.shutDown();
+
     }
 
 }
