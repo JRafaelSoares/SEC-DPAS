@@ -142,6 +142,7 @@ public class IntegrityClientRequestTest {
         }catch (ComunicationException e){
             assertEquals("The signature of the request wasn't valid", e.getMessage());
         }
+        lib.shutDown();
     }
 
     @Test
@@ -179,6 +180,7 @@ public class IntegrityClientRequestTest {
         }catch (ComunicationException e){
             assertEquals("The signature of the request wasn't valid", e.getMessage());
         }
+        lib.shutDown();
     }
 
     @Test
