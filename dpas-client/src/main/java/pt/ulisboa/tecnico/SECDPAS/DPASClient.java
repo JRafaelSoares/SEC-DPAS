@@ -235,6 +235,16 @@ public class DPASClient {
 					break;
 			}
 		} while(!selectedOption.equals("Exit"));
+
+		try{
+			api.closeConnection();
+		} catch (ClientNotRegisteredException e){
+			System.out.println("Client not registered");
+		} catch(ComunicationException e){
+			System.out.println("Error in the communication - " + e.getMessage());
+		} catch (InvalidArgumentException e){
+			System.out.println("Session already closed");
+		}
 		api.shutDown();
 	}
 

@@ -213,6 +213,12 @@ public class ClientLibrary {
 			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
+			if ("SessionNotInitiated".equals(e.getStatus().getDescription())) {
+				if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
+				this.messageHandler = null;
+				this.post(message, references);
+				return;
+			}
 			handlePostError(e.getStatus());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
@@ -221,6 +227,12 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				if ("SessionNotInitiated".equals(exception.getStatus().getDescription())) {
+					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
+					this.messageHandler = new MessageHandler(null);
+					this.post(message, references);
+					return;
+				}
 				handlePostError(exception.getStatus());
 			}
 
@@ -249,6 +261,13 @@ public class ClientLibrary {
 			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
+			if ("SessionNotInitiated".equals(e.getStatus().getDescription())) {
+				if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
+				this.messageHandler = null;
+				this.postGeneral(message, references);
+				return;
+			}
+
 			handlePostError(e.getStatus());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
@@ -257,6 +276,12 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				if ("SessionNotInitiated".equals(exception.getStatus().getDescription())) {
+					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
+					this.messageHandler = new MessageHandler(null);
+					this.postGeneral(message, references);
+					return;
+				}
 				handlePostError(exception.getStatus());
 			}
 
@@ -300,6 +325,11 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				if ("SessionNotInitiated".equals(exception.getStatus().getDescription())) {
+					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
+					this.messageHandler = new MessageHandler(null);
+					return this.read(client, number);
+				}
 				handleReadError(exception.getStatus());
 			}
 
@@ -345,6 +375,11 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				if ("SessionNotInitiated".equals(exception.getStatus().getDescription())) {
+					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
+					this.messageHandler = new MessageHandler(null);
+					return this.readGeneral(number);
+				}
 				handleReadError(exception.getStatus());
 			}
 
@@ -377,6 +412,10 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				if ("SessionNotInitiated".equals(exception.getStatus().getDescription())) {
+					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
+					return;
+				}
 				handleCloseConnectionError(exception.getStatus());
 			}
 
@@ -729,11 +768,6 @@ public class ClientLibrary {
 						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - An announcement was not properly signed \n");
 						throw new ComunicationException("An announcement was not properly signed");
 				}
-			case UNAUTHENTICATED:
-				if ("SessionNotInitiated".equals(status.getDescription())) {
-					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
-					throw new ComunicationException("The client hasn't initiated a session with the server yet (or it is invalid");
-				}
 		}
 	}
 
@@ -758,11 +792,6 @@ public class ClientLibrary {
 						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the request was violated \n");
 						throw new ComunicationException("The integrity of the request was violated");
 				}
-			case UNAUTHENTICATED:
-				if ("SessionNotInitiated".equals(status.getDescription())) {
-					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
-					throw new ComunicationException("The client hasn't initiated a session with the server yet (or it is invalid");
-				}
 		}
 	}
 
@@ -784,12 +813,9 @@ public class ClientLibrary {
 						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the request was violated \n");
 						throw new ComunicationException("The integrity of the request was violated");
 				}
-			case UNAUTHENTICATED:
-				if ("SessionNotInitiated".equals(status.getDescription())) {
-					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
-					throw new ComunicationException("The client hasn't initiated a session with the server yet (or it is invalid");
-				}
-		}	}
+
+		}
+	}
 
 	/***********************/
 	/** Channel Shut Down **/
