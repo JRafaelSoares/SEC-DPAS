@@ -565,7 +565,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return true;
 	}
 
-	StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, byte[] clientFreshness, byte[] serverFreshness){
+	private StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, byte[] clientFreshness, byte[] serverFreshness){
 		Status status = Status.fromCode(code).withDescription(description);
 
 		Metadata metadata = new Metadata();

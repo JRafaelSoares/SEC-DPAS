@@ -110,6 +110,8 @@ public class ClientLibrary {
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handleRegistrationError(e.getStatus());
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException(e.getMessage());
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
@@ -155,6 +157,8 @@ public class ClientLibrary {
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handleSetupConnectionError(e.getStatus());
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException(e.getMessage());
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
@@ -222,6 +226,8 @@ public class ClientLibrary {
 				return;
 			}
 			handlePostError(e.getStatus());
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException(e.getMessage());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
 		} catch (MessageNotFreshException e) {
@@ -272,6 +278,8 @@ public class ClientLibrary {
 				return;
 			}
 			handlePostError(e.getStatus());
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException(e.getMessage());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
 		} catch (MessageNotFreshException e) {
@@ -323,6 +331,8 @@ public class ClientLibrary {
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handleReadError(e.getStatus());
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException(e.getMessage());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
 		} catch (MessageNotFreshException e) {
@@ -341,8 +351,6 @@ public class ClientLibrary {
 
 			throw new ComunicationException(e.getMessage());
 		}
-
-		throw new RuntimeException("Unknown error");
 	}
 
 	public Announcement[] readGeneral(int number) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
@@ -375,7 +383,8 @@ public class ClientLibrary {
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handleReadError(e.getStatus());
-		} catch (SignatureNotValidException e) {
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException(e.getMessage());} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
 		} catch (MessageNotFreshException e) {
 			throw new ComunicationException("Server response was not fresh");
@@ -394,7 +403,6 @@ public class ClientLibrary {
 			throw new ComunicationException(e.getMessage());
 		}
 
-		throw new RuntimeException("Unknown error");
 	}
 
 	public void closeConnection() throws ComunicationException, ClientNotRegisteredException, InvalidArgumentException {
@@ -414,7 +422,8 @@ public class ClientLibrary {
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handleCloseConnectionError(e.getStatus());
-		} catch (SignatureNotValidException e) {
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException(e.getMessage());} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
 		} catch (MessageNotFreshException e) {
 			throw new ComunicationException("Server response was not fresh");
@@ -836,6 +845,7 @@ public class ClientLibrary {
 		byte[] clientFreshness = metadata.get(clientFreshnessKey);
 		byte[] serverFreshness = metadata.get(serverFreshnessKey);
 		byte[] signature = metadata.get(signatureKey);
+
 
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness, serverFreshness), signature, this.serverPublicKey)){
 			throw new ComunicationException("Invalid server exception");
