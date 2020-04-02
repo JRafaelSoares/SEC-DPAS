@@ -138,7 +138,7 @@ public class IntegrityClientRequestTest {
         registerRequest = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(registerRequest.getSignature().toByteArray())).build();
 
         try{
-            lib.registerRequest( registerRequest);
+            lib.registerRequest(registerRequest);
             fail("Communication exception - The signature of the request wasn't valid - should have been thrown.");
         }catch (ComunicationException e){
             assertEquals("The signature of the request wasn't valid", e.getMessage());
@@ -146,7 +146,6 @@ public class IntegrityClientRequestTest {
         lib.shutDown();
 
     }
-
     @Test
     public void failRegisterIntegrityCompromisePublicKey() throws ClientAlreadyRegisteredException, CertificateInvalidException {
         PublicKey pub;
@@ -177,7 +176,7 @@ public class IntegrityClientRequestTest {
         registerRequest = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(registerRequest.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(registerRequest.getSignature().toByteArray())).build();
 
         try{
-            lib.registerRequest( registerRequest);
+            lib.registerRequest(registerRequest);
             fail("Communication exception - The signature of the request wasn't valid - should have been thrown.");
         }catch (ComunicationException e){
             assertEquals("The signature of the request wasn't valid", e.getMessage());
@@ -458,6 +457,7 @@ public class IntegrityClientRequestTest {
             pub = kp.getPublic();
         }catch(NoSuchAlgorithmException e){
             System.out.println("Unable to create public key for testing");
+            fail("Unable to create public key for testing");
         }
 
         byte[] publicKey = SerializationUtils.serialize(pub);
@@ -584,9 +584,12 @@ public class IntegrityClientRequestTest {
         request = Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(request.getFreshness()).setSignature(request.getSignature()).build();
 
 
-        thrown.expect(ClientNotRegisteredException.class);
-        lib.closeConnectionRequest(request);
-        lib.shutDown();
+        try{
+            lib.closeConnectionRequest(request);
+            fail("ClientNotRegistredException should be thrown");
+        } catch (ClientNotRegisteredException e){
+            lib.shutDown();
+        }
     }
 
     @Test
