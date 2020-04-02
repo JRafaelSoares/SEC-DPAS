@@ -19,7 +19,7 @@ public class DiffieHellmanServer {
     private final int KEY_SIZE = 2048;
 
     public SecretKey getSharedHMACKey() {
-        return new SecretKeySpec(sharedSecret, 0, SignatureHandler.KEY_SIZE / 8, SignatureHandler.HMAC_ALGO);
+        return new SecretKeySpec(sharedSecret, SignatureHandler.HMAC_ALGO);
     }
 
     public byte[] execute(byte[] clientPubKeyEnc) {
