@@ -848,7 +848,13 @@ public class ClientLibrary {
 
 
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness, serverFreshness), signature, this.serverPublicKey)){
-			throw new ComunicationException("Invalid server exception");
+			throw new ComunicationException("Server exception signature invalid");
+		}
+
+		try {
+			this.messageHandler.verifyFreshness(serverFreshness);
+		} catch (MessageNotFreshException e) {
+			throw new ComunicationException("Server exception not fresh");
 		}
 	}
 

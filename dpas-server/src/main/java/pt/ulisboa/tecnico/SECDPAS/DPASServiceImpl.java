@@ -64,7 +64,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] clientFreshness = request.getFreshness().toByteArray();
 		byte[] clientSignature = request.getSignature().toByteArray();
 
-		byte[] serverFreshness = new byte[0];
+		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		/* Obtaining the Public Key of the Client */
 		PublicKey userKey = verifyPublicKey(encodedClientKey, responseObserver, encodedClientKey, clientFreshness, serverFreshness);
@@ -113,7 +113,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		byte[] serverFreshness = new byte[0];
+		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		/* Obtaining the Public Key of the Client */
 		PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, serializedPublicKey, freshness, serverFreshness);
@@ -145,7 +145,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] clientFreshness = request.getFreshness().toByteArray();
 		byte[] clientSignature = request.getSignature().toByteArray();
 
-		byte[] serverFreshness = new byte[0];
+		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		/* Obtaining the Public Key of the Client */
 		PublicKey userKey = verifyPublicKey(encodedClientKey, responseObserver, encodedClientKey, clientFreshness, serverFreshness);
@@ -180,7 +180,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		if(debug != 0) System.out.println("[SERVER] Post request from client.\n");
 
-		byte[] serverFreshness = new byte[0];
+		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		/* Verify request */
 		byte[] postBytes = verifyPostRequest(request, responseObserver, serverFreshness);
@@ -223,7 +223,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		if(debug != 0) System.out.println("[SERVER] PostGeneral request from client.\n");
 
-		byte[] serverFreshness = new byte[0];
+		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		/* Verify request */
 		byte[] postBytes = verifyPostRequest(request, responseObserver, serverFreshness);
@@ -270,7 +270,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		byte[] serverFreshness = new byte[0];
+		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		PublicKey targetUserKey = verifyPublicKey(serializedTargetPublicKey, responseObserver, serializedClientPublicKey, freshness, serverFreshness);
 
@@ -320,7 +320,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		byte[] serverFreshness = new byte[0];
+		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		PublicKey clientUserKey = verifyPublicKey(serializedClientPublicKey, responseObserver, serializedClientPublicKey, freshness, serverFreshness);
 
