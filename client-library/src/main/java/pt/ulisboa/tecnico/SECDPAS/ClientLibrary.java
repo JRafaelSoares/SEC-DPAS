@@ -9,10 +9,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Empty;
 
 import com.google.protobuf.ByteString;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
 
@@ -111,10 +108,12 @@ public class ClientLibrary {
 			}
 
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handleRegistrationError(e.getStatus());
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				verifyException(exception.getStatus(), exception.getTrailers());
 				handleRegistrationError(exception.getStatus());
 			}
 
@@ -154,10 +153,12 @@ public class ClientLibrary {
 			ListenableFuture<Contract.DHResponse> listenable = futureStub.setupConnection(request);
 			response = listenable.get();
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handleSetupConnectionError(e.getStatus());
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				verifyException(exception.getStatus(), exception.getTrailers());
 				handleSetupConnectionError(exception.getStatus());
 			}
 
@@ -213,6 +214,7 @@ public class ClientLibrary {
 			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
@@ -221,6 +223,7 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				verifyException(exception.getStatus(), exception.getTrailers());
 				handlePostError(exception.getStatus());
 			}
 
@@ -249,6 +252,7 @@ public class ClientLibrary {
 			Contract.ACK response = listenableFuture.get();
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
@@ -257,6 +261,7 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				verifyException(exception.getStatus(), exception.getTrailers());
 				handlePostError(exception.getStatus());
 			}
 
@@ -292,6 +297,7 @@ public class ClientLibrary {
 
 			return announcements;
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handleReadError(e.getStatus());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
@@ -300,6 +306,7 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				verifyException(exception.getStatus(), exception.getTrailers());
 				handleReadError(exception.getStatus());
 			}
 
@@ -337,6 +344,7 @@ public class ClientLibrary {
 
 			return announcements;
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handleReadError(e.getStatus());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
@@ -345,6 +353,7 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				verifyException(exception.getStatus(), exception.getTrailers());
 				handleReadError(exception.getStatus());
 			}
 
@@ -369,6 +378,7 @@ public class ClientLibrary {
 			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
 			messageHandler.resetSignature(null);
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handleCloseConnectionError(e.getStatus());
 		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
@@ -377,6 +387,7 @@ public class ClientLibrary {
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
+				verifyException(exception.getStatus(), exception.getTrailers());
 				handleCloseConnectionError(exception.getStatus());
 			}
 
@@ -789,7 +800,24 @@ public class ClientLibrary {
 					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
 					throw new ComunicationException("The client hasn't initiated a session with the server yet (or it is invalid");
 				}
-		}	}
+		}
+	}
+
+	private void verifyException(Status status, Metadata metadata/*, MessageHandler messageHandler*/) throws ComunicationException {
+		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
+		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
+		Metadata.Key<byte[]> serverFreshnessKey = Metadata.Key.of("serverFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
+		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
+
+		byte[] serializedClientKey = metadata.get(clientKey);
+		byte[] clientFreshness = metadata.get(clientFreshnessKey);
+		byte[] serverFreshness = metadata.get(serverFreshnessKey);
+		byte[] signature = metadata.get(signatureKey);
+
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness, serverFreshness), signature, this.serverPublicKey)){
+			throw new ComunicationException("Invalid server exception");
+		}
+	}
 
 	/***********************/
 	/** Channel Shut Down **/

@@ -18,7 +18,7 @@ public class DiffieHellmanClient {
 
 
     public SecretKey getSharedHMACKey() {
-        return new SecretKeySpec(sharedSecret, 0, SignatureHandler.KEY_SIZE / Byte.SIZE, SignatureHandler.HMAC_ALGO);
+        return new SecretKeySpec(sharedSecret, SignatureHandler.HMAC_ALGO);
     }
 
     public byte[] prepareAgreement() throws SignatureException {

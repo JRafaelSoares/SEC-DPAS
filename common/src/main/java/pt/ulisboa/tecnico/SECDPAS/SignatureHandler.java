@@ -19,7 +19,7 @@ public class SignatureHandler {
 
 			return signature.sign();
 		} catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
-			return null;
+			return new byte[0];
 		}
 	}
 
