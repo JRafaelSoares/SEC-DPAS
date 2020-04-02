@@ -80,7 +80,7 @@ public class FreshnessHandlerTest {
         HashMap<ByteBuffer, Long> freshness = testHandler.getUsedNonces();
         assertEquals(freshness.size(), 1);
         try{
-            Thread.sleep(2*1000);
+            Thread.sleep(4*1000);
         } catch (InterruptedException e){
 
         }
