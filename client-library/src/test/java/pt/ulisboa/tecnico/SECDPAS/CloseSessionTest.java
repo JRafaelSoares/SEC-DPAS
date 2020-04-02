@@ -87,6 +87,8 @@ public class CloseSessionTest {
         }catch (InvalidArgumentException e){
             Assert.assertEquals("Session already closed", e.getMessage());
         }
+        lib.shutDown();
+
     }
 
 }

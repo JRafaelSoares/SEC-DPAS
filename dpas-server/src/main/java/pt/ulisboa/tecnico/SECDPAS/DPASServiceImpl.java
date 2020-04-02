@@ -405,6 +405,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				/* read from file posts */
 				FileInputStream myReader = new FileInputStream(this.databasePath + "/posts.txt");
 				this.privateBoard = SerializationUtils.deserialize(myReader.readAllBytes());
+				for(PublicKey key: this.privateBoard.keySet()){
+					this.clientSessions.put(key, new MessageHandler(null, this.initialTime));
+				}
 				myReader.close();
 			}
 			if (new File(this.databasePath + "/generalPosts.txt").exists()) {

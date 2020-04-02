@@ -108,6 +108,7 @@ public class FreshnessClientRequestTest {
         }
 
         lib.closeConnection();
+        lib.shutDown();
     }
 
     @Test
@@ -246,6 +247,8 @@ public class FreshnessClientRequestTest {
         }catch (ComunicationException e){
             assertEquals("The request received from the client wasn't fresh", e.getMessage());
         }
+        lib.shutDown();
+
     }
 
 }
