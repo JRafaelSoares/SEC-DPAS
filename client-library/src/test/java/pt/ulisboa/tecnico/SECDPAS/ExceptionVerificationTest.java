@@ -20,6 +20,7 @@ import org.mockito.stubbing.Answer;
 
 import java.security.*;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
@@ -186,8 +187,13 @@ public class ExceptionVerificationTest {
 
         when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
-        thrown.expect(ClientNotRegisteredException.class);
-        lib.post("hi".toCharArray());
+        try{
+            lib.post("hi".toCharArray());
+            fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
+
+        }catch(ComunicationException e){
+            assertEquals("Received invalid exception, please try again.", e.getMessage());
+        }
 
     }
 

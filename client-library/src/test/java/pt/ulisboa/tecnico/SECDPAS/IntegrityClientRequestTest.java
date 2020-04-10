@@ -167,7 +167,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostCompromisePublicKey() throws ClientNotRegisteredException, ComunicationException {
+    public void failIntegrityPostCompromisePublicKey() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
@@ -187,13 +187,18 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientNotRegisteredException.class);
-        lib.postRequest(request);
+        try{
+            lib.postRequest(request);
+            fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
+
+        }catch(ComunicationException e){
+            assertEquals("Received invalid exception, please try again.", e.getMessage());
+        }
 
     }
 
     @Test
-    public void failIntegrityPostCompromisePublicKeyEmpty() throws ClientNotRegisteredException {
+    public void failIntegrityPostCompromisePublicKeyEmpty() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
@@ -308,8 +313,13 @@ public class IntegrityClientRequestTest {
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientNotRegisteredException.class);
-        lib.postGeneralRequest(request);
+        try{
+            lib.postGeneralRequest(request);
+            fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
+
+        }catch(ComunicationException e){
+            assertEquals("Received invalid exception, please try again.", e.getMessage());
+        }
     }
 
     @Test
@@ -429,8 +439,13 @@ public class IntegrityClientRequestTest {
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(ByteString.copyFrom(publicKey)).setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(request.getFreshness().toByteArray())).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
-        thrown.expect(ClientNotRegisteredException.class);
-        lib.readRequest(request);
+        try{
+            lib.readRequest(request);
+            fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
+
+        }catch(ComunicationException e){
+            assertEquals("Received invalid exception, please try again.", e.getMessage());
+        }
 
     }
 
@@ -511,7 +526,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failCloseConnectionCompromisePublicKey() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+    public void failCloseConnectionCompromisePublicKey() throws InvalidArgumentException, ComunicationException {
         ClientLibrary lib = null;
         try{
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
