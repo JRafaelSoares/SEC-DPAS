@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
 import SECDPAS.grpc.Contract;
+import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.junit.AfterClass;
@@ -51,14 +52,14 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, ComunicationException {
+    public void successPost() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, ComunicationException {
+    public void successPostGeneral() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
@@ -149,25 +150,24 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException {
+    public void failIntegrityPostCompromiseFreshness() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
-        MessageHandler handler = new MessageHandler(null);
-        byte[] freshness = handler.getFreshness();
+        byte[] freshness = Longs.toByteArray(10000);
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(request.getPublicKey().toByteArray())).setMessage(request.getMessage()).setMessageSignature(ByteString.copyFrom(request.getMessageSignature().toByteArray())).setAnnouncements(ByteString.copyFrom(request.getAnnouncements().toByteArray())).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         try{
             lib.postRequest(request);
-            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The integrity of the request was violated", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
 
     @Test
-    public void failIntegrityPostCompromisePublicKey() throws ComunicationException {
+    public void failIntegrityPostCompromisePublicKey() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
@@ -217,7 +217,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseMessage() throws ClientNotRegisteredException {
+    public void failIntegrityPostCompromiseMessage() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
@@ -236,7 +236,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseAnnouncements() throws ClientNotRegisteredException {
+    public void failIntegrityPostCompromiseAnnouncements() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
@@ -256,7 +256,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseMessageAnnouncements() throws ClientNotRegisteredException {
+    public void failIntegrityPostCompromiseMessageAnnouncements() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -275,25 +275,24 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException {
+    public void failIntegrityPostGeneralCompromiseFreshness() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
-        MessageHandler handler = new MessageHandler(null);
-        byte[] freshness = handler.getFreshness();
+        byte[] freshness = Longs.toByteArray(10000);
 
         request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(request.getPublicKey().toByteArray())).setMessage(request.getMessage()).setMessageSignature(ByteString.copyFrom(request.getMessageSignature().toByteArray())).setAnnouncements(ByteString.copyFrom(request.getAnnouncements().toByteArray())).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         try{
             lib.postGeneralRequest(request);
-            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The integrity of the request was violated", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromisePublicKey() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+    public void failIntegrityPostGeneralCompromisePublicKey() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         PublicKey pub = null;
@@ -323,7 +322,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromisePublicKeyEmpty() throws ClientNotRegisteredException {
+    public void failIntegrityPostGeneralCompromisePublicKeyEmpty() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         byte[] publicKey = new byte[0];
@@ -341,7 +340,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseMessage() throws ClientNotRegisteredException {
+    public void failIntegrityPostGeneralCompromiseMessage() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
 
@@ -361,7 +360,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseAnnouncements() throws ClientNotRegisteredException {
+    public void failIntegrityPostGeneralCompromiseAnnouncements() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
 
@@ -380,7 +379,7 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseMessageAnnouncements()throws ClientNotRegisteredException {
+    public void failIntegrityPostGeneralCompromiseMessageAnnouncements() {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[1]);
 
         byte[] publicKey = request.getPublicKey().toByteArray();
@@ -403,16 +402,15 @@ public class IntegrityClientRequestTest {
         lib.post(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
-        MessageHandler handler = new MessageHandler(null);
-        byte[] freshness = handler.getFreshness();
+        byte[] freshness = Longs.toByteArray(10000);
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         try{
             lib.readRequest(request);
-            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The integrity of the request was violated", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
@@ -492,16 +490,15 @@ public class IntegrityClientRequestTest {
         lib.postGeneral(s.toCharArray());
         Contract.ReadRequest request = lib.getReadRequest(pub,1);
 
-        MessageHandler handler = new MessageHandler(null);
-        byte[] freshness = handler.getFreshness();
+        byte[] freshness = Longs.toByteArray(100000);
 
         request = Contract.ReadRequest.newBuilder().setTargetPublicKey(request.getTargetPublicKey()).setClientPublicKey(request.getClientPublicKey()).setNumber(request.getNumber()).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(request.getSignature().toByteArray())).build();
 
         try{
             lib.readGeneralRequest(request);
-            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The integrity of the request was violated", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
@@ -607,7 +604,8 @@ public class IntegrityClientRequestTest {
         lib.shutDown();
 
     }
-
+//TODO once the setupconnection has been changed
+    /*
     @Test
     public void failCloseConnectionCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
         ClientLibrary lib = null;
@@ -629,7 +627,7 @@ public class IntegrityClientRequestTest {
         }
 
         MessageHandler handler = new MessageHandler(null);
-        byte[] freshness = handler.getFreshness();
+        byte[] freshness = Longs.toByteArray(handler.getFreshness());
 
         Contract.CloseSessionRequest request = lib.getCloseSessionRequest();
 
@@ -645,5 +643,5 @@ public class IntegrityClientRequestTest {
         lib.shutDown();
 
     }
-
+*/
 }

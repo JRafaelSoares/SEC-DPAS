@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.SECDPAS;
 
 import SECDPAS.grpc.Contract;
 import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.junit.AfterClass;
@@ -99,9 +100,9 @@ public class SignatureClientRequestTest {
         PublicKey pub2 = kp.getPublic();
         PrivateKey priv = kp.getPrivate();
 
-        FreshnessHandler handler = new FreshnessHandler(System.currentTimeMillis());
+        FreshnessHandler handler = new FreshnessHandler();
         byte[] publicKey = SerializationUtils.serialize(pub);
-        byte[] freshness = handler.getFreshness();
+        byte[] freshness = Longs.toByteArray(handler.getNextFreshness());
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), priv);
 
         Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(pub2))).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();

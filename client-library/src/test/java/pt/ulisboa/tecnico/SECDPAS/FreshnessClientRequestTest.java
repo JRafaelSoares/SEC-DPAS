@@ -52,14 +52,14 @@ public class FreshnessClientRequestTest {
     }
 
     @Test
-    public void successPost() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+    public void successPost() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+    public void successPostGeneral() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
@@ -112,51 +112,51 @@ public class FreshnessClientRequestTest {
     }
 
     @Test
-    public void failRegisterFreshness() throws ClientAlreadyRegisteredException, ComunicationException, InvalidArgumentException {
+    public void failRegisterFreshness() throws ClientAlreadyRegisteredException, ComunicationException {
         thrown.expect(ClientAlreadyRegisteredException.class);
         lib.registerRequest(registerRequest);
     }
 
     @Test
-    public void failPostFreshness() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+    public void failPostFreshness() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
 
         try{
             lib.postRequest(request);
-            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
 
     @Test
-    public void failPostGeneralFreshness() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+    public void failPostGeneralFreshness() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
         try{
             lib.postGeneralRequest(request);
-            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
 
     @Test
-    public void failCrossPostFreshness() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
+    public void failCrossPostFreshness() throws ComunicationException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
 
         try{
             lib.postGeneralRequest(request);
-            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
@@ -173,9 +173,9 @@ public class FreshnessClientRequestTest {
 
         try{
             lib.readRequest(request);
-            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
@@ -192,9 +192,9 @@ public class FreshnessClientRequestTest {
 
         try{
             lib.readGeneralRequest(request);
-            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
@@ -211,9 +211,9 @@ public class FreshnessClientRequestTest {
 
         try{
             lib.readGeneralRequest(request);
-            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+            assertEquals("Server exception not fresh", e.getMessage());
         }
 
     }
@@ -243,9 +243,9 @@ public class FreshnessClientRequestTest {
         try{
             lib.setupConnection();
             lib.closeConnectionRequest(request);
-            fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
+            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
         }catch (ComunicationException e){
-            assertEquals("The request received from the client wasn't fresh", e.getMessage());
+            assertEquals("The integrity of the request was violated", e.getMessage());
         }
         lib.shutDown();
 

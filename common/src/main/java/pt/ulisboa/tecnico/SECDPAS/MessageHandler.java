@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
 import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Longs;
 
 import javax.crypto.*;
 
@@ -18,34 +19,31 @@ public class MessageHandler {
             lastSessionTime = System.currentTimeMillis();
         }
 
-        this.freshnessHandler = new FreshnessHandler(System.currentTimeMillis());
+        this.freshnessHandler = new FreshnessHandler();
         this.integrityHandler = new IntegrityHandler(sharedHMACKey);
     }
 
-    public MessageHandler(SecretKey sharedHMACKey, long initTime) {
-        if(sharedHMACKey != null){
-            lastSessionTime = System.currentTimeMillis();
-        }
-
-        this.freshnessHandler = new FreshnessHandler(initTime);
-        this.integrityHandler = new IntegrityHandler(sharedHMACKey);
-    }
-
-    public byte[] getFreshness() {
-        return freshnessHandler.getFreshness();
+    public long getFreshness() {
+        return freshnessHandler.getNextFreshness();
     }
 
     public byte[] sign(byte[] message, byte[] freshness) {
         return integrityHandler.sign(Bytes.concat(message, freshness));
     }
 
-    public void verifyMessage(byte[] message, byte[] freshness, byte[] signature) throws SignatureNotValidException, MessageNotFreshException/*, SessionInvalidException*/ {
+    public void verifyMessage(byte[] message, long freshness, byte[] signature) throws SignatureNotValidException, MessageNotFreshException/*, SessionInvalidException*/ {
+        verifySignature(message, Longs.toByteArray(freshness), signature);
         verifyFreshness(freshness);
-        verifySignature(message, freshness, signature);
     }
 
-    public void verifyFreshness(byte[] freshness) throws MessageNotFreshException {
+    public void verifyFreshness(long freshness) throws MessageNotFreshException {
         if(!freshnessHandler.verifyFreshness(freshness)){
+            throw new MessageNotFreshException();
+        }
+    }
+
+    public void verifyExceptionFreshness(long freshness) throws MessageNotFreshException {
+        if(!freshnessHandler.verifyExceptionFreshness(freshness)){
             throw new MessageNotFreshException();
         }
     }
@@ -74,7 +72,7 @@ public class MessageHandler {
     }
 
     public void resetFreshness(){
-        this.freshnessHandler = new FreshnessHandler(System.currentTimeMillis());
+        this.freshnessHandler = new FreshnessHandler();
     }
 
     public boolean isInSession(){

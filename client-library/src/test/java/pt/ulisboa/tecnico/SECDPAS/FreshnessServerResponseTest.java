@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.SECDPAS;
 import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
@@ -96,7 +97,9 @@ public class FreshnessServerResponseTest {
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePost = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.sign(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -127,7 +130,9 @@ public class FreshnessServerResponseTest {
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePostGeneral = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.sign(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -158,7 +163,9 @@ public class FreshnessServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -192,7 +199,9 @@ public class FreshnessServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -223,7 +232,9 @@ public class FreshnessServerResponseTest {
 
         ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.sign(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -248,7 +259,7 @@ public class FreshnessServerResponseTest {
         setUpConnection();
         lib.setupConnection();
 
-        byte[] freshness = messageHandler.getFreshness();
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.sign(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -263,7 +274,6 @@ public class FreshnessServerResponseTest {
 
         when(stub.post(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
-        lib.post("message".toCharArray());
         try{
             lib.post("message".toCharArray());
             fail("Communication exception - Server response was not fresh - should have been thrown.");
@@ -280,7 +290,7 @@ public class FreshnessServerResponseTest {
             lib.setupConnection();
         }
 
-        byte[] freshness = messageHandler.getFreshness();
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.sign(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -295,7 +305,6 @@ public class FreshnessServerResponseTest {
 
         when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
-        lib.postGeneral("message".toCharArray());
         try{
             lib.postGeneral("message".toCharArray());
             fail("Communication exception - Server response was not fresh - should have been thrown.");
@@ -312,7 +321,7 @@ public class FreshnessServerResponseTest {
             lib.setupConnection();
         }
 
-        byte[] freshness = messageHandler.getFreshness();
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.sign(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -328,7 +337,6 @@ public class FreshnessServerResponseTest {
         when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
         when(stub.post(isA(Contract.PostRequest.class))).thenReturn(listenableFuture);
 
-        lib.postGeneral("message".toCharArray());
         try{
             lib.post("message".toCharArray());
             fail("Communication exception - Server response was not fresh - should have been thrown.");
@@ -350,7 +358,7 @@ public class FreshnessServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -365,7 +373,6 @@ public class FreshnessServerResponseTest {
 
         when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        lib.read(pubClient, 0);
         try{
             lib.read(pubClient, 0);
             fail("Communication exception - Server response was not fresh - should have been thrown.");
@@ -387,7 +394,7 @@ public class FreshnessServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.sign(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -402,7 +409,6 @@ public class FreshnessServerResponseTest {
 
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(listenableFuture);
 
-        lib.readGeneral(0);
         try{
             lib.readGeneral( 0);
             fail("Communication exception - Server response was not fresh - should have been thrown.");
@@ -412,7 +418,7 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void failFreshnessCloseSession() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+    public void zfailFreshnessCloseSession() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         if(!messageHandler.isInSession()){
             setUpConnection();
@@ -421,7 +427,7 @@ public class FreshnessServerResponseTest {
 
         ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
 
-        byte[] freshness = messageHandler.getFreshness();
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.sign(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -433,10 +439,6 @@ public class FreshnessServerResponseTest {
         }
 
         when(stub.closeSession(isA(Contract.CloseSessionRequest.class))).thenReturn(listenableFuture);
-
-        lib.closeConnection();
-
-        lib.setupConnection();
 
         try{
             lib.closeConnection();
@@ -459,7 +461,8 @@ public class FreshnessServerResponseTest {
 
                 messageHandler.resetSignature(dhServer.getSharedHMACKey());
 
-                byte[] freshness = messageHandler.getFreshness();
+                //TODO once setupconnection has been changed
+                byte[] freshness = new byte[0];
                 byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
                 Contract.DHResponse setUpResponse = Contract.DHResponse.newBuilder().setServerAgreement(ByteString.copyFrom(serverAgreement)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
