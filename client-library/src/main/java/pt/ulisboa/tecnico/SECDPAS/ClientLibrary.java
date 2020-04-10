@@ -88,18 +88,14 @@ public class ClientLibrary {
 
 		/* Serializes key and changes to ByteString */
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] freshness = messageHandler.getFreshness();
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey), privateKey);
 
 		/* Prepare request */
-		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
 
 		try{
 			ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
 			Contract.ACK response = listenable.get();
-
-			/* Verify response freshness */
-			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
 
 			/* Verify response signature */
 			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey)){
@@ -121,9 +117,6 @@ public class ClientLibrary {
 
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
 			throw new ComunicationException(e.getMessage());
-		} catch (MessageNotFreshException e) {
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ServerRequestNotFresh.\n");
-			throw new ComunicationException("Server response was not fresh");
 		}
 	}
 
@@ -502,7 +495,7 @@ public class ClientLibrary {
 
 	public Contract.RegisterRequest getRegisterRequest(){
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] freshness = messageHandler.getFreshness();
+		byte[] freshness = new byte[0];
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
 
 		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -633,15 +626,12 @@ public class ClientLibrary {
 	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, ComunicationException {
 		try{
 			Contract.ACK response = stub.register(request);
-			messageHandler.verifyFreshness(response.getFreshness().toByteArray());
 
 			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey)){
 				throw new ComunicationException("Server signature was invalid");
 			}
 		} catch (StatusRuntimeException e){
 			handleRegistrationError(e.getStatus());
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
 		}
 	}
 
@@ -729,9 +719,6 @@ public class ClientLibrary {
 				}
 			case PERMISSION_DENIED:
 				switch(status.getDescription()){
-					case "ClientRequestNotFresh":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The request received from the client wasn't fresh \n");
-						throw new ComunicationException("The request received from the client wasn't fresh");
 					case "ClientSignatureInvalid":
 						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The signature of the request wasn't valid \n");
 						throw new ComunicationException("The signature of the request wasn't valid");

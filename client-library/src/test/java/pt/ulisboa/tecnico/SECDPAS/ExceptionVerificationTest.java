@@ -131,7 +131,7 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successPermissionDeniedClientRequestNotFresh() throws ClientAlreadyRegisteredException, ClientNotRegisteredException, ComunicationException{
+    public void successPermissionDeniedClientRequestNotFresh() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
         if(!messageHandler.isInSession()){
             setUpConnection();
             lib.setupConnection();
@@ -141,15 +141,14 @@ public class ExceptionVerificationTest {
 
         StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", serializedPubKey, messageHandler.getFreshness(), messageHandler.getFreshness());
 
-        when(stub.register(isA(Contract.RegisterRequest.class))).thenThrow(exception);
+        when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
         try{
-            lib.register();
+            lib.post("hi".toCharArray());
             fail("Communication exception - The request received from the client wasn't fresh - should have been thrown.");
         }catch (ComunicationException e){
             Assert.assertEquals("The request received from the client wasn't fresh", e.getMessage() );
         }
-
     }
 
     @Test
@@ -346,7 +345,7 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void failFreshness() throws ClientAlreadyRegisteredException, ClientNotRegisteredException, ComunicationException{
+    public void failFreshness() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
         if(!messageHandler.isInSession()){
             setUpConnection();
             lib.setupConnection();
@@ -372,11 +371,11 @@ public class ExceptionVerificationTest {
         
         /* end preparation */
 
-        when(stub.register(isA(Contract.RegisterRequest.class))).thenThrow(exception);
+        when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
         try{
-            lib.register();
-            lib.register();
+            lib.post("hi".toCharArray());
+            lib.post("hi".toCharArray());
             fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
             Assert.assertEquals("Server exception not fresh", e.getMessage() );

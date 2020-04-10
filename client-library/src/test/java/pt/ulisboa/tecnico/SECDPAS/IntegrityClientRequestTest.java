@@ -111,42 +111,6 @@ public class IntegrityClientRequestTest {
     }
 
     @Test
-    public void failRegisterIntegrityCompromiseFreshness() throws ClientAlreadyRegisteredException, CertificateInvalidException {
-        PublicKey pub;
-        Contract.RegisterRequest registerRequest;
-        ClientLibrary lib;
-        try{
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-            kpg.initialize(2048);
-            KeyPair kp = kpg.genKeyPair();
-            pub = kp.getPublic();
-            PrivateKey priv = kp.getPrivate();
-
-            lib = new ClientLibrary("localhost", 8080, pub, priv);
-            registerRequest = lib.getRegisterRequest();
-
-        }catch(NoSuchAlgorithmException | InvalidArgumentException e){
-            System.out.println("Unable to create public key for testing");
-            return;
-        }
-
-        byte[] publicKey = SerializationUtils.serialize(pub);
-
-        MessageHandler handler = new MessageHandler(null);
-        byte[] freshness = handler.getFreshness();
-
-        registerRequest = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(registerRequest.getSignature().toByteArray())).build();
-
-        try{
-            lib.registerRequest(registerRequest);
-            fail("Communication exception - The signature of the request wasn't valid - should have been thrown.");
-        }catch (ComunicationException e){
-            assertEquals("The signature of the request wasn't valid", e.getMessage());
-        }
-        lib.shutDown();
-
-    }
-    @Test
     public void failRegisterIntegrityCompromisePublicKey() throws ClientAlreadyRegisteredException, CertificateInvalidException {
         PublicKey pub;
         Contract.RegisterRequest registerRequest;

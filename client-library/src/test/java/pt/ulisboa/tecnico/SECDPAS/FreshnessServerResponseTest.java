@@ -63,7 +63,7 @@ public class FreshnessServerResponseTest {
 
     @Test
     public void successRegister(){
-        byte[] freshness = messageHandler.getFreshness();
+        byte[] freshness = new byte[0];
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -241,32 +241,6 @@ public class FreshnessServerResponseTest {
         messageHandler.resetSignature(null);
         assertFalse(messageHandler.isInSession());
 
-    }
-
-    @Test
-    public void failFreshnessRegister() throws ClientAlreadyRegisteredException, InvalidArgumentException, ComunicationException {
-        byte[] freshness = messageHandler.getFreshness();
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-
-        Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
-        ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
-
-        try{
-            when(listenableFuture.get()).thenReturn(response);
-        }catch (Exception e){
-            fail(e.getMessage());
-        }
-
-        when(stub.register(isA(Contract.RegisterRequest.class))).thenReturn(listenableFuture);
-
-        lib.register();
-        try{
-            lib.register();
-            fail("Communication exception - Server response was not fresh - should have been thrown.");
-        }catch (ComunicationException e){
-            assertEquals("Server response was not fresh", e.getMessage());
-        }
     }
 
     @Test

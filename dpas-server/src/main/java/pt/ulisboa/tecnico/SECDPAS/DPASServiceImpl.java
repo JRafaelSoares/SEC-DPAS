@@ -142,13 +142,12 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(debug != 0) System.out.println("[REGISTER] Request from client.\n");
 
 		byte[] encodedClientKey = request.getPublicKey().toByteArray();
-		byte[] clientFreshness = request.getFreshness().toByteArray();
 		byte[] clientSignature = request.getSignature().toByteArray();
 
 		byte[] serverFreshness = new MessageHandler(null).getFreshness();
 
 		/* Obtaining the Public Key of the Client */
-		PublicKey userKey = verifyPublicKey(encodedClientKey, responseObserver, encodedClientKey, clientFreshness, serverFreshness);
+		PublicKey userKey = verifyPublicKey(encodedClientKey, responseObserver, encodedClientKey, new byte[0], serverFreshness);
 
 		if(userKey == null){
 			return;
@@ -157,7 +156,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		MessageHandler messageHandler = new MessageHandler(null, this.initialTime);
 
 		/* Client must NOT be registered. Verify freshness and signature of the request. */
-		if(verifyClientIsAlreadyRegistered(userKey, responseObserver, encodedClientKey, clientFreshness, serverFreshness) || !verifyFreshness(messageHandler, responseObserver, encodedClientKey, clientFreshness, serverFreshness) || !verifySignature(Bytes.concat(encodedClientKey, clientFreshness), clientSignature, userKey, responseObserver, "ClientSignatureInvalid", encodedClientKey, clientFreshness, serverFreshness)){
+		if(verifyClientIsAlreadyRegistered(userKey, responseObserver, encodedClientKey, new byte[0], serverFreshness) || !verifySignature(Bytes.concat(encodedClientKey, new byte[0]), clientSignature, userKey, responseObserver, "ClientSignatureInvalid", encodedClientKey, new byte[0], serverFreshness)){
 			return;
 		}
 
@@ -172,7 +171,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			System.out.println("[REGISTER] ERROR - DatabaseException -  " + e.getMessage() + "\n");
 		}
 
-		responseObserver.onNext(buildACKresponse(messageHandler, "publicSign"));
+		byte[] freshness = new byte[0];
+		byte[] signature = SignatureHandler.publicSign(freshness, this.privateKey);
+
+		responseObserver.onNext(Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build());
 		responseObserver.onCompleted();
 	}
 
