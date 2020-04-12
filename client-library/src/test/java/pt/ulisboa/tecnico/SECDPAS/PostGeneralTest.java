@@ -116,8 +116,6 @@ public class PostGeneralTest {
 		assertTrue(lib1.postGeneralState(emptyMessage));
 	}
 
-	//TODO FIX TEST ONCE SETUP HAS CHANGED
-/*
 	@Test
 	public void postGeneralClientNotRegisteredTest() throws InvalidArgumentException, ComunicationException {
 		try{
@@ -128,7 +126,7 @@ public class PostGeneralTest {
 			assertFalse(lib2.postGeneralState("Client Not Registered".toCharArray()));
 		}
 	}
-*/
+
 	@Test
 	public void postGeneralMessageTooLongTest() throws ClientNotRegisteredException, ComunicationException {
 		char[] messageTooLong = new char[256];

@@ -154,9 +154,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] freshness = request.getFreshness().toByteArray();
 		byte[] signature = request.getSignature().toByteArray();
 
-		//TODO check if fresness is correct
-		byte[] serverFreshness = Longs.toByteArray(new MessageHandler(null).getFreshness());
-
 		/* Obtaining the Public Key of the Client */
 		PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, freshness);
 

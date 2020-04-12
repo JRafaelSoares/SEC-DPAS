@@ -604,8 +604,7 @@ public class IntegrityClientRequestTest {
         lib.shutDown();
 
     }
-//TODO once the setupconnection has been changed
-    /*
+
     @Test
     public void failCloseConnectionCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
         ClientLibrary lib = null;
@@ -626,8 +625,7 @@ public class IntegrityClientRequestTest {
             fail("Unable to obtain public key for testing");
         }
 
-        MessageHandler handler = new MessageHandler(null);
-        byte[] freshness = Longs.toByteArray(handler.getFreshness());
+        byte[] freshness = Longs.toByteArray(10000);
 
         Contract.CloseSessionRequest request = lib.getCloseSessionRequest();
 
@@ -643,5 +641,5 @@ public class IntegrityClientRequestTest {
         lib.shutDown();
 
     }
-*/
+
 }

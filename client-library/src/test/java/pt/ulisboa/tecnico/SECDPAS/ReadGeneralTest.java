@@ -126,8 +126,6 @@ public class ReadGeneralTest {
 		}
 	}
 
-	//TODO FIX TEST ONCE SETUP HAS CHANGED
-/*
 	@Test
 	public void readClientNotExistsTest() throws InvalidArgumentException, ComunicationException {
 		Announcement[] announcements = null;
@@ -151,6 +149,6 @@ public class ReadGeneralTest {
 			assertNull(announcements);
 		}
 	}
-	*/
+
 }
 

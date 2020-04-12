@@ -149,14 +149,25 @@ public class ClientLibrary {
 			ListenableFuture<Contract.DHExchangeResponse> listenable = futureStub.diffieHellmanExchange(request);
 			response = listenable.get();
 		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
+			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
+
+			/* Verify if message is fresh */
+
+			Metadata.Key<byte[]> serverFreshnessKey = Metadata.Key.of("serverFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
+			byte[] serverFreshness = e.getTrailers().get(serverFreshnessKey);
+
+			if(!Arrays.equals(challenge, serverFreshness)){
+				if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Server response was not fresh \n");
+				throw new ComunicationException("Server response was not fresh");
+			}
+
 			handleSetupConnectionError(e.getStatus());
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
 			throw new ComunicationException(e.getMessage());
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
+				verifyExceptionNoFreshnessCheck(exception.getStatus(), exception.getTrailers());
 				handleSetupConnectionError(exception.getStatus());
 			}
 
@@ -199,14 +210,14 @@ public class ClientLibrary {
 			ListenableFuture<Contract.ACK> listenable = futureStub.clientHandshake(handshakeRequest);
 			handshakeResponse = listenable.get();
 		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
+			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
 			handleSetupConnectionError(e.getStatus());
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
 			throw new ComunicationException(e.getMessage());
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
+				verifyExceptionNoFreshnessCheck(exception.getStatus(), exception.getTrailers());
 				handleSetupConnectionError(exception.getStatus());
 			}
 
@@ -857,7 +868,6 @@ public class ClientLibrary {
 			throw new ComunicationException("Server exception signature invalid");
 		}
 
-		//TODO- Check freshness for each type of exception
 		try {
 			this.messageHandler.verifyExceptionFreshness(Longs.fromByteArray(clientFreshness));
 		} catch (MessageNotFreshException e) {
@@ -868,12 +878,10 @@ public class ClientLibrary {
 	private void verifyExceptionNoFreshnessCheck(Status status, Metadata metadata) throws ComunicationException {
 		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
 		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		//Metadata.Key<byte[]> serverFreshnessKey = Metadata.Key.of("serverFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
 		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
 
 		byte[] serializedClientKey = metadata.get(clientKey);
 		byte[] clientFreshness = metadata.get(clientFreshnessKey);
-		//byte[] serverFreshness = metadata.get(serverFreshnessKey);
 		byte[] signature = metadata.get(signatureKey);
 
 		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey)){
