@@ -7,16 +7,23 @@ package SECDPAS.grpc;
 
 // Diffie-Hellman Connection Setup
 
-message DHRequest {
+message DHExchangeRequest {
     bytes publicKey = 1;
     bytes clientAgreement = 2;
-    bytes freshness = 3;
+    bytes clientChallenge = 3;
     bytes signature = 4;
 }
 
-message DHResponse {
+message DHExchangeResponse {
     bytes serverAgreement = 1;
-    bytes freshness = 2;
+    bytes serverResponse = 2;
+    bytes serverChallenge = 3;
+    bytes signature = 4;
+}
+
+message ClientHandshakeRequest {
+    bytes publicKey = 1;
+    bytes clientResponse = 2;
     bytes signature = 3;
 }
 
@@ -80,8 +87,10 @@ message CloseSessionRequest {
 
 // Defining a Service, a Service can have multiple RPC operations
 service DPASService {
-    // Define a RPC operation
-    rpc setupConnection(DHRequest) returns (DHResponse);
+    // Diffie-Hellman + Handshake
+    rpc diffieHellmanExchange(DHExchangeRequest) returns (DHExchangeResponse);
+    rpc clientHandshake(ClientHandshakeRequest) returns (ACK);
+
     rpc register(RegisterRequest) returns (ACK);
     rpc post(PostRequest) returns (ACK);
     rpc postGeneral(PostRequest) returns (ACK);

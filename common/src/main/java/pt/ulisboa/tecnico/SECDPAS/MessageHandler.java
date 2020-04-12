@@ -3,12 +3,18 @@ package pt.ulisboa.tecnico.SECDPAS;
 import com.google.common.primitives.Bytes;
 
 import javax.crypto.*;
+import java.util.Arrays;
 
 
 public class MessageHandler {
     private FreshnessHandler freshnessHandler;
     private IntegrityHandler integrityHandler;
+    private IntegrityHandler preparingHandler;
+
+    private byte[] challenge = null;
+
     private boolean inSession = false;
+    private boolean inPreparation = false;
 
     private static final long integrityTimeout = 24 * 60 * 60 * 1000;
     private long lastSessionTime;
@@ -35,13 +41,13 @@ public class MessageHandler {
         return freshnessHandler.getFreshness();
     }
 
-    public byte[] sign(byte[] message, byte[] freshness) {
-        return integrityHandler.sign(Bytes.concat(message, freshness));
+    public byte[] calculateHMAC(byte[] message, byte[] freshness) {
+        return integrityHandler.calculateHMAC(Bytes.concat(message, freshness));
     }
 
-    public void verifyMessage(byte[] message, byte[] freshness, byte[] signature) throws SignatureNotValidException, MessageNotFreshException/*, SessionInvalidException*/ {
+    public void verifyMessage(byte[] message, byte[] freshness, byte[] hmac) throws SignatureNotValidException, MessageNotFreshException/*, SessionInvalidException*/ {
         verifyFreshness(freshness);
-        verifySignature(message, freshness, signature);
+        verifyIntegrity(message, freshness, hmac);
     }
 
     public void verifyFreshness(byte[] freshness) throws MessageNotFreshException {
@@ -50,18 +56,49 @@ public class MessageHandler {
         }
     }
 
-    public void verifySignature(byte[] message, byte[] freshness, byte[] signature) throws SignatureNotValidException/*, SessionInvalidException*/ {
+    public void verifyIntegrity(byte[] message, byte[] freshness, byte[] hmac) throws SignatureNotValidException/*, SessionInvalidException*/ {
         if(System.currentTimeMillis() - lastSessionTime > integrityTimeout){
-            resetSignature(null);
+            resetHMAC(null);
             //throw new SessionInvalidException();
         }
 
-        if(!integrityHandler.verifySignature(Bytes.concat(message, freshness), signature)){
+        if(!integrityHandler.verifyHMAC(Bytes.concat(message, freshness), hmac)){
             throw new SignatureNotValidException();
         }
     }
 
-    public void resetSignature(SecretKey sharedHMACKey){
+    public void verifyPreparingIntegrity(byte[] message, byte[] freshness, byte[] hmac) throws SignatureNotValidException/*, SessionInvalidException*/ {
+        if(!preparingHandler.verifyHMAC(Bytes.concat(message, freshness), hmac)){
+            throw new SignatureNotValidException();
+        }
+    }
+
+    public void prepareNewIntegrityHandler(SecretKey sharedHMACKey, byte[] serverChallenge){
+        this.preparingHandler = new IntegrityHandler(sharedHMACKey);
+        this.challenge = serverChallenge;
+
+        this.inPreparation = true;
+    }
+
+    public boolean completePreparation(byte[] clientResponse){
+        System.out.println("ServerChallenge: " + Arrays.toString(challenge));
+        System.out.println("ClientResponse: " + Arrays.toString(clientResponse));
+
+        if(!inPreparation || !Arrays.equals(clientResponse, challenge)){
+            this.inPreparation = false;
+            return false;
+        }
+
+        this.integrityHandler = this.preparingHandler;
+        this.lastSessionTime = System.currentTimeMillis();
+        this.inPreparation = false;
+        this.inSession = true;
+        this.preparingHandler = null;
+
+        return true;
+    }
+
+    public void resetHMAC(SecretKey sharedHMACKey){
         this.integrityHandler = new IntegrityHandler(sharedHMACKey);
 
         if(sharedHMACKey != null) {
@@ -70,6 +107,7 @@ public class MessageHandler {
         }
         else{
             this.inSession = false;
+            this.inPreparation = false;
         }
     }
 
@@ -79,7 +117,8 @@ public class MessageHandler {
 
     public boolean isInSession(){
         if(System.currentTimeMillis() - lastSessionTime > integrityTimeout){
-            resetSignature(null);
+            this.inPreparation = false;
+            resetHMAC(null);
         }
 
         return inSession;

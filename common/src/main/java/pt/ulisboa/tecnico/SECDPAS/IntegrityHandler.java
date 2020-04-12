@@ -24,14 +24,14 @@ public class IntegrityHandler {
 		}
 	}
 
-	public byte[] sign(byte[] message){
+	public byte[] calculateHMAC(byte[] message){
 		return mac.doFinal(message);
 	}
 
-	public boolean verifySignature(byte[] message, byte[] signature){
+	public boolean verifyHMAC(byte[] message, byte[] hmac){
 		byte[] check = mac.doFinal(message);
 
-		return Arrays.equals(check, signature);
+		return Arrays.equals(check, hmac);
 	}
 
 }

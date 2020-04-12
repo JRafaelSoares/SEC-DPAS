@@ -11,7 +11,7 @@ import java.util.HashMap;
 public class FreshnessHandler {
 
     // A cryptographically secure random number generator.
-    private final SecureRandom secureRandom = new SecureRandom();
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     public long NONCE_REFRESH = 20 * 60 * 1000;
     public static final int NONCE_SIZE = 8;
@@ -81,7 +81,7 @@ public class FreshnessHandler {
     }
 
     // Generate a random byte array for cryptographic use.
-    private byte[] generateRandomBytes(final int size) {
+    public static byte[] generateRandomBytes(final int size) {
         final byte[] rB = new byte[size];
         secureRandom.nextBytes(rB);
         return rB;

@@ -32,20 +32,20 @@ public class IntegrityHandlerTest {
 
     @Test
     public void success() {
-        byte[] sign = handler.sign(new byte[2]);
+        byte[] sign = handler.calculateHMAC(new byte[2]);
 
-        assertTrue(handler.verifySignature(new byte[2], sign));
+        assertTrue(handler.verifyHMAC(new byte[2], sign));
 
     }
 
     @Test
     public void fail() {
         byte[] message = new byte[2];
-        byte[] sign = handler.sign(message);
+        byte[] sign = handler.calculateHMAC(message);
 
         message[0] = Byte.valueOf("1");
 
-        assertFalse(handler.verifySignature(message, sign));
+        assertFalse(handler.verifyHMAC(message, sign));
 
     }
 
