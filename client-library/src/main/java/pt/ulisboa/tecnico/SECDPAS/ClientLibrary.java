@@ -5,6 +5,7 @@ import SECDPAS.grpc.DPASServiceGrpc;
 
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
+import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Empty;
 
@@ -104,19 +105,20 @@ public class ClientLibrary {
 			}
 
 		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
+			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
 			handleRegistrationError(e.getStatus());
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException(e.getMessage());
+			throw new ComunicationException("Received invalid exception, please try again.");
+
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
+				verifyExceptionNoFreshnessCheck(exception.getStatus(), exception.getTrailers());
 				handleRegistrationError(exception.getStatus());
 			}
 
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException(e.getMessage());
+			throw new ComunicationException("Received invalid exception, please try again.");
 		}
 	}
 
@@ -190,8 +192,6 @@ public class ClientLibrary {
 
 		byte[] hmac = messageHandler.calculateHMAC(publicKey, serverChallenge);
 
-		System.out.println("ServerChallenge: " + Arrays.toString(serverChallenge));
-
 		Contract.ClientHandshakeRequest handshakeRequest = Contract.ClientHandshakeRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientResponse(response.getServerChallenge()).setSignature(ByteString.copyFrom(hmac)).build();
 
 		Contract.ACK handshakeResponse = null;
@@ -241,7 +241,7 @@ public class ClientLibrary {
 		try{
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub.post(getPostRequest(message, references));
 			Contract.ACK response = listenableFuture.get();
-			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
@@ -282,7 +282,7 @@ public class ClientLibrary {
 		try{
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub.postGeneral(getPostRequest(message, references));
 			Contract.ACK response = listenableFuture.get();
-			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
@@ -316,7 +316,7 @@ public class ClientLibrary {
 		try {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.read(getReadRequest(client, number));
 			Contract.ReadResponse response = listenableFuture.get();
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 
 			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
@@ -364,10 +364,9 @@ public class ClientLibrary {
 		try {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.readGeneral(getReadGeneralRequest(number));
 			Contract.ReadResponse response = listenableFuture.get();
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 
 			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-
 			for(Announcement announcement : announcements){
 				byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
 				byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
@@ -412,8 +411,7 @@ public class ClientLibrary {
 		try{
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(getCloseSessionRequest());
 			Contract.ACK response = listenableFuture.get();
-
-			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			messageHandler.resetHMAC(null);
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
@@ -462,7 +460,7 @@ public class ClientLibrary {
 		}
 
 		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
-		byte[] freshness = messageHandler.getFreshness();
+		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
 		byte[] integrity = messageHandler.calculateHMAC(Bytes.concat(publicKey, encryptedMessage, messageSignature, announcements), freshness);
 
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(encryptedMessage)).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
@@ -480,7 +478,7 @@ public class ClientLibrary {
 		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
 		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = messageHandler.getFreshness();
+		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
 
 		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
 		byte[] signature = messageHandler.calculateHMAC(Bytes.concat(keys, numberBytes), freshness);
@@ -491,7 +489,8 @@ public class ClientLibrary {
 	public Contract.ReadRequest getReadGeneralRequest(int number){
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = messageHandler.getFreshness();
+
+		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
 		byte[] signature = messageHandler.calculateHMAC(Bytes.concat(publicKey, numberBytes), freshness);
 
 		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -508,7 +507,8 @@ public class ClientLibrary {
 
 	public Contract.CloseSessionRequest getCloseSessionRequest(){
 		byte[] serializedPublicKey = SerializationUtils.serialize(publicKey);
-		byte[] freshness = messageHandler.getFreshness();
+
+		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
 		byte[] signature = messageHandler.calculateHMAC(serializedPublicKey, freshness);
 
 		return Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(serializedPublicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -570,65 +570,74 @@ public class ClientLibrary {
 	}
 
 	public void postRequest(Contract.PostRequest request) throws ComunicationException {
+
 		try{
 			Contract.ACK response = stub.post(request);
-			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
-            throw new ComunicationException("Received invalid exception, please try again.");
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException("Received invalid exception, please try again.");
 
-		} catch (MessageNotFreshException e){
-			throw new ComunicationException("Server response was not fresh");
-		} catch (SignatureNotValidException e){
+		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ComunicationException("Server response was not fresh");
 		}
 	}
 
 	public void postGeneralRequest(Contract.PostRequest request) throws ComunicationException {
 		try{
 			Contract.ACK response = stub.postGeneral(request);
-			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
-            throw new ComunicationException("Received invalid exception, please try again.");
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException("Received invalid exception, please try again.");
 
-        } catch (MessageNotFreshException e){
-			throw new ComunicationException("Server response was not fresh");
-		} catch (SignatureNotValidException e){
+		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ComunicationException("Server response was not fresh");
 		}
 	}
 
 	public Announcement[] readRequest(Contract.ReadRequest request) throws ComunicationException {
 		try {
 			Contract.ReadResponse response = stub.read(request);
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handleReadError(e.getStatus());
-            throw new ComunicationException("Received invalid exception, please try again.");
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException("Received invalid exception, please try again.");
 
-		} catch (MessageNotFreshException e){
-			throw new ComunicationException("Server response was not fresh");
-		} catch (SignatureNotValidException e){
+		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ComunicationException("Server response was not fresh");
 		}
 
     }
 
-	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ClientNotRegisteredException, ComunicationException {
+	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ComunicationException {
 		try {
 			Contract.ReadResponse response = stub.readGeneral(request);
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (StatusRuntimeException e){
+			verifyException(e.getStatus(), e.getTrailers());
 			handleReadError(e.getStatus());
-            throw new ComunicationException("Received invalid exception, please try again.");
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException("Received invalid exception, please try again.");
 
-		} catch (MessageNotFreshException e){
-			throw new ComunicationException("Server response was not fresh");
-		} catch (SignatureNotValidException e){
+		} catch (SignatureNotValidException e) {
 			throw new ComunicationException("The integrity of the server response was violated");
+		} catch (MessageNotFreshException e) {
+			throw new ComunicationException("Server response was not fresh");
 		}
 
 	}
@@ -641,7 +650,11 @@ public class ClientLibrary {
 				throw new ComunicationException("Server signature was invalid");
 			}
 		} catch (StatusRuntimeException e){
+			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
 			handleRegistrationError(e.getStatus());
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+			throw new ComunicationException("Received invalid exception, please try again.");
+
 		}
 	}
 
@@ -656,8 +669,7 @@ public class ClientLibrary {
 		try{
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(request);
 			Contract.ACK response = listenableFuture.get();
-
-			messageHandler.verifyMessage(new byte[0], response.getFreshness().toByteArray(), response.getSignature().toByteArray());
+			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			messageHandler.resetHMAC(null);
 		} catch (StatusRuntimeException e){
 			handleCloseConnectionError(e.getStatus());
@@ -831,7 +843,7 @@ public class ClientLibrary {
 		}
 	}
 
-	private void verifyException(Status status, Metadata metadata/*, MessageHandler messageHandler*/) throws ComunicationException {
+	private void verifyException(Status status, Metadata metadata) throws ComunicationException {
 		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
 		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
 		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
@@ -846,11 +858,28 @@ public class ClientLibrary {
 		}
 
 		//TODO- Check freshness for each type of exception
-		/*try {
-			this.messageHandler.verifyFreshness(clientFreshness);
+		try {
+			this.messageHandler.verifyExceptionFreshness(Longs.fromByteArray(clientFreshness));
 		} catch (MessageNotFreshException e) {
 			throw new ComunicationException("Server exception not fresh");
-		}*/
+		}
+	}
+
+	private void verifyExceptionNoFreshnessCheck(Status status, Metadata metadata) throws ComunicationException {
+		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
+		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
+		//Metadata.Key<byte[]> serverFreshnessKey = Metadata.Key.of("serverFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
+		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
+
+		byte[] serializedClientKey = metadata.get(clientKey);
+		byte[] clientFreshness = metadata.get(clientFreshnessKey);
+		//byte[] serverFreshness = metadata.get(serverFreshnessKey);
+		byte[] signature = metadata.get(signatureKey);
+
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey)){
+			throw new ComunicationException("Server exception signature invalid");
+		}
+
 	}
 
 	/***********************/

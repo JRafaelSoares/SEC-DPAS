@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.SECDPAS;
 import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
@@ -69,7 +70,7 @@ public class IntegrityServerResponseTest {
 /*
     @Test
     public void successRegister(){
-        byte[] freshness = messageHandler.getFreshness();
+        byte[] freshness = new byte[0];
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -102,7 +103,9 @@ public class IntegrityServerResponseTest {
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePost = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -133,7 +136,9 @@ public class IntegrityServerResponseTest {
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePostGeneral = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -164,7 +169,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -198,7 +205,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -229,7 +238,9 @@ public class IntegrityServerResponseTest {
 
         ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -251,9 +262,10 @@ public class IntegrityServerResponseTest {
 
     @Test
     public void failIntegrityRegisterCompromiseFreshness() throws ClientAlreadyRegisteredException{
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-        freshness = messageHandler.getFreshness();
+        freshness = Longs.toByteArray(100000);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -291,9 +303,11 @@ public class IntegrityServerResponseTest {
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePost = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
-        freshness = messageHandler.getFreshness();
+        freshness = Longs.toByteArray(10000);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -328,9 +342,11 @@ public class IntegrityServerResponseTest {
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePostGeneral = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
-        freshness = messageHandler.getFreshness();
+        freshness = Longs.toByteArray(10000);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -365,9 +381,11 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
-        responseFreshness = messageHandler.getFreshness();
+        responseFreshness = Longs.toByteArray(10000);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 
@@ -403,7 +421,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -440,7 +460,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -477,7 +499,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         announcementList = new ArrayList<>();
@@ -519,9 +543,11 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
-        responseFreshness = messageHandler.getFreshness();
+        responseFreshness = Longs.toByteArray(1000);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 
@@ -557,7 +583,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -594,7 +622,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
@@ -630,7 +660,9 @@ public class IntegrityServerResponseTest {
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
 
         announcementList = new ArrayList<>();
@@ -669,10 +701,12 @@ public class IntegrityServerResponseTest {
 
         ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
 
-        byte[] freshness = messageHandler.getFreshness();
+        messageHandler.getFreshness();
+
+        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
         byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
 
-        freshness = messageHandler.getFreshness();
+        freshness = Longs.toByteArray(10000);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -692,7 +726,6 @@ public class IntegrityServerResponseTest {
         }
 
     }
-
 
     private void setUpConnection(){
 
