@@ -45,15 +45,17 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private long initialTime;
 	private int announcementID = 0;
 
+	private int serverID;
 	/* for debugging change to 1 */
 	private int debug = 0;
 
-	public DPASServiceImpl(PrivateKey privateKey) throws DatabaseException{
+	public DPASServiceImpl(PrivateKey privateKey, int id) throws DatabaseException{
 		this.initialTime = System.currentTimeMillis();
 
 		Path currentRelativePath = Paths.get("");
 		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
 		this.privateKey = privateKey;
+		this.serverID = id;
 		load();
 	}
 
