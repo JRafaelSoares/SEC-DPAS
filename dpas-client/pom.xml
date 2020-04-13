@@ -22,6 +22,7 @@
         <server.port>8080</server.port>
         <keyStore.password>clientKeyStore</keyStore.password>
         <keyStore.alias>clientKeyPair1</keyStore.alias>
+        <faults>1</faults>
     </properties>
 
     <dependencies>
@@ -70,6 +71,7 @@
                         <argument>${server.port}</argument>
                         <argument>${keyStore.password}</argument>
                         <argument>${keyStore.alias}</argument>
+                        <argument>${faults}</argument>
                     </arguments>
                 </configuration>
             </plugin>

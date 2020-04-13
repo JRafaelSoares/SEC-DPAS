@@ -22,6 +22,7 @@
 
 		<server.host>localhost</server.host>
 		<server.port>8080</server.port>
+		<faults>1</faults>
 	</properties>
 
 	<dependencies>

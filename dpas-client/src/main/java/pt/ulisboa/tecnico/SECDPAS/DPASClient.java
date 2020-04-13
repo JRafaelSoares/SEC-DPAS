@@ -17,6 +17,11 @@ public class DPASClient {
 
 	public static void main(String[] args) throws Exception {
 
+		if(args.length != 5){
+			System.out.println("Invalid number of arguments");
+			return;
+		}
+
 		final String host = args[0];
 		final int port = Integer.parseInt(args[1]);
 		System.out.println("HOST: " + host + " PORT: " + port);
@@ -53,7 +58,7 @@ public class DPASClient {
 		}
 
 
-		ClientLibrary api = new ClientLibrary(host, port, myPublicKey, privateKeyEntry.getPrivateKey());
+		ClientLibrary api = new ClientLibrary(host, port, myPublicKey, privateKeyEntry.getPrivateKey(), Integer.parseInt(args[4]));
 
 		System.out.println("------------------------------------------------------------");
 		System.out.println("                         DPAS-Client                        ");

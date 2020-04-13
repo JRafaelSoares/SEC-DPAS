@@ -16,7 +16,7 @@ echo "Number of faults: $fault"
 echo "Number of servers: $Nservers"
 
 echo "Generating Keystore/PrivateKeys"
-for (( server=1; server<=$Nservers; server++ ))
+for (( server=0; server<$Nservers; server++ ))
 do
 echo "Generating Server Keystore/PrivateKeys ${server}"
 

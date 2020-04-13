@@ -33,55 +33,71 @@ public class ClientLibrary {
 
 	private String host = "localhost";
 	private int port = 8080;
-	private String target = host + ":" + port;
 
-	private ManagedChannel channel;
-	private DPASServiceGrpc.DPASServiceFutureStub futureStub;
+	private ManagedChannel[] channel;
+	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
 
-	private MessageHandler messageHandler;
+	private MessageHandler[] messageHandler;
 
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
-	private PublicKey serverPublicKey;
-
-	private long timeout = 10000;
+	private PublicKey[] serverPublicKey;
 
 	/* for debugging change to 1 */
 	private int debug = 0;
 
-	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
-		checkConstructor(host, port, publicKey, privateKey);
+	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey, int faults) throws InvalidArgumentException, CertificateInvalidException{
+		checkConstructor(host, port, publicKey, privateKey, faults);
 
-		this.target = host + ":" + port;
-		this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-		this.futureStub = DPASServiceGrpc.newFutureStub(channel);//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
-		this.stub = DPASServiceGrpc.newBlockingStub(channel);//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
-
-		this.messageHandler = new MessageHandler(null);
+		//Client variables
 		this.publicKey = publicKey;
 		this.privateKey = privateKey;
 
-		try{
-			Path currentRelativePath = Paths.get("");
+		//Byzantine Quorum number
+		int numServers = faults*3+1;
+		this.serverPublicKey = new PublicKey[numServers];
+		this.channel = new ManagedChannel[numServers];
+		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+		this.messageHandler = new MessageHandler[numServers];
 
-			CertificateFactory fact = CertificateFactory.getInstance("X.509");
-			FileInputStream is = new FileInputStream (currentRelativePath.toAbsolutePath().toString() + "/src/main/security/certificates/server/certServer1.der");
-			X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
-			this.serverPublicKey = cer.getPublicKey();
-		} catch (CertificateException | FileNotFoundException e){
-			throw new CertificateInvalidException(e.getMessage());
+		Path currentRelativePath = Paths.get("");
+
+
+		//Stub and certificate for each server
+		for(int server = 0; server < numServers; server++){
+			String target = host + ":" + (port+server);
+			this.channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
+			this.futureStub[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
+			this.messageHandler[server] = new MessageHandler(null);
+			//Get certificate
+			try{
+				CertificateFactory fact = CertificateFactory.getInstance("X.509");
+				FileInputStream is = new FileInputStream (String.format("%s/src/main/security/certificates/server/certServer%d.der", currentRelativePath.toAbsolutePath().toString(), server));
+				X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
+				this.serverPublicKey[server] = cer.getPublicKey();
+			} catch (CertificateException | FileNotFoundException e){
+				throw new CertificateInvalidException(e.getMessage());
+			}
 		}
+
+		//Test server
+		this.stub = DPASServiceGrpc.newBlockingStub(this.channel[0]);
+	}
+
+	//Testing single client purposes
+	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
+		this(host, port, publicKey, privateKey, 0);
 	}
 
 	/* constructor only for tests */
 	public ClientLibrary(DPASServiceGrpc.DPASServiceFutureStub futureStub, PublicKey publicKeyClient, PrivateKey privateKeyClient, PublicKey publicKeyServer) {
-		this.futureStub = futureStub;//.withDeadlineAfter(timeout, TimeUnit.MILLISECONDS);
+		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[]{futureStub};
 
-		this.messageHandler = new MessageHandler(null);
+		this.messageHandler = new MessageHandler[]{ new MessageHandler(null)};
 		this.publicKey = publicKeyClient;
 		this.privateKey = privateKeyClient;
-		this.serverPublicKey = publicKeyServer;
+		this.serverPublicKey = new PublicKey[]{publicKeyServer};
 	}
 
 	public void register() throws ComunicationException, ClientAlreadyRegisteredException {
@@ -95,11 +111,11 @@ public class ClientLibrary {
 		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
 
 		try{
-			ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
+			ListenableFuture<Contract.ACK> listenable = futureStub[0].register(request);
 			Contract.ACK response = listenable.get();
 
 			/* Verify response signature */
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey)){
+			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
 				if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ServerSignatureInvalid \n");
 				throw new ComunicationException("Server signature was invalid");
 			}
@@ -146,7 +162,7 @@ public class ClientLibrary {
 
 		Contract.DHExchangeResponse response = null;
 		try{
-			ListenableFuture<Contract.DHExchangeResponse> listenable = futureStub.diffieHellmanExchange(request);
+			ListenableFuture<Contract.DHExchangeResponse> listenable = futureStub[0].diffieHellmanExchange(request);
 			response = listenable.get();
 		} catch (StatusRuntimeException e){
 			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
@@ -193,21 +209,21 @@ public class ClientLibrary {
 		byte[] serverSignature = response.getSignature().toByteArray();
 		byte[] serverChallenge = response.getServerChallenge().toByteArray();
 
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serverAgreement, serverResponse, serverChallenge), serverSignature, this.serverPublicKey)){
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serverAgreement, serverResponse, serverChallenge), serverSignature, this.serverPublicKey[0])){
 			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Server signature was not valid \n");
 			throw new ComunicationException("Server signature was not valid");
 		}
 
 		/* Set shared key, since at this point only the server doesn't know if the client is fresh*/
-		messageHandler.resetHMAC(diffieHellmanClient.getSharedHMACKey());
+		messageHandler[0].resetHMAC(diffieHellmanClient.getSharedHMACKey());
 
-		byte[] hmac = messageHandler.calculateHMAC(publicKey, serverChallenge);
+		byte[] hmac = messageHandler[0].calculateHMAC(publicKey, serverChallenge);
 
 		Contract.ClientHandshakeRequest handshakeRequest = Contract.ClientHandshakeRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientResponse(response.getServerChallenge()).setSignature(ByteString.copyFrom(hmac)).build();
 
 		Contract.ACK handshakeResponse = null;
 		try{
-			ListenableFuture<Contract.ACK> listenable = futureStub.clientHandshake(handshakeRequest);
+			ListenableFuture<Contract.ACK> listenable = futureStub[0].clientHandshake(handshakeRequest);
 			handshakeResponse = listenable.get();
 		} catch (StatusRuntimeException e){
 			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
@@ -226,9 +242,9 @@ public class ClientLibrary {
 		}
 
 		try {
-			messageHandler.verifyIntegrity(new byte[0], handshakeResponse.getFreshness().toByteArray(), handshakeResponse.getSignature().toByteArray());
+			messageHandler[0].verifyIntegrity(new byte[0], handshakeResponse.getFreshness().toByteArray(), handshakeResponse.getSignature().toByteArray());
 		} catch (SignatureNotValidException e) {
-			messageHandler.resetHMAC(null);
+			messageHandler[0].resetHMAC(null);
 			throw new ComunicationException("Server response was not fresh");
 		}
 	}
@@ -245,14 +261,14 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Check if client is in session */
-		if(!messageHandler.isInSession()){
+		if(!messageHandler[0].isInSession()){
 			setupConnection();
 		}
 
 		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub.post(getPostRequest(message, references));
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].post(getPostRequest(message, references));
 			Contract.ACK response = listenableFuture.get();
-			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
@@ -286,14 +302,14 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Check if client is in session */
-		if(!messageHandler.isInSession()){
+		if(!messageHandler[0].isInSession()){
 			setupConnection();
 		}
 
 		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub.postGeneral(getPostRequest(message, references));
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].postGeneral(getPostRequest(message, references));
 			Contract.ACK response = listenableFuture.get();
-			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
@@ -320,14 +336,14 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Check if client is in session */
-		if(!messageHandler.isInSession()){
+		if(!messageHandler[0].isInSession()){
 			setupConnection();
 		}
 
 		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.read(getReadRequest(client, number));
+			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].read(getReadRequest(client, number));
 			Contract.ReadResponse response = listenableFuture.get();
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 
 			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
@@ -368,14 +384,14 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Check if client is in session */
-		if(!messageHandler.isInSession()){
+		if(!messageHandler[0].isInSession()){
 			setupConnection();
 		}
 
 		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub.readGeneral(getReadGeneralRequest(number));
+			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].readGeneral(getReadGeneralRequest(number));
 			Contract.ReadResponse response = listenableFuture.get();
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 
 			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 			for(Announcement announcement : announcements){
@@ -415,15 +431,15 @@ public class ClientLibrary {
 		if(debug != 0) System.out.println("[CLOSE CONNECTION] Request from client.\n");
 
 		/* Check if client is in session */
-		if(!messageHandler.isInSession()){
+		if(!messageHandler[0].isInSession()){
 			throw new InvalidArgumentException("Session already closed");
 		}
 
 		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(getCloseSessionRequest());
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].closeSession(getCloseSessionRequest());
 			Contract.ACK response = listenableFuture.get();
-			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-			messageHandler.resetHMAC(null);
+			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].resetHMAC(null);
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handleCloseConnectionError(e.getStatus());
@@ -463,7 +479,7 @@ public class ClientLibrary {
 		byte[] encryptedMessage = null;
 		try {
 			Cipher encrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-			encrypt.init(Cipher.ENCRYPT_MODE, serverPublicKey);
+			encrypt.init(Cipher.ENCRYPT_MODE, this.serverPublicKey[0]);
 			encryptedMessage = encrypt.doFinal(post.getBytes(StandardCharsets.UTF_8));
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
 			System.out.println("Unexpected error while encrypting message");
@@ -471,8 +487,8 @@ public class ClientLibrary {
 		}
 
 		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
-		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-		byte[] integrity = messageHandler.calculateHMAC(Bytes.concat(publicKey, encryptedMessage, messageSignature, announcements), freshness);
+		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
+		byte[] integrity = messageHandler[0].calculateHMAC(Bytes.concat(publicKey, encryptedMessage, messageSignature, announcements), freshness);
 
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(encryptedMessage)).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
 	}
@@ -489,10 +505,10 @@ public class ClientLibrary {
 		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
 		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
 
 		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
-		byte[] signature = messageHandler.calculateHMAC(Bytes.concat(keys, numberBytes), freshness);
+		byte[] signature = messageHandler[0].calculateHMAC(Bytes.concat(keys, numberBytes), freshness);
 		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
@@ -501,8 +517,8 @@ public class ClientLibrary {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 
-		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-		byte[] signature = messageHandler.calculateHMAC(Bytes.concat(publicKey, numberBytes), freshness);
+		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
+		byte[] signature = messageHandler[0].calculateHMAC(Bytes.concat(publicKey, numberBytes), freshness);
 
 		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -519,8 +535,8 @@ public class ClientLibrary {
 	public Contract.CloseSessionRequest getCloseSessionRequest(){
 		byte[] serializedPublicKey = SerializationUtils.serialize(publicKey);
 
-		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-		byte[] signature = messageHandler.calculateHMAC(serializedPublicKey, freshness);
+		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
+		byte[] signature = messageHandler[0].calculateHMAC(serializedPublicKey, freshness);
 
 		return Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(serializedPublicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 	}
@@ -584,7 +600,7 @@ public class ClientLibrary {
 
 		try{
 			Contract.ACK response = stub.post(request);
-			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
@@ -601,7 +617,7 @@ public class ClientLibrary {
 	public void postGeneralRequest(Contract.PostRequest request) throws ComunicationException {
 		try{
 			Contract.ACK response = stub.postGeneral(request);
-			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
@@ -618,7 +634,7 @@ public class ClientLibrary {
 	public Announcement[] readRequest(Contract.ReadRequest request) throws ComunicationException {
 		try {
 			Contract.ReadResponse response = stub.read(request);
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
@@ -637,7 +653,7 @@ public class ClientLibrary {
 	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ComunicationException {
 		try {
 			Contract.ReadResponse response = stub.readGeneral(request);
-			messageHandler.verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
@@ -657,7 +673,7 @@ public class ClientLibrary {
 		try{
 			Contract.ACK response = stub.register(request);
 
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey)){
+			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
 				throw new ComunicationException("Server signature was invalid");
 			}
 		} catch (StatusRuntimeException e){
@@ -673,15 +689,15 @@ public class ClientLibrary {
 		if(debug != 0) System.out.println("[CLOSE CONNECTION] Request from client.\n");
 
 		/* Check if client is in session */
-		if(!messageHandler.isInSession()){
+		if(!messageHandler[0].isInSession()){
 			throw new InvalidArgumentException("Session already closed");
 		}
 
 		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub.closeSession(request);
+			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].closeSession(request);
 			Contract.ACK response = listenableFuture.get();
-			messageHandler.verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-			messageHandler.resetHMAC(null);
+			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
+			messageHandler[0].resetHMAC(null);
 		} catch (StatusRuntimeException e){
 			handleCloseConnectionError(e.getStatus());
 		} catch (SignatureNotValidException e) {
@@ -710,8 +726,8 @@ public class ClientLibrary {
 	/** CHECK ARGUMENTS **/
 	/*********************/
 
-	private void checkConstructor(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException {
-		if(host == null || host.isEmpty() || port < 0 || publicKey == null || privateKey == null){
+	private void checkConstructor(String host, int port, PublicKey publicKey, PrivateKey privateKey, int faults) throws InvalidArgumentException {
+		if(host == null || host.isEmpty() || port < 0 || publicKey == null || privateKey == null || faults < 0){
 			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Invalid constructor arguments \n");
 			throw new InvalidArgumentException("Invalid constructor arguments");
 		}
@@ -864,12 +880,12 @@ public class ClientLibrary {
 		byte[] signature = metadata.get(signatureKey);
 
 
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey)){
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey[0])){
 			throw new ComunicationException("Server exception signature invalid");
 		}
 
 		try {
-			this.messageHandler.verifyExceptionFreshness(Longs.fromByteArray(clientFreshness));
+			this.messageHandler[0].verifyExceptionFreshness(Longs.fromByteArray(clientFreshness));
 		} catch (MessageNotFreshException e) {
 			throw new ComunicationException("Server exception not fresh");
 		}
@@ -884,7 +900,7 @@ public class ClientLibrary {
 		byte[] clientFreshness = metadata.get(clientFreshnessKey);
 		byte[] signature = metadata.get(signatureKey);
 
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey)){
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey[0])){
 			throw new ComunicationException("Server exception signature invalid");
 		}
 
@@ -895,7 +911,9 @@ public class ClientLibrary {
 	/***********************/
 
 	public void shutDown(){
-		this.channel.shutdown();
+		for(ManagedChannel channel: this.channel){
+			channel.shutdown();
+		}
 	}
 
 }
