@@ -4,12 +4,19 @@ rm dpas-server/src/main/security/keys/*.jks
 rm dpas-server/src/main/security/certificates/*.der
 rm client-library/src/main/security/certificates/server/*.der
 rm dpas-client/src/main/security/certificates/clients/*.der
+rm dpas-client/src/main/security/certificates/server/*.der
 rm dpas-client/src/main/security/keys/*.jks
 
 #generate Server KeyStore
-echo "Generating Keystore/PrivateKeys"
 
-for server in {1..3}
+let fault=1
+let Nservers="$fault*3+1"
+
+echo "Number of faults: $fault"
+echo "Number of servers: $Nservers"
+
+echo "Generating Keystore/PrivateKeys"
+for (( server=1; server<=$Nservers; server++ ))
 do
 echo "Generating Server Keystore/PrivateKeys ${server}"
 
