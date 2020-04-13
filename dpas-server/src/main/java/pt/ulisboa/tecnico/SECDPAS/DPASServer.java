@@ -56,9 +56,8 @@ public class DPASServer {
 			System.err.printf("Usage: java %s port%n", Server.class.getName());
 			return;
 		}
-
-		int portClient = Integer.parseInt(args[0]);
 		int serverID = Integer.parseInt(args[3]);
+		int portClient = Integer.parseInt(args[0])+serverID;
 		String alias = String.format("%s%d", args[2], serverID);
 		try{
 			KeyStore keyStore = KeyStore.getInstance("JKS");

@@ -42,7 +42,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private PrivateKey privateKey;
 
-	private long initialTime;
 	private int announcementID = 0;
 
 	private int serverID;
@@ -50,8 +49,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private int debug = 0;
 
 	public DPASServiceImpl(PrivateKey privateKey, int id) throws DatabaseException{
-		this.initialTime = System.currentTimeMillis();
-
 		Path currentRelativePath = Paths.get("");
 		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
 		this.privateKey = privateKey;
