@@ -66,7 +66,7 @@ public class ClientLibrary {
 			Path currentRelativePath = Paths.get("");
 
 			CertificateFactory fact = CertificateFactory.getInstance("X.509");
-			FileInputStream is = new FileInputStream (currentRelativePath.toAbsolutePath().toString() + "/src/main/security/certificates/server/certServer.der");
+			FileInputStream is = new FileInputStream (currentRelativePath.toAbsolutePath().toString() + "/src/main/security/certificates/server/certServer1.der");
 			X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
 			this.serverPublicKey = cer.getPublicKey();
 		} catch (CertificateException | FileNotFoundException e){

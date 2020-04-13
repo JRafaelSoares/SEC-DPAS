@@ -21,15 +21,20 @@ public class DPASClient {
 		final int port = Integer.parseInt(args[1]);
 		System.out.println("HOST: " + host + " PORT: " + port);
 
+		// Get java key store
 		KeyStore keyStore = KeyStore.getInstance("JKS");
 		Path currentRelativePath = Paths.get("");
 		InputStream keyStoreData = new FileInputStream(currentRelativePath.toAbsolutePath().toString() + "/src/main/security/keys/clientKeyStore.jks");
 
+		// Obtain private key
 		keyStore.load(keyStoreData, args[2].toCharArray());
 		KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(args[2].toCharArray());
 		KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(args[3], entryPassword);
 
+		//Obtain my public keys
 		PublicKey myPublicKey = privateKeyEntry.getCertificate().getPublicKey();
+
+		//Obtain client public keys
 		ArrayList<PublicKey> clientKeys = new ArrayList<>();
 
 		File dir = new File(currentRelativePath.toAbsolutePath().toString() + "/src/main/security/certificates/clients");

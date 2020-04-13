@@ -1,10 +1,20 @@
 #!/bin/bash
 
-rm *.jks 
+rm dpas-server/src/main/security/keys/*.jks
+rm dpas-server/src/main/security/certificates/*.der
+rm client-library/src/main/security/certificates/server/*.der
+rm dpas-client/src/main/security/certificates/clients/*.der
+rm dpas-client/src/main/security/keys/*.jks
 
 #generate Server KeyStore
+echo "Generating Keystore/PrivateKeys"
+
+for server in {1..3}
+do
+echo "Generating Server Keystore/PrivateKeys ${server}"
+
 keytool -genkeypair \
-        -alias serverKeyPair \
+        -alias serverKeyPair$server \
         -dname "CN=localhost" \
         -keyalg RSA \
         -keysize 4096 \
@@ -12,70 +22,43 @@ keytool -genkeypair \
         -storepass serverKeyStore \
         -keystore serverKeyStore.jks
 
-#generate client KeyStore
-keytool -genkeypair \
-        -alias clientKeyPair1 \
-        -dname "CN=localhost" \
-        -keyalg RSA \
-        -keysize 4096 \
-        -validity 365 \
-        -storepass clientKeyStore \
-        -keystore clientKeyStore.jks
-
-#generate client KeyStore
-keytool -genkeypair \
-        -alias clientKeyPair2 \
-        -dname "CN=localhost" \
-        -keyalg RSA \
-        -keysize 4096 \
-        -validity 365 \
-        -storepass clientKeyStore \
-        -keystore clientKeyStore.jks
-
-#generate client KeyStore
-keytool -genkeypair \
-        -alias clientKeyPair3 \
-        -dname "CN=localhost" \
-        -keyalg RSA \
-        -keysize 4096 \
-        -validity 365 \
-        -storepass clientKeyStore \
-        -keystore clientKeyStore.jks
-
-#Export Certificates
-
-#store server public certificate
 keytool -exportcert \
-        -file certServer.der \
+        -file certServer$server.der \
         -keystore serverKeyStore.jks \
         -storepass serverKeyStore \
-        -alias serverKeyPair
+        -alias serverKeyPair$server
 
-#store server public certificate
+cp certServer$server.der dpas-server/src/main/security/certificates/
+cp certServer$server.der dpas-client/src/main/security/certificates/server/
+mv certServer$server.der client-library/src/main/security/certificates/server/
+done
+
+#Generate certificates
+
+mv serverKeyStore.jks dpas-server/src/main/security/keys/
+
+#generate client KeyStore
+
+for client in {1..3}
+do
+echo "Generating Client Keystore/PrivateKey $client"
+
+keytool -genkeypair \
+        -alias clientKeyPair$client \
+        -dname "CN=localhost" \
+        -keyalg RSA \
+        -keysize 4096 \
+        -validity 365 \
+        -storepass clientKeyStore \
+        -keystore clientKeyStore.jks
+
 keytool -exportcert \
-        -file certClient1.der \
+        -file certClient$client.der \
         -keystore clientKeyStore.jks \
         -storepass clientKeyStore \
-        -alias clientKeyPair1
+        -alias clientKeyPair$client
 
-#store server public certificate
-keytool -exportcert \
-        -file certClient2.der \
-        -keystore clientKeyStore.jks \
-        -storepass clientKeyStore \
-        -alias clientKeyPair2
+mv certClient$client.der dpas-client/src/main/security/certificates/clients/
+done
 
-#store server public certificate
-keytool -exportcert \
-        -file certClient3.der \
-        -keystore clientKeyStore.jks \
-        -storepass clientKeyStore \
-        -alias clientKeyPair3
-
-#store server certificate in clientLibrary keystore
-#keytool -importcert \
-#        -file cert.der \
-#        -keystore clientKeyStore.jks \
-#        -storepass clientKeyStore \
-#        -noprompt \
-#        -alias serverCert
+mv clientKeyStore.jks dpas-client/src/main/security/keys/
