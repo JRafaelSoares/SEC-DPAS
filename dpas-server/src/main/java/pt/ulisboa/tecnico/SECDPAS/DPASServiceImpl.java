@@ -46,7 +46,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private int serverID;
 	/* for debugging change to 1 */
-	private int debug = 0;
+	private int debug = 1;
 
 	public DPASServiceImpl(PrivateKey privateKey, int id) throws DatabaseException{
 		Path currentRelativePath = Paths.get("");
@@ -177,7 +177,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		if(debug != 0) System.out.println("[REGISTER] Request from client.\n");
+		if(debug != 0) System.out.println("[REGISTER] Client registering.\n");
 
 		byte[] encodedClientKey = request.getPublicKey().toByteArray();
 		byte[] clientSignature = request.getSignature().toByteArray();
@@ -207,8 +207,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			System.out.println("[REGISTER] ERROR - DatabaseException -  " + e.getMessage() + "\n");
 		}
 
+		if(debug != 0) System.out.println(String.format("[REGISTER] Client %s registered", userKey));
 		byte[] freshness = new byte[0];
 		byte[] signature = SignatureHandler.publicSign(freshness, this.privateKey);
+
 
 		responseObserver.onNext(Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build());
 		responseObserver.onCompleted();
@@ -216,7 +218,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		if(debug != 0) System.out.println("[SERVER] Post request from client.\n");
+		if(debug != 0) System.out.println("[POST] Post request from client.\n");
 
 		/* Verify request */
 		byte[] postBytes = verifyPostRequest(request, responseObserver);
@@ -243,6 +245,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		this.announcementIDs.put(announcementID, announcement);
+		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %d from Client %s posted", post, announcementID, userKey));
 
 		/* Save posts */
 		try{
@@ -257,7 +260,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		if(debug != 0) System.out.println("[SERVER] PostGeneral request from client.\n");
+		if(debug != 0) System.out.println("[POST_GENERAL] PostGeneral request from client\n");
 
 		/* Verify request */
 		byte[] postBytes = verifyPostRequest(request, responseObserver);
@@ -282,6 +285,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			this.generalBoard.add(announcement);
 		}
 		this.announcementIDs.put(announcementID, announcement);
+		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %d from Client %s posted", post, announcementID, userKey));
 
 		/* Save posts */
 		try{
@@ -296,6 +300,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void read(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
+
 		byte[] serializedTargetPublicKey = request.getTargetPublicKey().toByteArray();
 		byte[] serializedClientPublicKey = request.getClientPublicKey().toByteArray();
 
@@ -324,6 +329,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(!verifyIsInSession(messageHandler, responseObserver, serializedClientPublicKey, freshness) || !verifyMessage(messageHandler, responseObserver, Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey, number), signature, serializedClientPublicKey, freshness)){
 			return;
 		}
+		if(debug != 0) System.out.println(String.format("[READ] Read request from client %s to client board %s\n", clientUserKey, targetUserKey));
 
 		/* Prepare announcements */
 		ArrayList<Announcement> announcementList = this.privateBoard.get(targetUserKey);
@@ -365,6 +371,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(!verifyIsInSession(messageHandler, responseObserver, serializedClientPublicKey, freshness) || !verifyMessage(messageHandler, responseObserver, Bytes.concat(serializedClientPublicKey, number), signature, serializedClientPublicKey, freshness)){
 			return;
 		}
+		if(debug != 0) System.out.println(String.format("[READ] Read request from client %s\n", clientUserKey));
 
 		/* Prepare announcements */
 		byte[] responseAnnouncements;
@@ -384,7 +391,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private synchronized void save(String file) throws DatabaseException{
 		try {
 
-			FileOutputStream myWriter = new FileOutputStream(this.databasePath + "/" + file + "_try.txt");
+			FileOutputStream myWriter = new FileOutputStream(String.format("%s/%s%d_try.txt", this.databasePath, file, this.serverID));
 
 			/* write in file */
 			switch (file) {
@@ -398,8 +405,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			myWriter.close();
 
 			/* File successfully created, transferring to official file */
-			Path src = Paths.get(this.databasePath + "/" + file + "_try.txt");
-			Path dst = Paths.get(this.databasePath + "/" + file + ".txt");
+			Path src = Paths.get(String.format("%s/%s%d_try.txt", this.databasePath, file, this.serverID));
+			Path dst = Paths.get(String.format("%s/%s%d.txt", this.databasePath, file, this.serverID));
 
 			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
 			//Saves the IDs persistently
@@ -412,13 +419,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private void saveIDs() throws DatabaseException{
 		try {
-			FileOutputStream myWriter = new FileOutputStream(this.databasePath + "/announcementsID_try.txt");
+			FileOutputStream myWriter = new FileOutputStream(String.format("%s/announcementsID%d_try.txt", this.databasePath, this.serverID));
 			myWriter.write(SerializationUtils.serialize(this.announcementIDs));
 			myWriter.close();
 
 			/* File successfully created, transferring to official file */
-			Path src = Paths.get(this.databasePath + "/announcementsID_try.txt");
-			Path dst = Paths.get(this.databasePath + "/announcementsID.txt");
+			Path src = Paths.get(String.format("%s/announcementsID%d_try.txt", this.databasePath, this.serverID));
+			Path dst = Paths.get(String.format("%s/announcementsID%d.txt", this.databasePath, this.serverID));
 
 			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
 
@@ -431,24 +438,24 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private synchronized void load() throws DatabaseException{
 		try {
-			if (new File(this.databasePath + "/posts.txt").exists()) {
+			if (new File(String.format("%s/posts%d.txt", this.databasePath, this.serverID)).exists()) {
 				/* read from file posts */
-				FileInputStream myReader = new FileInputStream(this.databasePath + "/posts.txt");
+				FileInputStream myReader = new FileInputStream(String.format("%s/posts%d.txt", this.databasePath, this.serverID));
 				this.privateBoard = SerializationUtils.deserialize(myReader.readAllBytes());
 				for(PublicKey key: this.privateBoard.keySet()){
 					this.clientSessions.put(key, new MessageHandler(null));
 				}
 				myReader.close();
 			}
-			if (new File(this.databasePath + "/generalPosts.txt").exists()) {
+			if (new File(String.format("%s/generalPosts%d.txt", this.databasePath, this.serverID)).exists()) {
 				/* read from file generalPosts */
-				FileInputStream myReader = new FileInputStream(this.databasePath + "/generalPosts.txt");
+				FileInputStream myReader = new FileInputStream(String.format("%s/generalPosts%d.txt", this.databasePath, this.serverID));
 				this.generalBoard = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
 			}
-			if(new File(this.databasePath + "/announcementsID.txt").exists()) {
+			if(new File(String.format("%s/announcementsID%d.txt", this.databasePath, this.serverID)).exists()) {
 				/* read from file generalPosts */
-				FileInputStream myReader = new FileInputStream(this.databasePath + "/announcementsID.txt");
+				FileInputStream myReader = new FileInputStream(String.format("%s/announcementsID%d.txt", this.databasePath, this.serverID));
 				this.announcementIDs = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
 				this.announcementID = this.announcementIDs.size();
