@@ -122,6 +122,9 @@ public class ClientLibrary {
 				throw new ComunicationException("Server signature was invalid");
 			}
 
+		} catch (StatusRuntimeException e) {
+			registerErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
@@ -148,6 +151,9 @@ public class ClientLibrary {
 		try{
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].post(getPostRequest(message, references));
 			postResponseHandler(listenableFuture.get(), 0);
+		} catch (StatusRuntimeException e) {
+			postErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
@@ -188,6 +194,13 @@ public class ClientLibrary {
 		try {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].read(getReadRequest(client, number));
 			return readResponseHandler(listenableFuture.get(), 0);
+		} catch (StatusRuntimeException e) {
+			readErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+
+			throw new ComunicationException("Received invalid exception, please try again.");
+
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
@@ -204,6 +217,13 @@ public class ClientLibrary {
 		try {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].readGeneral(getReadGeneralRequest(number));
 			return readResponseHandler(listenableFuture.get(), 0);
+		} catch (StatusRuntimeException e) {
+			readErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+
+			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
+
+			throw new ComunicationException("Received invalid exception, please try again.");
+
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
@@ -511,28 +531,24 @@ public class ClientLibrary {
 	/******************************/
 
 	private void registerErrors(Status status, Metadata metadata, String message) throws ClientAlreadyRegisteredException, ComunicationException{
-		handleRegistrationError(status);
 		verifyExceptionNoFreshnessCheck(status, metadata);
+		handleRegistrationError(status);
 
 		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
 		throw new ComunicationException("Received invalid exception, please try again.");
 	}
 
 	private void postErrors(Status status, Metadata metadata, String message) throws ComunicationException, ClientNotRegisteredException{
-		handlePostError(status);
 		verifyException(status, metadata);
+		handlePostError(status);
 
 		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
 		throw new ComunicationException("Received invalid exception, please try again.");
 	}
 
 	private void readErrors(Status status, Metadata metadata, String message) throws ComunicationException, ClientNotRegisteredException{
-		handleReadError(status);
 		verifyException(status, metadata);
-
-		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
-
-		throw new ComunicationException("Received invalid exception, please try again.");
+		handleReadError(status);
 	}
 
 	private void handleRegistrationError(Status status) throws ClientAlreadyRegisteredException, ComunicationException {

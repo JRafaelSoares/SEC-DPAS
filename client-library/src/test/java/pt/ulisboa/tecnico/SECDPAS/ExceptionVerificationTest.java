@@ -331,8 +331,6 @@ public class ExceptionVerificationTest {
             }
         }
 
-
-
     }
 
     private StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, byte[] clientFreshness){
