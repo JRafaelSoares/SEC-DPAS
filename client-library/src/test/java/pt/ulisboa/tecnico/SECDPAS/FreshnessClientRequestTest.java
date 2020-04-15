@@ -36,8 +36,6 @@ public class FreshnessClientRequestTest {
             registerRequest = lib.getRegisterRequest();
             lib.registerRequest(registerRequest);
 
-            lib.setupConnection();
-
         } catch (Exception e){
             System.out.println("// Exception message: " + e.getMessage());
             System.out.println("Unable to obtain public key for testing");
@@ -52,14 +50,14 @@ public class FreshnessClientRequestTest {
     }
 
     @Test
-    public void successPost() throws ComunicationException {
+    public void successPost() throws ComunicationException, ClientNotRegisteredException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
     }
 
     @Test
-    public void successPostGeneral() throws ComunicationException {
+    public void successPostGeneral() throws ComunicationException, ClientNotRegisteredException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
@@ -88,37 +86,13 @@ public class FreshnessClientRequestTest {
     }
 
     @Test
-    public void successCloseConnection() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
-        ClientLibrary lib = null;
-        try{
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-            kpg.initialize(2048);
-            KeyPair kp = kpg.genKeyPair();
-            PublicKey pub = kp.getPublic();
-            PrivateKey priv = kp.getPrivate();
-
-            lib = new ClientLibrary("localhost", 8080, pub, priv);
-
-            lib.register();
-            lib.setupConnection();
-
-        } catch (Exception e){
-            System.out.println("// Exception message: " + e.getMessage());
-            System.out.println("Unable to obtain public key for testing");
-        }
-
-        lib.closeConnection();
-        lib.shutDown();
-    }
-
-    @Test
     public void failRegisterFreshness() throws ClientAlreadyRegisteredException, ComunicationException {
         thrown.expect(ClientAlreadyRegisteredException.class);
         lib.registerRequest(registerRequest);
     }
 
     @Test
-    public void failPostFreshness() throws ComunicationException {
+    public void failPostFreshness() throws ComunicationException, ClientNotRegisteredException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
@@ -133,7 +107,7 @@ public class FreshnessClientRequestTest {
     }
 
     @Test
-    public void failPostGeneralFreshness() throws ComunicationException {
+    public void failPostGeneralFreshness() throws ComunicationException, ClientNotRegisteredException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postGeneralRequest(request);
@@ -147,7 +121,7 @@ public class FreshnessClientRequestTest {
     }
 
     @Test
-    public void failCrossPostFreshness() throws ComunicationException {
+    public void failCrossPostFreshness() throws ComunicationException, ClientNotRegisteredException {
         Contract.PostRequest request = lib.getPostRequest(s.toCharArray(), new String[0]);
 
         lib.postRequest(request);
@@ -217,38 +191,4 @@ public class FreshnessClientRequestTest {
         }
 
     }
-
-    @Test
-    public void failCloseConnectionFreshness() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException {
-        ClientLibrary lib = null;
-        try{
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-            kpg.initialize(2048);
-            KeyPair kp = kpg.genKeyPair();
-            PublicKey pub = kp.getPublic();
-            PrivateKey priv = kp.getPrivate();
-
-            lib = new ClientLibrary("localhost", 8080, pub, priv);
-
-            lib.register();
-            lib.setupConnection();
-
-        } catch (Exception e){
-            System.out.println("// Exception message: " + e.getMessage());
-            System.out.println("Unable to obtain public key for testing");
-        }
-        Contract.CloseSessionRequest request = lib.getCloseSessionRequest();
-        lib.closeConnectionRequest(request);
-
-        try{
-            lib.setupConnection();
-            lib.closeConnectionRequest(request);
-            fail("Communication exception - The integrity of the request was violated - should have been thrown.");
-        }catch (ComunicationException e){
-            assertEquals("The integrity of the request was violated", e.getMessage());
-        }
-        lib.shutDown();
-
-    }
-
 }

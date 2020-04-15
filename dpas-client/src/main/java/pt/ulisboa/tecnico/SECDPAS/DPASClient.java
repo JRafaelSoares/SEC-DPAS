@@ -74,7 +74,6 @@ public class DPASClient {
 		menu.addOption("Post on general board");
 		menu.addOption("Read from a personal board");
 		menu.addOption("Read from the general board");
-		menu.addOption("Close connection");
 		menu.addOption("Exit");
 
 
@@ -226,35 +225,11 @@ public class DPASClient {
 						break;
 					}
 					break;
-				case "Close connection":
-					System.out.println("Closing session...");
-					try{
-						api.closeConnection();
-					} catch (ClientNotRegisteredException e){
-						System.out.println("Client not registered");
-						break;
-					} catch(ComunicationException e){
-						System.out.println("Error in the communication - " + e.getMessage());
-						break;
-					} catch (InvalidArgumentException e){
-						System.out.println("Session already closed");
-					}
-					System.out.println("Success");
-					break;
 				default:
 					break;
 			}
 		} while(!selectedOption.equals("Exit"));
 
-		try{
-			api.closeConnection();
-		} catch (ClientNotRegisteredException e){
-			System.out.println("Client not registered");
-		} catch(ComunicationException e){
-			System.out.println("Error in the communication - " + e.getMessage());
-		} catch (InvalidArgumentException e){
-			System.out.println("Session already closed");
-		}
 		api.shutDown();
 	}
 

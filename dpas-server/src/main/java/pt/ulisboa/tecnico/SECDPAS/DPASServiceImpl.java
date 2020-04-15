@@ -36,6 +36,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private ConcurrentHashMap<PublicKey, ArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
 	private ArrayList<Announcement> generalBoard = new ArrayList<>();
 	private ConcurrentHashMap<PublicKey, MessageHandler> clientSessions = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<PublicKey, FreshnessHandler> clientFreshness = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<Integer, Announcement> announcementIDs = new ConcurrentHashMap<>();
 
 	private String databasePath;
@@ -79,6 +80,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(messageHandler == null){
 			messageHandler = new MessageHandler(null);
 			clientSessions.put(userKey, messageHandler);
+			clientFreshness.put(userKey, new FreshnessHandler());
 		}
 
 		/* Client must be registered. Verify freshness and signature of the request */
@@ -146,36 +148,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	@Override
-	public void closeSession(Contract.CloseSessionRequest request, StreamObserver<Contract.ACK> responseObserver){
-		if(debug != 0) System.out.println("[CLOSE SESSION] Request from client.\n");
-
-		byte[] serializedPublicKey = request.getPublicKey().toByteArray();
-		byte[] freshness = request.getFreshness().toByteArray();
-		byte[] signature = request.getSignature().toByteArray();
-
-		/* Obtaining the Public Key of the Client */
-		PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, freshness);
-
-		if(userKey == null){
-			return;
-		}
-
-		MessageHandler messageHandler = clientSessions.get(userKey);
-
-		/* Client must be registered. Client must be in session. Verify freshness and signature of the request */
-		if(!verifyClientIsRegistered(userKey, responseObserver, serializedPublicKey, freshness) || !verifyIsInSession(messageHandler, responseObserver, serializedPublicKey, freshness) || !verifyMessage(messageHandler, responseObserver, serializedPublicKey, signature, serializedPublicKey, freshness)){
-			return;
-		}
-
-		responseObserver.onNext(buildACKresponse(messageHandler, "hmac"));
-
-		/* Closing session */
-		messageHandler.resetHMAC(null);
-
-		responseObserver.onCompleted();
-	}
-
-	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		if(debug != 0) System.out.println("[REGISTER] Client registering.\n");
 
@@ -199,7 +171,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		/* Registering client */
 		this.privateBoard.put(userKey, new ArrayList<>());
 		this.clientSessions.put(userKey, messageHandler);
-
+		this.clientFreshness.put(userKey, new FreshnessHandler());
 		/* Saving posts */
 		try{
 			save("posts");
@@ -254,7 +226,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			e.getCause();
 		}
 
-		responseObserver.onNext(buildACKresponse(messageHandler, "hmac"));
+		responseObserver.onNext(buildACKresponse(messageHandler, "publicSign", userKey));
 		responseObserver.onCompleted();
 	}
 
@@ -294,7 +266,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			e.getCause();
 		}
 
-		responseObserver.onNext(buildACKresponse(messageHandler, "hmac"));
+		responseObserver.onNext(buildACKresponse(messageHandler, "publicSign", userKey));
 		responseObserver.onCompleted();
 	}
 
@@ -323,10 +295,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		MessageHandler messageHandler = clientSessions.get(clientUserKey);
-
 		/* Client is in session. Verify freshness and integrity-signature */
-		if(!verifyIsInSession(messageHandler, responseObserver, serializedClientPublicKey, freshness) || !verifyMessage(messageHandler, responseObserver, Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey, number), signature, serializedClientPublicKey, freshness)){
+		if(!verifyMessage(responseObserver, Bytes.concat(serializedTargetPublicKey, serializedClientPublicKey, number), signature, clientUserKey, freshness)){
 			return;
 		}
 		if(debug != 0) System.out.println(String.format("[READ] Read request from client %s to client board %s\n", clientUserKey, targetUserKey));
@@ -346,7 +316,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 
-		responseObserver.onNext(buildReadResponse(messageHandler, responseAnnouncements));
+		responseObserver.onNext(buildReadResponse(clientUserKey, responseAnnouncements));
 		responseObserver.onCompleted();
 	}
 
@@ -365,10 +335,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		MessageHandler messageHandler = clientSessions.get(clientUserKey);
-
 		/* Client is in session. Verify freshness and integrity-signature */
-		if(!verifyIsInSession(messageHandler, responseObserver, serializedClientPublicKey, freshness) || !verifyMessage(messageHandler, responseObserver, Bytes.concat(serializedClientPublicKey, number), signature, serializedClientPublicKey, freshness)){
+		if(!verifyMessage(responseObserver, Bytes.concat(serializedClientPublicKey, number), signature, clientUserKey, freshness)){
 			return;
 		}
 		if(debug != 0) System.out.println(String.format("[READ] Read request from client %s\n", clientUserKey));
@@ -384,7 +352,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			responseAnnouncements = SerializationUtils.serialize(toSent.toArray(new Announcement[0]));
 		}
 
-		responseObserver.onNext(buildReadResponse(messageHandler, responseAnnouncements));
+		responseObserver.onNext(buildReadResponse(clientUserKey, responseAnnouncements));
 		responseObserver.onCompleted();
 	}
 
@@ -483,19 +451,15 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, freshness);
 		String[] announcements = verifyAnnouncements(serializedAnnouncements, responseObserver, serializedPublicKey, freshness);
 
+		/* Verify message freshness and integrity-signature. References exists.*/
+		if(!verifyMessage(responseObserver, Bytes.concat(serializedPublicKey, encryptedMessage, messageSignature, serializedAnnouncements), signature, userKey, freshness) || !verifyReferences(announcements, responseObserver, serializedPublicKey, freshness)){
+			return null;
+		}
+
 		/* Public Key is valid. Announcements are valid. Client must be registered. */
 		if(userKey == null || announcements == null || !verifyClientIsRegistered(userKey, responseObserver, serializedPublicKey, freshness)){
 			return null;
 		}
-
-		MessageHandler messageHandler = clientSessions.get(userKey);
-
-		/* Client is in session. Verify message freshness and integrity-signature. References exists.*/
-		if(!verifyIsInSession(messageHandler, responseObserver, serializedPublicKey, freshness) || !verifyMessage(messageHandler, responseObserver, Bytes.concat(serializedPublicKey, encryptedMessage, messageSignature, serializedAnnouncements), signature, serializedPublicKey, freshness) || !verifyReferences(announcements, responseObserver, serializedPublicKey, freshness)){
-			return null;
-		}
-
-		byte[] serverFreshness = Longs.toByteArray(messageHandler.getFreshness());
 
 		byte[] postBytes = null;
 		try {
@@ -570,27 +534,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return true;
 	}
 
-	private boolean verifyIsInSession(MessageHandler messageHandler, StreamObserver<?> responseObserver, byte[] serializedClientKey, byte[] clientFreshness){
-		if(!messageHandler.isInSession()){
-			if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - SessionNotInitiated.");
-			responseObserver.onError(buildException(Status.Code.UNAUTHENTICATED, "SessionNotInitiated", serializedClientKey, clientFreshness));
-			return false;
-		}
-		return true;
-	}
-
-	private boolean verifyMessage(MessageHandler messageHandler, StreamObserver<?> responseObserver, byte[] supposedMessage, byte[] signature, byte[] serializedClientKey, byte[] clientFreshness){
-		try {
-			messageHandler.verifyMessage(supposedMessage, Longs.fromByteArray(clientFreshness), signature);
-		} catch (SignatureNotValidException e) {
+	private boolean verifyMessage(StreamObserver<?> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, byte[] clientFreshness){
+		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(supposedMessage, clientFreshness), signature, userKey)){
 			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientIntegrityViolation.");
-			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientIntegrityViolation", serializedClientKey, clientFreshness));
-			return false;
-		} catch (MessageNotFreshException e) {
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
-			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", serializedClientKey, clientFreshness));
+			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientIntegrityViolation", SerializationUtils.serialize(userKey), clientFreshness));
 			return false;
 		}
+		if(!this.clientFreshness.get(userKey).verifyFreshness(Longs.fromByteArray(clientFreshness))){
+			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
+			return false;
+		}
+
 		return true;
 	}
 
@@ -636,9 +591,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return announcementID++;
 	}
 
-	private Contract.ACK buildACKresponse(MessageHandler messageHandler, String typeSignature){
+	private Contract.ACK buildACKresponse(MessageHandler messageHandler, String typeSignature, PublicKey userKey){
 
-		byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+		byte[] freshness = Longs.toByteArray(this.clientFreshness.get(userKey).getNextFreshness());
 
 		byte[] signature = null;
 
@@ -652,10 +607,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
-	private Contract.ReadResponse buildReadResponse(MessageHandler messageHandler, byte[] responseAnnouncements){
-		byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
-		byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
-
+	private Contract.ReadResponse buildReadResponse(PublicKey clientKey, byte[] responseAnnouncements){
+		byte[] responseFreshness = Longs.toByteArray(clientFreshness.get(clientKey).getNextFreshness());
+		byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), this.privateKey);
 		return Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 	}
 

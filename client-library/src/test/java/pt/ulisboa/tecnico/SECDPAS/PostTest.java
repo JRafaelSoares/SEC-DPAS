@@ -68,6 +68,7 @@ public class PostTest {
 		String s1 = "NoAnnouncement";
 
 		lib1.post(s1.toCharArray());
+
 		String[] announcements = { Integer.toString(lib1.read(pub1, 1)[0].getAnnouncementID()) };
 
 		String s2 = "WithAnnouncement";

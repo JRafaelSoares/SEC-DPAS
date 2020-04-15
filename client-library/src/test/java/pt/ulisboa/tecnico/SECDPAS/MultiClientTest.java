@@ -62,8 +62,6 @@ public class MultiClientTest {
 
                 lib.register();
 
-                lib.setupConnection();
-
                 for(int i=0; i<num; i++){
                     lib.post(("message" + i).toCharArray());
                 }
@@ -104,8 +102,6 @@ public class MultiClientTest {
                 list.add(lib);
 
                 lib.register();
-
-                lib.setupConnection();
 
                 for(int i=0; i<num; i++){
                     lib.post(("message" + i).toCharArray());
@@ -149,8 +145,6 @@ public class MultiClientTest {
 
                 lib.register();
 
-                lib.setupConnection();
-
                 for(int i=0; i<num; i++){
                     lib.postGeneral(("message" + i).toCharArray());
                 }
@@ -184,8 +178,6 @@ public class MultiClientTest {
                 list.add(lib);
 
                 lib.register();
-
-                lib.setupConnection();
 
                 for(int i=0; i<num; i++){
                     lib.postGeneral(("message" + i).toCharArray());
@@ -221,8 +213,6 @@ public class MultiClientTest {
 
                 lib.register();
 
-                lib.setupConnection();
-
                 Thread.sleep(4000);
 
                 Announcement[] announcements = lib.readGeneral(0);
@@ -255,8 +245,6 @@ public class MultiClientTest {
                 list.add(lib);
 
                 lib.register();
-
-                lib.setupConnection();
 
                 Thread.sleep(3000);
 
