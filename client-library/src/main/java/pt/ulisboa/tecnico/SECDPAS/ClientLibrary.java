@@ -26,7 +26,6 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 public class ClientLibrary {
@@ -120,19 +119,13 @@ public class ClientLibrary {
 				throw new ComunicationException("Server signature was invalid");
 			}
 
-		} catch (StatusRuntimeException e){
-			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
-			handleRegistrationError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyExceptionNoFreshnessCheck(exception.getStatus(), exception.getTrailers());
-				handleRegistrationError(exception.getStatus());
+				registerErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
 			}
 
+			//TODO - IS THIS RLY NECESSARIE?
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
 			throw new ComunicationException("Received invalid exception, please try again.");
 		}
@@ -151,29 +144,12 @@ public class ClientLibrary {
 
 		try{
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].post(getPostRequest(message, references));
-			Contract.ACK response = listenableFuture.get();
-
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("The integrity of the server response was violated");
-			}
-
-			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-				throw new ComunicationException("Server response was not fresh");
-			}
-
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		}  catch (InterruptedException | ExecutionException e){
+			postResponseHandler(listenableFuture.get(), 0);
+		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handlePostError(exception.getStatus());
+				postErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
 			}
-
 			throw new ComunicationException("Received invalid exception, please try again.");
 		}
 	}
@@ -191,27 +167,11 @@ public class ClientLibrary {
 
 		try{
 			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].postGeneral(getPostRequest(message, references));
-			Contract.ACK response = listenableFuture.get();
-
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("The integrity of the server response was violated");
-			}
-
-			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-				throw new ComunicationException("Server response was not fresh");
-			}
-
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
+			postResponseHandler(listenableFuture.get(), 0);
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handlePostError(exception.getStatus());
+				postErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
 			}
 
 			throw new ComunicationException("Received invalid exception, please try again.");
@@ -224,43 +184,12 @@ public class ClientLibrary {
 
 		try {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].read(getReadRequest(client, number));
-			Contract.ReadResponse response = listenableFuture.get();
-
-			if(!SignatureHandler.verifyPublicSignature(Bytes.concat(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray()), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("The integrity of the server response was violated");
-			}
-
-			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-				throw new ComunicationException("Server response was not fresh");
-			}
-			//messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-
-			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-
-			for(Announcement announcement : announcements){
-				byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
-				byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
-				byte[] messageBytes = new String(announcement.getPost()).getBytes();
-
-				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
-					throw new ComunicationException("An announcement was not properly signed");
-				}
-			}
-
-			return announcements;
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
+			return readResponseHandler(listenableFuture.get(), 0);
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handleReadError(exception.getStatus());
+				readErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
 			}
-
 			throw new ComunicationException("Received invalid exception, please try again.");
 		}
 	}
@@ -271,46 +200,48 @@ public class ClientLibrary {
 
 		try {
 			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].readGeneral(getReadGeneralRequest(number));
-			Contract.ReadResponse response = listenableFuture.get();
-
-			if(!SignatureHandler.verifyPublicSignature(Bytes.concat(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray()), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("The integrity of the server response was violated");
-			}
-
-			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-				throw new ComunicationException("Server response was not fresh");
-			}
-
-			//messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-
-			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-			for(Announcement announcement : announcements){
-				byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
-				byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
-				byte[] messageBytes = new String(announcement.getPost()).getBytes();
-
-				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
-					throw new ComunicationException("An announcement was not properly signed");
-				}
-			}
-
-			return announcements;
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
+			return readResponseHandler(listenableFuture.get(), 0);
 		} catch (InterruptedException | ExecutionException e){
 			if(e.getCause() instanceof StatusRuntimeException){
 				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handleReadError(exception.getStatus());
+				readErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
 			}
-
 			throw new ComunicationException("Received invalid exception, please try again.");
 		}
+	}
 
+
+	public void postResponseHandler(Contract.ACK response, int serverID) throws ComunicationException{
+		securityResponseHandler(response.getFreshness().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray(), serverID);
+	}
+
+
+	public Announcement[] readResponseHandler(Contract.ReadResponse response, int serverID) throws ComunicationException{
+		securityResponseHandler(Bytes.concat(response.getAnnouncements().toByteArray(),response.getFreshness().toByteArray()), response.getFreshness().toByteArray(), response.getSignature().toByteArray(), serverID);
+
+		Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+		for(Announcement announcement : announcements){
+			byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
+			byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
+			byte[] messageBytes = new String(announcement.getPost()).getBytes();
+
+			if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
+				throw new ComunicationException("An announcement was not properly signed");
+			}
+		}
+
+		return announcements;
+	}
+
+
+	public void securityResponseHandler(byte[] message, byte[] freshness, byte[] signature, int serverID) throws ComunicationException{
+		if(!SignatureHandler.verifyPublicSignature(message, signature, this.serverPublicKey[serverID])){
+			throw new ComunicationException("The integrity of the server response was violated");
+		}
+
+		if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(freshness))){
+			throw new ComunicationException("Server response was not fresh");
+		}
 	}
 
 	/*************************/
@@ -447,8 +378,6 @@ public class ClientLibrary {
 			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
 				throw new ComunicationException("Server response was not fresh");
 			}
-
-			//messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
 			handlePostError(e.getStatus());
@@ -489,7 +418,6 @@ public class ClientLibrary {
             if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
                 throw new ComunicationException("Server response was not fresh");
             }
-			//messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
@@ -511,7 +439,6 @@ public class ClientLibrary {
 			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
 				throw new ComunicationException("Server response was not fresh");
 			}
-			//messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 		} catch (StatusRuntimeException e){
 			verifyException(e.getStatus(), e.getTrailers());
@@ -579,6 +506,31 @@ public class ClientLibrary {
 	/******************************/
 	/** ERROR HANDLING FUNCTIONS **/
 	/******************************/
+
+	private void registerErrors(Status status, Metadata metadata, String message) throws ClientAlreadyRegisteredException, ComunicationException{
+		handleRegistrationError(status);
+		verifyExceptionNoFreshnessCheck(status, metadata);
+
+		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
+		throw new ComunicationException("Received invalid exception, please try again.");
+	}
+
+	private void postErrors(Status status, Metadata metadata, String message) throws ComunicationException, ClientNotRegisteredException{
+		handlePostError(status);
+		verifyException(status, metadata);
+
+		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
+		throw new ComunicationException("Received invalid exception, please try again.");
+	}
+
+	private void readErrors(Status status, Metadata metadata, String message) throws ComunicationException, ClientNotRegisteredException{
+		handleReadError(status);
+		verifyException(status, metadata);
+
+		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
+
+		throw new ComunicationException("Received invalid exception, please try again.");
+	}
 
 	private void handleRegistrationError(Status status) throws ClientAlreadyRegisteredException, ComunicationException {
 		switch(status.getCode()){
