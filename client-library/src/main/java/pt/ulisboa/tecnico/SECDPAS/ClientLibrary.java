@@ -38,7 +38,6 @@ public class ClientLibrary {
 	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
 
-	private MessageHandler[] messageHandler;
 	private FreshnessHandler[] freshnessHandlers;
 
 	private PublicKey publicKey;
@@ -60,7 +59,6 @@ public class ClientLibrary {
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
 		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
-		this.messageHandler = new MessageHandler[numServers];
 		this.freshnessHandlers = new FreshnessHandler[numServers];
 
 		Path currentRelativePath = Paths.get("");
@@ -71,7 +69,6 @@ public class ClientLibrary {
 			String target = host + ":" + (port+server);
 			this.channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
 			this.futureStub[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
-			this.messageHandler[server] = new MessageHandler(null);
 			this.freshnessHandlers[server] = new FreshnessHandler();
 
 			//Get certificate
@@ -98,7 +95,6 @@ public class ClientLibrary {
 	public ClientLibrary(DPASServiceGrpc.DPASServiceFutureStub futureStub, PublicKey publicKeyClient, PrivateKey privateKeyClient, PublicKey publicKeyServer) {
 		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[]{futureStub};
 
-		this.messageHandler = new MessageHandler[]{ new MessageHandler(null)};
 		this.publicKey = publicKeyClient;
 		this.privateKey = privateKeyClient;
 		this.serverPublicKey = new PublicKey[]{publicKeyServer};

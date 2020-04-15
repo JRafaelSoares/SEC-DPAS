@@ -22,7 +22,6 @@ import static org.mockito.Mockito.*;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class FreshnessServerResponseTest {
 
-    private static MessageHandler messageHandler;
     private static PublicKey pubClient;
     private static PrivateKey privServer;
     private static PrivateKey privClient;
@@ -38,7 +37,6 @@ public class FreshnessServerResponseTest {
     public static void setUp(){
 
         try{
-            messageHandler = new MessageHandler(null);
 
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(2048);

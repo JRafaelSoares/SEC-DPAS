@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 
 public class IntegrityServerResponseTest {
 
-    private static MessageHandler messageHandler;
     private static PublicKey pubClient;
     private static PrivateKey privServer;
     private static PrivateKey privClient;
@@ -44,7 +43,6 @@ public class IntegrityServerResponseTest {
     public static void setUp(){
 
         try{
-            messageHandler = new MessageHandler(null);
 
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(2048);

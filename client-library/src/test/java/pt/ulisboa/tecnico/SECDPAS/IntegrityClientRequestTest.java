@@ -165,7 +165,7 @@ public class IntegrityClientRequestTest {
             fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
 
         }catch(ComunicationException e){
-            assertEquals("Received invalid exception, please try again.", e.getMessage());
+            assertEquals("The integrity of the request was violated", e.getMessage());
         }
 
     }
@@ -290,7 +290,7 @@ public class IntegrityClientRequestTest {
             fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
 
         }catch(ComunicationException e){
-            assertEquals("Received invalid exception, please try again.", e.getMessage());
+            assertEquals("The integrity of the request was violated", e.getMessage());
         }
     }
 
@@ -415,7 +415,7 @@ public class IntegrityClientRequestTest {
             fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
 
         }catch(ComunicationException e){
-            assertEquals("Received invalid exception, please try again.", e.getMessage());
+            assertEquals("The integrity of the request was violated", e.getMessage());
         }
 
     }
