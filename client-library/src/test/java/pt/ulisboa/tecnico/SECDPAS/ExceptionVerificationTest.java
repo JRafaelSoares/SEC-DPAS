@@ -5,19 +5,13 @@ import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.protobuf.ByteString;
 import io.grpc.Metadata;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.ExpectedException;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import org.junit.runners.MethodSorters;
 
 import java.security.*;
 
@@ -27,9 +21,11 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ExceptionVerificationTest {
 
 
+    private static FreshnessHandler freshnessHandler;
     private static PublicKey pubClient;
     private static PrivateKey privServer;
     private static PrivateKey privClient;
@@ -43,6 +39,7 @@ public class ExceptionVerificationTest {
     public static void setUp(){
 
         try{
+            freshnessHandler = new FreshnessHandler();
 
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(2048);
@@ -65,17 +62,13 @@ public class ExceptionVerificationTest {
             System.out.println("Unable to obtain public key for testing");
         }
     }
-/*
+
     @Test
-    public void successInvalidArgumentPublicKey() throws ClientAlreadyRegisteredException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successInvalidArgumentPublicKey() throws ClientAlreadyRegisteredException{
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
         byte[] freshness = new byte[0];
-        StatusRuntimeException exception = buildException(Status.Code.INVALID_ARGUMENT, "PublicKey", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.INVALID_ARGUMENT, "PublicKey", serializedPubKey, freshness);
 
         when(stub.register(isA(Contract.RegisterRequest.class))).thenThrow(exception);
 
@@ -89,16 +82,12 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successInvalidArgumentClientAlreadyRegistered() throws ClientAlreadyRegisteredException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successInvalidArgumentClientAlreadyRegistered() throws ClientAlreadyRegisteredException, ComunicationException{
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
         byte[] freshness = new byte[0];
 
-        StatusRuntimeException exception = buildException(Status.Code.INVALID_ARGUMENT, "ClientAlreadyRegistered", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.INVALID_ARGUMENT, "ClientAlreadyRegistered", serializedPubKey, freshness);
 
         when(stub.register(isA(Contract.RegisterRequest.class))).thenThrow(exception);
 
@@ -108,16 +97,12 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successInvalidArgumentNonExistentAnnouncementReference() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successInvalidArgumentNonExistentAnnouncementReference() throws ClientNotRegisteredException, InvalidArgumentException{
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
 
-        StatusRuntimeException exception = buildException(Status.Code.INVALID_ARGUMENT, "NonExistentAnnouncementReference", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.INVALID_ARGUMENT, "NonExistentAnnouncementReference", serializedPubKey, freshness);
 
         when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
@@ -131,16 +116,12 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successPermissionDeniedClientRequestNotFresh() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successPermissionDeniedClientRequestNotFresh() throws InvalidArgumentException, ClientNotRegisteredException{
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
 
-        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", serializedPubKey, freshness);
 
         when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
@@ -153,16 +134,12 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successPermissionDeniedClientSignatureInvalid() throws ClientAlreadyRegisteredException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successPermissionDeniedClientSignatureInvalid() throws ClientAlreadyRegisteredException{
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
         byte[] freshness = new byte[0];
 
-        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientSignatureInvalid", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientSignatureInvalid", serializedPubKey, freshness);
 
         when(stub.register(isA(Contract.RegisterRequest.class))).thenThrow(exception);
 
@@ -176,39 +153,32 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successPermissionDeniedClientNotRegistered() throws ClientNotRegisteredException, ComunicationException, InvalidArgumentException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-        byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+    public void successPermissionDeniedClientNotRegistered() throws ComunicationException, InvalidArgumentException{
 
-        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientNotRegistered", serializedPubKey, freshness, freshness);
+        byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+
+        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientNotRegistered", serializedPubKey, freshness);
 
         when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
         try{
             lib.post("hi".toCharArray());
-            fail("Communication exception - Received invalid exception, please try again. - should have been thrown.");
+            fail("ClientNotRegisteredException - should have been thrown.");
 
-        }catch(ComunicationException e){
-            assertEquals("Received invalid exception, please try again.", e.getMessage());
+        }catch(ClientNotRegisteredException e){
         }
 
     }
 
     @Test
-    public void successPermissionDeniedClientIntegrityViolation() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successPermissionDeniedClientIntegrityViolation() throws InvalidArgumentException, ClientNotRegisteredException{
+
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
 
-        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientIntegrityViolation", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientIntegrityViolation", serializedPubKey, freshness);
 
         when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
@@ -222,16 +192,12 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successPermissionDeniedAnnouncementSignatureInvalid() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successPermissionDeniedAnnouncementSignatureInvalid() throws InvalidArgumentException, ClientNotRegisteredException{
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
 
-        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "AnnouncementSignatureInvalid", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "AnnouncementSignatureInvalid", serializedPubKey, freshness);
 
         when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
@@ -245,16 +211,12 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void successPermissionDeniedTargetClientNotRegistered() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void successPermissionDeniedTargetClientNotRegistered() throws InvalidArgumentException, ClientNotRegisteredException{
 
         byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
 
-        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "TargetClientNotRegistered", serializedPubKey, freshness, freshness);
+        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "TargetClientNotRegistered", serializedPubKey, freshness);
 
         when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenThrow(exception);
 
@@ -269,10 +231,6 @@ public class ExceptionVerificationTest {
 
     @Test
     public void failSignature() throws NoSuchAlgorithmException, InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
 
         // preparing exception
 
@@ -285,10 +243,10 @@ public class ExceptionVerificationTest {
         Status.Code code = Status.Code.INVALID_ARGUMENT;
         String description = "PublicKey";
         byte[] serializedClientKey = SerializationUtils.serialize(pub);
-        byte[] clientFreshness = Longs.toByteArray(messageHandler.getFreshness());
+        byte[] clientFreshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
         Status status = Status.fromCode(code).withDescription(description);
 
-        Metadata metadata = buildMetadata(serializedClientKey, clientFreshness, clientFreshness);
+        Metadata metadata = buildMetadata(serializedClientKey, clientFreshness);
 
         Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
         metadata.put(signatureKey, SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(code.value()), description.getBytes(), serializedClientKey, clientFreshness, clientFreshness), priv));
@@ -309,11 +267,7 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void failType() throws NoSuchAlgorithmException, InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void failType() throws NoSuchAlgorithmException, InvalidArgumentException, ClientNotRegisteredException{
 
         // preparing exception
 
@@ -326,12 +280,12 @@ public class ExceptionVerificationTest {
         Status.Code code = Status.Code.INVALID_ARGUMENT;
         String description = "PublicKey";
         byte[] serializedClientKey = SerializationUtils.serialize(pub);
-        byte[] clientFreshness = Longs.toByteArray(messageHandler.getFreshness());
+        byte[] clientFreshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
 
 
         Status status = Status.fromCode(Status.Code.PERMISSION_DENIED).withDescription("ClientRequestNotFresh");
 
-        Metadata metadata = buildMetadata(serializedClientKey, clientFreshness, clientFreshness);
+        Metadata metadata = buildMetadata(serializedClientKey, clientFreshness);
 
         Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
         metadata.put(signatureKey, SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(code.value()), description.getBytes(), serializedClientKey, clientFreshness, clientFreshness), priv));
@@ -352,103 +306,57 @@ public class ExceptionVerificationTest {
     }
 
     @Test
-    public void failFreshness() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException{
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void zfailFreshness() throws InvalidArgumentException, ClientNotRegisteredException{
 
-        // preparing exception
+        byte[] serializedPubKey = SerializationUtils.serialize(pubClient);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
 
-        Status.Code code = Status.Code.INVALID_ARGUMENT;
-        String description = "PublicKey";
-        byte[] serializedClientKey = SerializationUtils.serialize(pubClient);
-        byte[] clientFreshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] serverFreshness = Longs.toByteArray(10000);
+        StatusRuntimeException exception = buildException(Status.Code.PERMISSION_DENIED, "ClientIntegrityViolation", serializedPubKey, freshness);
 
-        Status status = Status.fromCode(code).withDescription(description);
-
-        Metadata metadata = buildMetadata(serializedClientKey, clientFreshness, serverFreshness);
-
-        Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
-        metadata.put(signatureKey, SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(code.value()), description.getBytes(), serializedClientKey, clientFreshness, serverFreshness), privServer));
-
-        StatusRuntimeException exception = status.asRuntimeException(metadata);
-        
         // end preparation
 
         when(stub.post(isA(Contract.PostRequest.class))).thenThrow(exception);
 
+
         try{
             lib.post("hi".toCharArray());
-            lib.post("hi".toCharArray());
-            fail("Communication exception - Server exception not fresh - should have been thrown.");
         }catch (ComunicationException e){
-            Assert.assertEquals("Server exception not fresh", e.getMessage() );
+
+            try{
+                lib.post("hi".toCharArray());
+                fail("Communication exception - Server exception not fresh - should have been thrown.");
+
+            }catch (ComunicationException e2){
+                Assert.assertEquals("Server exception not fresh", e2.getMessage() );
+            }
         }
+
+
 
     }
 
-    private StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, byte[] clientFreshness, byte[] serverFreshness){
+    private StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, byte[] clientFreshness){
         Status status = Status.fromCode(code).withDescription(description);
 
-        Metadata metadata = buildMetadata(serializedClientKey, clientFreshness, serverFreshness);
+        Metadata metadata = buildMetadata(serializedClientKey, clientFreshness);
 
 
         Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
-        metadata.put(signatureKey, SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(code.value()), description.getBytes(), serializedClientKey, clientFreshness, serverFreshness), privServer));
+        metadata.put(signatureKey, SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(code.value()), description.getBytes(), serializedClientKey, clientFreshness), privServer));
 
         return status.asRuntimeException(metadata);
     }
 
-    private Metadata buildMetadata(byte[] serializedClientKey, byte[] clientFreshness, byte[] serverFreshness){
+    private Metadata buildMetadata(byte[] serializedClientKey, byte[] clientFreshness){
         Metadata metadata = new Metadata();
 
         Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
         Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-        Metadata.Key<byte[]> serverFreshnessKey = Metadata.Key.of("serverFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
 
         metadata.put(clientKey, serializedClientKey);
         metadata.put(clientFreshnessKey, clientFreshness);
-        metadata.put(serverFreshnessKey, serverFreshness);
 
         return metadata;
     }
-
-    private void setUpConnection(){
-
-        when(stub.diffieHellmanExchange(isA(Contract.DHExchangeRequest.class))).thenAnswer(new Answer<ListenableFuture<Contract.DHExchangeResponse>>() {
-            @Override
-            public ListenableFuture<Contract.DHExchangeResponse> answer(InvocationOnMock invocation) throws Throwable {
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.genKeyPair();
-                PrivateKey priv = kp.getPrivate();
-
-                Object[] args = invocation.getArguments();
-                Contract.DHExchangeRequest request =  (Contract.DHExchangeRequest) args[0];
-
-                DiffieHellmanServer dhServer = new DiffieHellmanServer();
-                byte[] serverAgreement = dhServer.execute(request.getClientAgreement().toByteArray());
-                byte[] clientChallenge = request.getClientChallenge().toByteArray();
-
-                messageHandler.resetHMAC(dhServer.getSharedHMACKey());
-
-                byte[] challenge = FreshnessHandler.generateRandomBytes(8);
-                byte[] signature = SignatureHandler.publicSign(Bytes.concat(serverAgreement, clientChallenge, challenge), priv);
-
-                Contract.DHExchangeResponse setUpResponse = Contract.DHExchangeResponse.newBuilder().setServerAgreement(ByteString.copyFrom(serverAgreement)).setServerResponse(request.getClientChallenge()).setServerChallenge(ByteString.copyFrom(clientChallenge)).setSignature(ByteString.copyFrom(signature)).build();
-
-                ListenableFuture<Contract.DHExchangeResponse> setUpListener = mock(ListenableFuture.class);
-
-                try{
-                    when(setUpListener.get()).thenReturn(setUpResponse);
-                }catch (Exception e){
-                    fail(e.getMessage());
-                }
-                return setUpListener;
-            }
-        });
-    }*/
 
 }

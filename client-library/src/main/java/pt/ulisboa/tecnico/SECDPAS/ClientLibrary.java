@@ -98,6 +98,9 @@ public class ClientLibrary {
 		this.publicKey = publicKeyClient;
 		this.privateKey = privateKeyClient;
 		this.serverPublicKey = new PublicKey[]{publicKeyServer};
+
+		this.freshnessHandlers = new FreshnessHandler[1];
+		this.freshnessHandlers[0] = new FreshnessHandler();
 	}
 
 	public void register() throws ComunicationException, ClientAlreadyRegisteredException {
