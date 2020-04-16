@@ -206,7 +206,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityPostCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException{
 
         byte[] publicKey = SerializationUtils.serialize(pubClient);
         byte[] postBytes = "message".getBytes();
@@ -240,7 +240,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityPostGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException{
 
         byte[] publicKey = SerializationUtils.serialize(pubClient);
         byte[] postBytes = "message".getBytes();
@@ -274,7 +274,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException{
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
         announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
@@ -309,7 +309,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadCompromiseAnnouncementsMessage() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadCompromiseAnnouncementsMessage() throws ClientNotRegisteredException, InvalidArgumentException{
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
         announcementList.add(new Announcement("wrong message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
@@ -343,7 +343,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadCompromiseAnnouncementsReferences() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadCompromiseAnnouncementsReferences() throws ClientNotRegisteredException, InvalidArgumentException{
 
         
 
@@ -379,7 +379,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadCompromiseAnnouncementsID() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadCompromiseAnnouncementsID() throws ClientNotRegisteredException, InvalidArgumentException{
 
         
 
@@ -420,7 +420,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadGeneralCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException{
 
         
 
@@ -457,7 +457,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseAnnouncementsMessage() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadGeneralCompromiseAnnouncementsMessage() throws ClientNotRegisteredException, InvalidArgumentException{
 
         
 
@@ -493,7 +493,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseAnnouncementsReferences() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadGeneralCompromiseAnnouncementsReferences() throws ClientNotRegisteredException, InvalidArgumentException{
 
         
 
@@ -528,7 +528,7 @@ public class IntegrityServerResponseTest {
     }
 
     @Test
-    public void failIntegrityReadGeneralCompromiseAnnouncementsID() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
+    public void failIntegrityReadGeneralCompromiseAnnouncementsID() throws ClientNotRegisteredException, InvalidArgumentException{
 
         
 
