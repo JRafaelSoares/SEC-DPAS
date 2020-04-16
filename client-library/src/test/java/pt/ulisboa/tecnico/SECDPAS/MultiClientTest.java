@@ -213,7 +213,7 @@ public class MultiClientTest {
 
                 lib.register();
 
-                Thread.sleep(4000);
+                Thread.sleep(6000);
 
                 Announcement[] announcements = lib.readGeneral(0);
 

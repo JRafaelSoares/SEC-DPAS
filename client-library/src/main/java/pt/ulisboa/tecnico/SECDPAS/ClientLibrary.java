@@ -113,8 +113,8 @@ public class ClientLibrary {
 		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
 
 		try{
-			ListenableFuture<Contract.ACK> listenable = futureStub[0].register(request);
-			Contract.ACK response = listenable.get();
+			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
+			Contract.ACK response = link.register(request);
 
 			/* Verify response signature */
 			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
@@ -124,16 +124,6 @@ public class ClientLibrary {
 
 		} catch (StatusRuntimeException e) {
 			registerErrors(e.getStatus(), e.getTrailers(), e.getMessage());
-
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				registerErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
-			}
-
-			//TODO - IS THIS RLY NECESSARIE?
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
 		}
 	}
 
@@ -149,17 +139,12 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].post(getPostRequest(message, references));
-			postResponseHandler(listenableFuture.get(), 0);
+			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
+			postResponseHandler(link.post(getPostRequest(message, references)), 0);
+
 		} catch (StatusRuntimeException e) {
 			postErrors(e.getStatus(), e.getTrailers(), e.getMessage());
 
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				postErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
-			}
-			throw new ComunicationException("Received invalid exception, please try again.");
 		}
 	}
 
@@ -175,15 +160,11 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].postGeneral(getPostRequest(message, references));
-			postResponseHandler(listenableFuture.get(), 0);
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				postErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
-			}
+			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
+			postResponseHandler(link.postGeneral(getPostRequest(message, references)), 0);
 
-			throw new ComunicationException("Received invalid exception, please try again.");
+		} catch (StatusRuntimeException e) {
+			postErrors(e.getStatus(), e.getTrailers(), e.getMessage());
 		}
 	}
 
@@ -192,20 +173,12 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].read(getReadRequest(client, number));
-			return readResponseHandler(listenableFuture.get(), 0);
+			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
+			return readResponseHandler(link.read(getReadRequest(client, number)), 0);
 		} catch (StatusRuntimeException e) {
 			readErrors(e.getStatus(), e.getTrailers(), e.getMessage());
 
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				readErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
-			}
 			throw new ComunicationException("Received invalid exception, please try again.");
 		}
 	}
@@ -215,20 +188,12 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].readGeneral(getReadGeneralRequest(number));
-			return readResponseHandler(listenableFuture.get(), 0);
+			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
+			return readResponseHandler(link.readGeneral(getReadGeneralRequest(number)), 0);
 		} catch (StatusRuntimeException e) {
 			readErrors(e.getStatus(), e.getTrailers(), e.getMessage());
 
 			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				readErrors(exception.getStatus(), exception.getTrailers(), exception.getMessage());
-			}
 			throw new ComunicationException("Received invalid exception, please try again.");
 		}
 	}
