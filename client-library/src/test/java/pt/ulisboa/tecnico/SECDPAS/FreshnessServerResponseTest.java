@@ -22,6 +22,7 @@ import static org.mockito.Mockito.*;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class FreshnessServerResponseTest {
 
+    private static FreshnessHandler freshnessHandler;
     private static PublicKey pubClient;
     private static PrivateKey privServer;
     private static PrivateKey privClient;
@@ -37,7 +38,8 @@ public class FreshnessServerResponseTest {
     public static void setUp(){
 
         try{
-
+            freshnessHandler = new FreshnessHandler();
+            
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(2048);
             KeyPair kp = kpg.genKeyPair();
@@ -59,7 +61,7 @@ public class FreshnessServerResponseTest {
             System.out.println("Unable to obtain public key for testing");
         }
     }
-/*
+
     @Test
     public void successRegister(){
         byte[] freshness = new byte[0];
@@ -85,19 +87,15 @@ public class FreshnessServerResponseTest {
 
     @Test
     public void successPost() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
 
         byte[] publicKey = SerializationUtils.serialize(pubClient);
         byte[] postBytes = "message".getBytes();
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePost = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        messageHandler.getFreshness();
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
+        freshnessHandler.getNextFreshness();
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -117,20 +115,15 @@ public class FreshnessServerResponseTest {
     @Test
     public void successPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
         byte[] publicKey = SerializationUtils.serialize(pubClient);
         byte[] postBytes = "message".getBytes();
         byte[] announcements = SerializationUtils.serialize(new String[0]);
         messageSignaturePostGeneral = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privClient);
 
-        messageHandler.getFreshness();
+        freshnessHandler.getNextFreshness();
 
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] signature = messageHandler.sign(new byte[0], freshness);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -150,20 +143,15 @@ public class FreshnessServerResponseTest {
     @Test
     public void successRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
         ArrayList<Announcement> announcementList = new ArrayList<>();
         announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        messageHandler.getFreshness();
+        freshnessHandler.getNextFreshness();
 
-        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());        
-        byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
+        byte[] responseFreshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), privServer);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 
@@ -186,20 +174,15 @@ public class FreshnessServerResponseTest {
     @Test
     public void successReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
         ArrayList<Announcement> announcementList = new ArrayList<>();
         announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePostGeneral));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        messageHandler.getFreshness();
+        freshnessHandler.getNextFreshness();
 
-        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
+        byte[] responseFreshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), privServer);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 
@@ -220,44 +203,10 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void successCloseSession() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+    public void failFreshnessPost() throws ClientNotRegisteredException, InvalidArgumentException {
 
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
-        ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
-
-        messageHandler.getFreshness();
-
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
-
-        Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
-        try{
-            when(listenableFuture.get()).thenReturn(response);
-        }catch (Exception e){
-            fail(e.getMessage());
-        }
-
-        when(stub.closeSession(isA(Contract.CloseSessionRequest.class))).thenReturn(listenableFuture);
-
-        lib.closeConnection();
-
-        messageHandler.resetHMAC(null);
-        assertFalse(messageHandler.isInSession());
-
-    }
-
-    @Test
-    public void failFreshnessPost() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
-        setUpConnection();
-        lib.setupConnection();
-
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -280,15 +229,10 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void failFreshnessPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+    public void failFreshnessPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException {
 
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -311,15 +255,10 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void failFreshnessCrossPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
+    public void failFreshnessCrossPostGeneral() throws ClientNotRegisteredException, InvalidArgumentException {
 
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -343,20 +282,15 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void zfailFreshnessRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
-
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void zfailFreshnessRead() throws ClientNotRegisteredException, InvalidArgumentException {
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
         announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
+        byte[] responseFreshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), privServer);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 
@@ -379,20 +313,15 @@ public class FreshnessServerResponseTest {
     }
 
     @Test
-    public void zfailFreshnessReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
-
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
+    public void zfailFreshnessReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException {
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
         announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePostGeneral));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
-        byte[] responseFreshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] responseSignature = messageHandler.calculateHMAC(responseAnnouncements, responseFreshness);
+        byte[] responseFreshness = Longs.toByteArray(freshnessHandler.getNextFreshness());
+        byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), privServer);
 
         Contract.ReadResponse response = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 
@@ -414,70 +343,4 @@ public class FreshnessServerResponseTest {
         }
     }
 
-    @Test
-    public void zfailFreshnessCloseSession() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
-
-        if(!messageHandler.isInSession()){
-            setUpConnection();
-            lib.setupConnection();
-        }
-
-        ListenableFuture<Contract.ACK> listenableFuture = mock(ListenableFuture.class);
-
-        byte[] freshness = Longs.toByteArray(messageHandler.getFreshness());
-        byte[] signature = messageHandler.calculateHMAC(new byte[0], freshness);
-
-        Contract.ACK response = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
-        try{
-            when(listenableFuture.get()).thenReturn(response);
-        }catch (Exception e){
-            fail(e.getMessage());
-        }
-
-        when(stub.closeSession(isA(Contract.CloseSessionRequest.class))).thenReturn(listenableFuture);
-
-        try{
-            lib.closeConnection();
-            fail("Communication exception - Server response was not fresh - should have been thrown.");
-        }catch (ComunicationException e){
-            assertEquals("Server response was not fresh", e.getMessage());
-        }
-    }
-
-    private void setUpConnection(){
-
-        when(stub.diffieHellmanExchange(isA(Contract.DHExchangeRequest.class))).thenAnswer(new Answer<ListenableFuture<Contract.DHExchangeResponse>>() {
-            @Override
-            public ListenableFuture<Contract.DHExchangeResponse> answer(InvocationOnMock invocation) throws Throwable {
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.genKeyPair();
-                PrivateKey priv = kp.getPrivate();
-
-                Object[] args = invocation.getArguments();
-                Contract.DHExchangeRequest request =  (Contract.DHExchangeRequest) args[0];
-
-                DiffieHellmanServer dhServer = new DiffieHellmanServer();
-                byte[] serverAgreement = dhServer.execute(request.getClientAgreement().toByteArray());
-                byte[] clientChallenge = request.getClientChallenge().toByteArray();
-
-                messageHandler.resetHMAC(dhServer.getSharedHMACKey());
-
-                byte[] challenge = FreshnessHandler.generateRandomBytes(8);
-                byte[] signature = SignatureHandler.publicSign(Bytes.concat(serverAgreement, clientChallenge, challenge), priv);
-
-                Contract.DHExchangeResponse setUpResponse = Contract.DHExchangeResponse.newBuilder().setServerAgreement(ByteString.copyFrom(serverAgreement)).setServerResponse(request.getClientChallenge()).setServerChallenge(ByteString.copyFrom(clientChallenge)).setSignature(ByteString.copyFrom(signature)).build();
-
-                ListenableFuture<Contract.DHExchangeResponse> setUpListener = mock(ListenableFuture.class);
-
-                try{
-                    when(setUpListener.get()).thenReturn(setUpResponse);
-                }catch (Exception e){
-                    fail(e.getMessage());
-                }
-                return setUpListener;
-            }
-        });
-    }*/
 }
