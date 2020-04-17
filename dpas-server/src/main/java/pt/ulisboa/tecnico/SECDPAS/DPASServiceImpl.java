@@ -8,24 +8,22 @@ import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
-import io.grpc.Metadata;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
 
 import javax.crypto.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.*;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -33,16 +31,23 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
+	private String host = "localhost";
+	private int port = 8080;
+
 	private ConcurrentHashMap<PublicKey, ArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
 	private ArrayList<Announcement> generalBoard = new ArrayList<>();
 	private ConcurrentHashMap<PublicKey, FreshnessHandler> clientFreshness = new ConcurrentHashMap<>();
-	private ConcurrentHashMap<Integer, Announcement> announcementIDs = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<String, Announcement> announcementIDs = new ConcurrentHashMap<>();
+
+	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
+	private PublicKey[] serverPublicKey;
 
 	private String databasePath;
 
 	private PrivateKey privateKey;
 
-	private int announcementID = 0;
+	private String privateBoardId = "0";
+	private String generalBoardId = "1";
 
 	private int serverID;
 	/* for debugging change to 1 */
@@ -53,6 +58,29 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
 		this.privateKey = privateKey;
 		this.serverID = id;
+
+		int numServers = 4;
+
+		ManagedChannel[] channel = new ManagedChannel[numServers];
+		this.serverPublicKey = new PublicKey[numServers];
+		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+
+		//Stub and certificate for each server
+		for(int server = 0; server < numServers; server++){
+			String target = host + ":" + (port+server);
+			channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
+			this.futureStub[server] = DPASServiceGrpc.newFutureStub(channel[server]);
+
+			//Get certificate
+			try{
+				CertificateFactory fact = CertificateFactory.getInstance("X.509");
+				FileInputStream is = new FileInputStream (String.format("%s/src/main/security/certificates/server/certServer%d.der", currentRelativePath.toAbsolutePath().toString(), server));
+				X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
+				this.serverPublicKey[server] = cer.getPublicKey();
+			} catch (CertificateException | FileNotFoundException e){
+				//throw new CertificateInvalidException(e.getMessage());
+			}
+		}
 		load();
 	}
 
@@ -113,7 +141,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		char[] post = new String(postBytes, StandardCharsets.UTF_8).toCharArray();
 		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
-		int announcementID = addCounter();
+		String announcementID = userKey + String.valueOf(request.getFreshness()) +  generalBoardId;
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray());
 
 		synchronized (this) {
@@ -121,7 +149,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		this.announcementIDs.put(announcementID, announcement);
-		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %d from Client %s posted", post, announcementID, userKey));
+		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %s from Client %s posted", post, announcementID, userKey));
 
 		/* Save posts */
 		try{
@@ -152,14 +180,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		/* create post */
 		char[] post = new String(postBytes, StandardCharsets.UTF_8).toCharArray();
 
-		int announcementID = addCounter();
+		String announcementID = userKey + String.valueOf(request.getFreshness()) +  generalBoardId;
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray());
 		
 		synchronized(this) {
 			this.generalBoard.add(announcement);
 		}
 		this.announcementIDs.put(announcementID, announcement);
-		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %d from Client %s posted", post, announcementID, userKey));
+		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %s from Client %s posted", post, announcementID, userKey));
 
 		/* Save posts */
 		try{
@@ -334,7 +362,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				FileInputStream myReader = new FileInputStream(String.format("%s/announcementsID%d.txt", this.databasePath, this.serverID));
 				this.announcementIDs = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
-				this.announcementID = this.announcementIDs.size();
 			}
 
 
@@ -456,7 +483,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyReferences(String[] references, StreamObserver<?> responseObserver, byte[] serializedClientKey, byte[] clientFreshness){
 		for(String reference: references){
-			if(!announcementIDs.containsKey(Integer.valueOf(reference))){
+			if(!announcementIDs.containsKey(reference)){
 				responseObserver.onError(buildException(Status.Code.INVALID_ARGUMENT, "NonExistentAnnouncementReference", serializedClientKey, clientFreshness));
 				return false;
 			}
@@ -478,10 +505,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		metadata.put(signatureKey, SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(code.value()), description.getBytes(), serializedClientKey, clientFreshness), this.privateKey));
 
 		return status.asRuntimeException(metadata);
-	}
-
-	private synchronized int addCounter(){
-		return announcementID++;
 	}
 
 	private Contract.ACK buildACKresponse(PublicKey userKey){
@@ -521,7 +544,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter(), null);
+		String announcementID = userKey + String.valueOf(request.getFreshness()) +  generalBoardId;
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, announcementID, null);
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 
@@ -531,10 +555,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 		for (Announcement announcement: this.privateBoard.get(userKey)) {
+			System.out.println(2);
 			if(announcement.equals(testingAnnouncement)){
+				System.out.println(3);
 				response = Contract.TestsResponse.newBuilder().setTestResult(true).build();
 				break;
 			}
+			System.out.println(2);
+
 		}
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
@@ -546,7 +574,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, addCounter(), null);
+		String announcementID = userKey + String.valueOf(request.getFreshness()) +  generalBoardId;
+		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, announcementID, null);
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
 

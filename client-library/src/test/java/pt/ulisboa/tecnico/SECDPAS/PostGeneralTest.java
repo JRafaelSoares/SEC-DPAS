@@ -7,6 +7,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.security.*;
+import java.util.Arrays;
 
 import static org.junit.Assert.*;
 
@@ -70,7 +71,7 @@ public class PostGeneralTest {
 		//Announcement a = new Announcement(s1.toCharArray(), pub1, 0);
 		lib1.postGeneral(s1.toCharArray());
 
-		String[] announcements = {Integer.toString(lib1.readGeneral(1)[0].getAnnouncementID())};
+		String[] announcements = {lib1.readGeneral(1)[0].getAnnouncementID()};
 
 
 		String s2 = "WithAnnouncement";

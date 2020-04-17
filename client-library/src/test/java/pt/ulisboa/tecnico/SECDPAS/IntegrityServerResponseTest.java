@@ -145,7 +145,7 @@ public class IntegrityServerResponseTest {
     public void successRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException{
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -277,7 +277,7 @@ public class IntegrityServerResponseTest {
     public void failIntegrityReadCompromiseFreshness() throws ClientNotRegisteredException, InvalidArgumentException{
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -312,7 +312,7 @@ public class IntegrityServerResponseTest {
     public void failIntegrityReadCompromiseAnnouncementsMessage() throws ClientNotRegisteredException, InvalidArgumentException{
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("wrong message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("wrong message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -348,7 +348,7 @@ public class IntegrityServerResponseTest {
         
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[1], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[1], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -384,7 +384,7 @@ public class IntegrityServerResponseTest {
         
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "1", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -394,7 +394,7 @@ public class IntegrityServerResponseTest {
         byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), privServer);
 
         announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 1, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -425,7 +425,7 @@ public class IntegrityServerResponseTest {
         
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -462,7 +462,7 @@ public class IntegrityServerResponseTest {
         
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("wrong message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("wrong message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -498,7 +498,7 @@ public class IntegrityServerResponseTest {
         
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[1], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[1], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -533,7 +533,7 @@ public class IntegrityServerResponseTest {
         
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "1", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -543,7 +543,7 @@ public class IntegrityServerResponseTest {
         byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), privServer);
 
         announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 1, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 

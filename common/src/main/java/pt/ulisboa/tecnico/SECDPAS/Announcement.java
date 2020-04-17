@@ -14,11 +14,11 @@ public class Announcement implements Serializable {
 
     private PublicKey publicKey;
 
-    private int announcementID;
+    private String announcementID;
 
     private byte[] signature;
 
-    public Announcement(char[] post, PublicKey publicKey, String[] references, int announcementID, byte[] signature){
+    public Announcement(char[] post, PublicKey publicKey, String[] references, String announcementID, byte[] signature){
         this.post = post;
         this.publicKey = publicKey;
         this.references = references;
@@ -26,7 +26,7 @@ public class Announcement implements Serializable {
         this.signature = signature;
     }
 
-    public Announcement(char[] post, PublicKey publicKey, int announcementID, byte[] signature){
+    public Announcement(char[] post, PublicKey publicKey, String announcementID, byte[] signature){
         this(post, publicKey, new String[0], announcementID, signature);
     }
 
@@ -34,7 +34,7 @@ public class Announcement implements Serializable {
         return this.post;
     }
 
-    public int getAnnouncementID(){
+    public String getAnnouncementID(){
         return announcementID;
     }
 
@@ -54,8 +54,7 @@ public class Announcement implements Serializable {
     public boolean equals(Object obj) {
         if(obj.getClass() != this.getClass()){
             return false;
-        }
-        else{
+        }else{
 
             Announcement announcement = (Announcement) obj;
 

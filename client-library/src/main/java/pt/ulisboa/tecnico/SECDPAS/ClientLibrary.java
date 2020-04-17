@@ -62,7 +62,6 @@ public class ClientLibrary {
 
 		Path currentRelativePath = Paths.get("");
 
-
 		//Stub and certificate for each server
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);

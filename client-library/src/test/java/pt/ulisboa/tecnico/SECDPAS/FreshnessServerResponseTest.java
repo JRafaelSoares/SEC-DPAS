@@ -144,7 +144,7 @@ public class FreshnessServerResponseTest {
     public void successRead() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -175,7 +175,7 @@ public class FreshnessServerResponseTest {
     public void successReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException, ComunicationException {
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePostGeneral));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePostGeneral));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -285,7 +285,7 @@ public class FreshnessServerResponseTest {
     public void zfailFreshnessRead() throws ClientNotRegisteredException, InvalidArgumentException {
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePost));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePost));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
@@ -316,7 +316,7 @@ public class FreshnessServerResponseTest {
     public void zfailFreshnessReadGeneral() throws ClientNotRegisteredException, InvalidArgumentException {
 
         ArrayList<Announcement> announcementList = new ArrayList<>();
-        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], 0, messageSignaturePostGeneral));
+        announcementList.add(new Announcement("message".toCharArray(), pubClient, new String[0], "0", messageSignaturePostGeneral));
 
         byte[] responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
 
