@@ -141,7 +141,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		char[] post = new String(postBytes, StandardCharsets.UTF_8).toCharArray();
 		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
-		String announcementID = userKey + String.valueOf(request.getFreshness()) +  generalBoardId;
+		String announcementID = userKey + String.valueOf(request.getFreshness()) +  privateBoardId;
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray());
 
 		synchronized (this) {
@@ -544,7 +544,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 
-		String announcementID = userKey + String.valueOf(request.getFreshness()) +  generalBoardId;
+		String announcementID = userKey + String.valueOf(request.getFreshness()) +  privateBoardId;
 		Announcement testingAnnouncement = new Announcement(post, userKey, announcements, announcementID, null);
 
 		Contract.TestsResponse response = Contract.TestsResponse.newBuilder().setTestResult(false).build();
