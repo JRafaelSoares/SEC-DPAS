@@ -21,7 +21,7 @@ public class AuthenticatedPerfectLinkTest {
     private static AuthenticatedPerfectLink link;
     private static DPASServiceGrpc.DPASServiceFutureStub stub;
     private static PrivateKey privServer;
-
+/*
     @BeforeClass
     public static void setUp(){
 
@@ -168,5 +168,5 @@ public class AuthenticatedPerfectLinkTest {
         }
 
     }
-
+*/
 }

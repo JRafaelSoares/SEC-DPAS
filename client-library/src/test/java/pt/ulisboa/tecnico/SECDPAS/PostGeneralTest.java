@@ -73,7 +73,6 @@ public class PostGeneralTest {
 
 		String[] announcements = {lib1.readGeneral(1)[0].getAnnouncementID()};
 
-
 		String s2 = "WithAnnouncement";
 
 		lib1.postGeneral(s2.toCharArray(), announcements);

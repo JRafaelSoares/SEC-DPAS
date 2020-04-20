@@ -36,7 +36,7 @@ public class SignatureServerResponseTest {
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
-
+/*
     @BeforeClass
     public static void setUp(){
 
@@ -379,5 +379,5 @@ public class SignatureServerResponseTest {
         }
 
     }
-
+*/
 }

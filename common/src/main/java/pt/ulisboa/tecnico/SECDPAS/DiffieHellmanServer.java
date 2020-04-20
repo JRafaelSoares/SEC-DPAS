@@ -9,7 +9,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.function.Consumer;
 
 
 public class DiffieHellmanServer {
@@ -85,4 +84,5 @@ public class DiffieHellmanServer {
 
         return null;
     }
+
 }

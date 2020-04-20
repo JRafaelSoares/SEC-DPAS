@@ -6,42 +6,37 @@ import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Empty;
 
 import com.google.protobuf.ByteString;
 import io.grpc.*;
 import org.apache.commons.lang3.SerializationUtils;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.concurrent.ExecutionException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ClientLibrary {
 
-	private String host = "localhost";
-	private int port = 8080;
-
 	private ManagedChannel[] channel;
-	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
+	private Map<PublicKey, AuthenticatedPerfectLink> calls;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
-
 	private FreshnessHandler[] freshnessHandlers;
+	private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
 
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private PublicKey[] serverPublicKey;
+
+	private int numServers;
+	private int minQuorumResponses;
 
 	/* for debugging change to 1 */
 	private int debug = 0;
@@ -54,11 +49,13 @@ public class ClientLibrary {
 		this.privateKey = privateKey;
 
 		//Byzantine Quorum number
-		int numServers = faults*3+1;
+		this.numServers = faults*3+1;
+		this.minQuorumResponses = numServers;//2*faults+1;
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
-		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+		this.calls = new HashMap<>();
 		this.freshnessHandlers = new FreshnessHandler[numServers];
+		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
 		Path currentRelativePath = Paths.get("");
 
@@ -66,7 +63,7 @@ public class ClientLibrary {
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			this.channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStub[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
+			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
 			this.freshnessHandlers[server] = new FreshnessHandler();
 
 			//Get certificate
@@ -78,6 +75,7 @@ public class ClientLibrary {
 			} catch (CertificateException | FileNotFoundException e){
 				throw new CertificateInvalidException(e.getMessage());
 			}
+			this.calls.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshnessHandlers[server], serverPublicKey[server]));
 		}
 
 		//Test server
@@ -89,41 +87,28 @@ public class ClientLibrary {
 		this(host, port, publicKey, privateKey, 0);
 	}
 
-	/* constructor only for tests */
-	public ClientLibrary(DPASServiceGrpc.DPASServiceFutureStub futureStub, PublicKey publicKeyClient, PrivateKey privateKeyClient, PublicKey publicKeyServer) {
-		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[]{futureStub};
-
-		this.publicKey = publicKeyClient;
-		this.privateKey = privateKeyClient;
-		this.serverPublicKey = new PublicKey[]{publicKeyServer};
-
-		this.freshnessHandlers = new FreshnessHandler[1];
-		this.freshnessHandlers[0] = new FreshnessHandler();
-	}
-
 	public void register() throws ComunicationException, ClientAlreadyRegisteredException {
-		if(debug != 0) System.out.println("[REGISTER] Request from client.\n");
+		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
-		/* Serializes key and changes to ByteString */
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey), privateKey);
-
-		/* Prepare request */
-		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
+		/* Create quorum */
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new RegisterRequest(getRegisterRequest()));
 
 		try{
-			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
-			Contract.ACK response = link.register(request);
+			int result = qr.waitForQuorum(minQuorumResponses);
 
-			/* Verify response signature */
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ServerSignatureInvalid \n");
-				throw new ComunicationException("Server signature was invalid");
+			if(result == 1){
+				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
+				handleRegistrationError(e.getStatus());
 			}
 
-		} catch (StatusRuntimeException e) {
-			registerErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+			if(result == -1){
+				throw new ComunicationException("No consensus in quorum");
+			}
+
+		}catch (InterruptedException e){
+			System.out.println(e.getMessage());
 		}
+
 	}
 
 	public void post(char[] message) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
@@ -134,17 +119,28 @@ public class ClientLibrary {
 	}
 
 	public void post(char[] message, String[] references) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[POST] Request from client.\n");
+		if(debug != 0) System.out.println("[POST] RequestType from client.\n");
 		checkMessage(message);
 
+		/* Create quorum */
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostRequest"));
+
 		try{
-			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
-			postResponseHandler(link.post(getPostRequest(message, references)), 0);
+			int result = qr.waitForQuorum(minQuorumResponses);
 
-		} catch (StatusRuntimeException e) {
-			postErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+			if(result == 1){
+				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
+				handlePostError(e.getStatus());
+			}
 
+			if(result == -1){
+				throw new ComunicationException("No consensus in quorum");
+			}
+
+		}catch (InterruptedException e){
+			System.out.println(e.getMessage());
 		}
+
 	}
 
 	public void postGeneral(char[] message) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
@@ -155,80 +151,82 @@ public class ClientLibrary {
 	}
 
 	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[POST GENERAL] Request from client.\n");
+		if(debug != 0) System.out.println("[POST GENERAL] RequestType from client.\n");
 		checkMessage(message);
 
-		try{
-			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
-			postResponseHandler(link.postGeneral(getPostRequest(message, references)), 0);
+		/* Create quorum */
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostGeneralRequest"));
 
-		} catch (StatusRuntimeException e) {
-			postErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+		try{
+			int result = qr.waitForQuorum(minQuorumResponses);
+
+			if(result == 1){
+				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
+				handlePostError(e.getStatus());
+			}
+
+			if(result == -1){
+				throw new ComunicationException("No consensus in quorum");
+			}
+
+		}catch (InterruptedException e){
+			System.out.println(e.getMessage());
 		}
+
 	}
 
 	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[READ] Request from client.\n");
+		if(debug != 0) System.out.println("[READ] RequestType from client.\n");
 		checkNumber(number);
 
-		try {
-			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
-			return readResponseHandler(link.read(getReadRequest(client, number)), 0);
-		} catch (StatusRuntimeException e) {
-			readErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+		/* Create quorum */
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadRequest(client, number), "ReadRequest"));
 
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
+		try{
+			int result = qr.waitForQuorum(minQuorumResponses);
+
+			if(result == 0){
+				Contract.ReadResponse response = qr.getResult();
+				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+			}
+
+			if(result == 1){
+				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
+				handleReadError(e.getStatus());
+			}
+
+		}catch (InterruptedException e){
+			System.out.println(e.getMessage());
 		}
+
+		throw new ComunicationException("No consensus in quorum");
 	}
 
 	public Announcement[] readGeneral(int number) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[READ GENERAL] Request from client.\n");
+		if(debug != 0) System.out.println("[READ GENERAL] RequestType from client.\n");
 		checkNumber(number);
 
-		try {
-			AuthenticatedPerfectLink link = new AuthenticatedPerfectLink(futureStub[0]);
-			return readResponseHandler(link.readGeneral(getReadGeneralRequest(number)), 0);
-		} catch (StatusRuntimeException e) {
-			readErrors(e.getStatus(), e.getTrailers(), e.getMessage());
+		/* Create quorum */
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"));
 
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-		}
-	}
+		try{
+			int result = qr.waitForQuorum(minQuorumResponses);
 
-
-	public void postResponseHandler(Contract.ACK response, int serverID) throws ComunicationException{
-		securityResponseHandler(response.getFreshness().toByteArray(), response.getFreshness().toByteArray(), response.getSignature().toByteArray(), serverID);
-	}
-
-
-	public Announcement[] readResponseHandler(Contract.ReadResponse response, int serverID) throws ComunicationException{
-		securityResponseHandler(Bytes.concat(response.getAnnouncements().toByteArray(),response.getFreshness().toByteArray()), response.getFreshness().toByteArray(), response.getSignature().toByteArray(), serverID);
-
-		Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-		for(Announcement announcement : announcements){
-			byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
-			byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
-			byte[] messageBytes = new String(announcement.getPost()).getBytes();
-
-			if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
-				throw new ComunicationException("An announcement was not properly signed");
+			if(result == 0){
+				Contract.ReadResponse response = qr.getResult();
+				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 			}
+
+			if(result == 1){
+				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
+				handleReadError(e.getStatus());
+			}
+
+		}catch (InterruptedException e){
+			System.out.println(e.getMessage());
 		}
 
-		return announcements;
-	}
-
-
-	public void securityResponseHandler(byte[] message, byte[] freshness, byte[] signature, int serverID) throws ComunicationException{
-		if(!SignatureHandler.verifyPublicSignature(message, signature, this.serverPublicKey[serverID])){
-			throw new ComunicationException("The integrity of the server response was violated");
-		}
-
-		if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(freshness))){
-			throw new ComunicationException("Server response was not fresh");
-		}
+		throw new ComunicationException("No consensus in quorum");
 	}
 
 	/*************************/
@@ -242,21 +240,17 @@ public class ClientLibrary {
 
 		byte[] postBytes = post.getBytes();
 
-		byte[] encryptedMessage = null;
-		try {
-			Cipher encrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-			encrypt.init(Cipher.ENCRYPT_MODE, this.serverPublicKey[0]);
-			encryptedMessage = encrypt.doFinal(post.getBytes(StandardCharsets.UTF_8));
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
-			System.out.println("Unexpected error while encrypting message");
-			e.printStackTrace();
+		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
+
+		byte[] freshness = null;
+
+		for(FreshnessHandler handler : freshnessHandlers){
+			freshness = Longs.toByteArray(handler.getNextFreshness());
 		}
 
-		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
-		byte[] freshness = Longs.toByteArray(freshnessHandlers[0].getNextFreshness());
-		byte[] integrity = SignatureHandler.publicSign(Bytes.concat(publicKey, encryptedMessage, messageSignature, announcements, freshness), privateKey);
+		byte[] integrity = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, messageSignature, announcements, freshness), privateKey);
 
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(encryptedMessage)).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(postBytes)).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
 	}
 
 	public Contract.PostRequest getTestPostRequest(char[] message, String[] references) {
@@ -271,7 +265,11 @@ public class ClientLibrary {
 		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
 		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = Longs.toByteArray(freshnessHandlers[0].getNextFreshness());
+		byte[] freshness = null;
+
+		for(FreshnessHandler handler : freshnessHandlers){
+			freshness = Longs.toByteArray(handler.getNextFreshness());
+		}
 
 		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, numberBytes, freshness), this.privateKey);
@@ -283,7 +281,11 @@ public class ClientLibrary {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 
-		byte[] freshness = Longs.toByteArray(freshnessHandlers[0].getNextFreshness());
+		byte[] freshness = null;
+
+		for(FreshnessHandler handler : freshnessHandlers){
+			freshness = Longs.toByteArray(handler.getNextFreshness());
+		}
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, numberBytes, freshness), this.privateKey);
 
 		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -291,11 +293,12 @@ public class ClientLibrary {
 	}
 
 	public Contract.RegisterRequest getRegisterRequest(){
+		/* Serializes key and changes to ByteString */
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] freshness = new byte[0];
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey), privateKey);
 
-		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		/* Prepare request */
+		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
 	/********************/
@@ -353,112 +356,16 @@ public class ClientLibrary {
 		}
 	}
 
-	public void postRequest(Contract.PostRequest request) throws ComunicationException, ClientNotRegisteredException {
-
-		try{
-			Contract.ACK response = stub.post(request);
-
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("The integrity of the server response was violated");
-			}
-
-			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-				throw new ComunicationException("Server response was not fresh");
-			}
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		}
-	}
-
-	public void postGeneralRequest(Contract.PostRequest request) throws ComunicationException, ClientNotRegisteredException {
-		try{
-			Contract.ACK response = stub.postGeneral(request);
-
-            if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-                throw new ComunicationException("The integrity of the server response was violated");
-            }
-
-            if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-                throw new ComunicationException("Server response was not fresh");
-            }
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		}
-	}
-
-	public Announcement[] readRequest(Contract.ReadRequest request) throws ComunicationException, ClientNotRegisteredException {
-		try {
-			Contract.ReadResponse response = stub.read(request);
-
-            if(!SignatureHandler.verifyPublicSignature(Bytes.concat(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray()), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-                throw new ComunicationException("The integrity of the server response was violated");
-            }
-
-            if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-                throw new ComunicationException("Server response was not fresh");
-            }
-			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		}
-    }
-
-	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ComunicationException, ClientNotRegisteredException {
-		try {
-			Contract.ReadResponse response = stub.readGeneral(request);
-
-			if(!SignatureHandler.verifyPublicSignature(Bytes.concat(response.getAnnouncements().toByteArray(), response.getFreshness().toByteArray()), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("The integrity of the server response was violated");
-			}
-
-			if(!freshnessHandlers[0].verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray()))){
-				throw new ComunicationException("Server response was not fresh");
-			}
-			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		}
-
-	}
-
-	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, ComunicationException {
-		try{
-			Contract.ACK response = stub.register(request);
-
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("Server signature was invalid");
-			}
-		} catch (StatusRuntimeException e){
-			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
-			handleRegistrationError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		}
-	}
-
 	public void cleanPosts(){
-		stub.cleanPosts(Empty.newBuilder().build());
+		for(DPASServiceGrpc.DPASServiceFutureStub stub : futureStubs){
+			stub.cleanPosts(Empty.newBuilder().build());
+		}
 	}
 
 	public void cleanGeneralPosts(){
-		stub.cleanGeneralPosts(Empty.newBuilder().build());
+		for(DPASServiceGrpc.DPASServiceFutureStub stub : futureStubs){
+			stub.cleanGeneralPosts(Empty.newBuilder().build());
+		}
 	}
 
 	/*********************/
@@ -494,27 +401,6 @@ public class ClientLibrary {
 	/** ERROR HANDLING FUNCTIONS **/
 	/******************************/
 
-	private void registerErrors(Status status, Metadata metadata, String message) throws ClientAlreadyRegisteredException, ComunicationException{
-		verifyExceptionNoFreshnessCheck(status, metadata);
-		handleRegistrationError(status);
-
-		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
-		throw new ComunicationException("Received invalid exception, please try again.");
-	}
-
-	private void postErrors(Status status, Metadata metadata, String message) throws ComunicationException, ClientNotRegisteredException{
-		verifyException(status, metadata);
-		handlePostError(status);
-
-		if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + message + "\n");
-		throw new ComunicationException("Received invalid exception, please try again.");
-	}
-
-	private void readErrors(Status status, Metadata metadata, String message) throws ComunicationException, ClientNotRegisteredException{
-		verifyException(status, metadata);
-		handleReadError(status);
-	}
-
 	private void handleRegistrationError(Status status) throws ClientAlreadyRegisteredException, ComunicationException {
 		switch(status.getCode()){
 			case INVALID_ARGUMENT:
@@ -531,6 +417,9 @@ public class ClientLibrary {
 					case "ClientSignatureInvalid":
 						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The signature of the request wasn't valid \n");
 						throw new ComunicationException("The signature of the request wasn't valid");
+					case "ServerSignatureException":
+						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the server response was violated \n");
+						throw new ComunicationException("The integrity of the server response was violated");
 				}
 		}
 	}
@@ -586,42 +475,6 @@ public class ClientLibrary {
 						throw new ComunicationException("The integrity of the request was violated");
 				}
 		}
-	}
-
-	private void verifyException(Status status, Metadata metadata) throws ComunicationException {
-		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
-
-		byte[] serializedClientKey = metadata.get(clientKey);
-		byte[] clientFreshness = metadata.get(clientFreshnessKey);
-		byte[] signature = metadata.get(signatureKey);
-
-
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey[0])){
-			throw new ComunicationException("Server exception signature invalid");
-		}
-
-		if(clientFreshness != null){
-			if(!this.freshnessHandlers[0].verifyExceptionFreshness(Longs.fromByteArray(clientFreshness))){
-				throw new ComunicationException("Server exception not fresh");
-			}
-		}
-	}
-
-	private void verifyExceptionNoFreshnessCheck(Status status, Metadata metadata) throws ComunicationException {
-		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
-
-		byte[] serializedClientKey = metadata.get(clientKey);
-		byte[] clientFreshness = metadata.get(clientFreshnessKey);
-		byte[] signature = metadata.get(signatureKey);
-
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey[0])){
-			throw new ComunicationException("Server exception signature invalid");
-		}
-
 	}
 
 	/***********************/

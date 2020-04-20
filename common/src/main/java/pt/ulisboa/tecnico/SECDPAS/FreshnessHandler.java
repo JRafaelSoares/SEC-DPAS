@@ -36,4 +36,7 @@ public class FreshnessHandler {
         return sequenceNumber++;
     }
 
+    public void setFreshness(long f){
+        this.sequenceNumber = f;
+    }
 }

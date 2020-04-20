@@ -78,7 +78,7 @@ public class MultiClientTest {
                 assertTrue(result);
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | ComunicationException | CertificateInvalidException e){
-                System.out.println(e.getMessage());
+                System.out.println("client1: " + e.getMessage());
             }
         }
     }
@@ -121,7 +121,7 @@ public class MultiClientTest {
                 assertTrue(result);
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | ComunicationException | CertificateInvalidException e){
-                System.out.println(e.getMessage());
+                System.out.println("client2: " + e.getMessage());
             }
         }
 
@@ -156,7 +156,7 @@ public class MultiClientTest {
                 //System.out.println("\n\nT3 done");
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | ComunicationException | CertificateInvalidException e){
-                System.out.println(e.getMessage());
+                System.out.println("client3: " + e.getMessage());
             }
         }
     }
@@ -190,7 +190,7 @@ public class MultiClientTest {
                 //System.out.println("\n\nT4 done");
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | ComunicationException | CertificateInvalidException e){
-                System.out.println(e.getMessage());
+                System.out.println("client4: " + e.getMessage());
             }
         }
     }
@@ -213,7 +213,7 @@ public class MultiClientTest {
 
                 lib.register();
 
-                Thread.sleep(6000);
+                Thread.sleep(15000);
 
                 Announcement[] announcements = lib.readGeneral(0);
 
@@ -222,7 +222,7 @@ public class MultiClientTest {
                 //System.out.println("\n\nT5 done");
 
             } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | ComunicationException | CertificateInvalidException e){
-                System.out.println(e.getMessage());
+                System.out.println("client5: " + e.getMessage());
             }
         }
     }
@@ -246,7 +246,7 @@ public class MultiClientTest {
 
                 lib.register();
 
-                Thread.sleep(3000);
+                Thread.sleep(15000);
 
                 Announcement[] announcements = lib.read(pub1, 0);
 
@@ -267,7 +267,7 @@ public class MultiClientTest {
                 assertTrue(result);
 
             } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ClientNotRegisteredException | ClientAlreadyRegisteredException | ComunicationException | CertificateInvalidException e){
-                System.out.println(e.getMessage());
+                System.out.println("client6: " + e.getMessage());
             }
         }
 

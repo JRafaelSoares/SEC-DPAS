@@ -55,7 +55,6 @@ public class PostTest {
 		lib2.shutDown();
 	}
 
-
 	@Test
 	public void postCorrectNoAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
 		String s = "NoAnnouncement";
@@ -63,6 +62,8 @@ public class PostTest {
 
 		assertTrue(lib1.postState(s.toCharArray()));
 	}
+
+	//TODO when read quorum is completed
 
 	@Test
 	public void postCorrectWithAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
@@ -81,7 +82,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postAnnouncementsDoesNotExistTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void postAnnouncementsDoesNotExistTest() throws InvalidArgumentException, ClientNotRegisteredException {
 		String[] announcements = { Integer.toString(12345678) };
 
 		String s2 = "WithAnnouncement";

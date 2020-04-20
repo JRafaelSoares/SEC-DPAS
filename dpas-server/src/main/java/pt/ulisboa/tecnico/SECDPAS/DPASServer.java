@@ -25,7 +25,7 @@ public class DPASServer {
 
 
 		// check arguments
-		if (args.length != 4) {
+		if (args.length != 5) {
 			System.err.println("Argument(s) missing!");
 			System.err.printf("Usage: java %s port%n", Server.class.getName());
 			return;
@@ -42,7 +42,7 @@ public class DPASServer {
 
 			KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(args[1].toCharArray());
 			KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(alias, entryPassword);
-			final BindableService impl = new DPASServiceImpl(privateKeyEntry.getPrivateKey(), serverID);
+			final BindableService impl = new DPASServiceImpl(privateKeyEntry.getPrivateKey(), serverID, Integer.parseInt(args[4]));
 
 
 			Server server = ServerBuilder.forPort(portClient).addService(impl).build();
