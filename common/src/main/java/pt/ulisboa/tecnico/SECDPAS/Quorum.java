@@ -6,54 +6,66 @@ import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 public class Quorum<Key, Result> {
 
     private final Map<Key, Result> successes = new HashMap<>();
     private final Map<Key, Throwable> clientExceptions = new HashMap<>();
+    private static CountDownLatch latch;// = new CountDownLatch(4);
+    private static int quorum;
 
-    static <Key, Result> Quorum<Key, Result> create(Map<Key, AuthenticatedPerfectLink> calls, RequestType request) {
+    static <Key, Result> Quorum<Key, Result> create(Map<Key, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
         final Quorum<Key, Result> qr = new Quorum<>();
+        quorum = minResponses;
 
-        Iterator<Map.Entry<Key, AuthenticatedPerfectLink>> iterator = calls.entrySet().iterator();
-
-        for (int i=0; i<calls.size(); i++) {
-            final Map.Entry<Key, AuthenticatedPerfectLink> e = iterator.next();
-
+        latch = new CountDownLatch(minResponses);
+        for (Map.Entry<Key, AuthenticatedPerfectLink> e : calls.entrySet()) {
             FutureCallback<Result> futureCallback = new FutureCallback<>() {
                 @Override
                 public void onSuccess(Result res) {
                     qr.addResult(e.getKey(), res);
+                    qr.countDownLatch();
                 }
 
                 @Override
                 public void onFailure(Throwable t) {
                     qr.addException(e.getKey(), t);
+                    qr.countDownLatch();
                 }
             };
 
             e.getValue().process(request, futureCallback);
         }
+
         return qr;
     }
 
-    public synchronized int waitForQuorum(int minResponses) throws InterruptedException {
+    public synchronized int waitForQuorum() throws InterruptedException {
+        /*
+        latch.await();
+        return checkResults();
+        */
         while (true) {
-            if (countResponses() >= minResponses){
-                return checkResults(minResponses);
+            if (countResponses() >= quorum){
+                return checkResults();
             }
             wait(1);
         }
     }
 
-    private synchronized int checkResults(int numResponses){
-        if(successes.size() >= numResponses && equalitySuccesses(numResponses)){
+    private synchronized int checkResults(){
+        if(successes.size() >= quorum && equalitySuccesses(quorum)){
             return 0;
         }
-        if(clientExceptions.size() >= numResponses && equalityExceptions(numResponses)){
+        if(clientExceptions.size() >= quorum && equalityExceptions(quorum)){
             return 1;
         }
         return -1;
+    }
+
+    private void countDownLatch(){
+        latch.countDown();
     }
 
     private synchronized boolean equalitySuccesses(int numResponses){
