@@ -52,7 +52,6 @@ public class AuthenticatedPerfectLink {
     }
 
     private void register(Contract.RegisterRequest request, FutureCallback<Contract.ACK> listenableFuture){
-
         ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
 
         Futures.addCallback(listenable, new FutureCallback<>() {
@@ -61,7 +60,6 @@ public class AuthenticatedPerfectLink {
                 if(ack != null && verifySignature(serverPublicKey, ack.getFreshness().toByteArray(), ack.getSignature().toByteArray())){
                     listenableFuture.onSuccess(ack);
                 }else{
-                    System.out.println("failure: " + (ack != null) + " " + verifySignature(serverPublicKey, ack.getFreshness().toByteArray(), ack.getSignature().toByteArray()));
                     register(request, listenableFuture);
                 }
             }
@@ -78,7 +76,6 @@ public class AuthenticatedPerfectLink {
                 if(e != null && e.getTrailers() != null && verifyExceptionSignature(e.getStatus(), e.getTrailers())){
                     listenableFuture.onFailure(e);
                 }else{
-                    System.out.println("all NOT GOOD failure: " + (e != null) + " " + (e.getTrailers() != null) + " " + verifyExceptionSignature(e.getStatus(), e.getTrailers()));
                     register(request, listenableFuture);
                 }
             }
@@ -101,7 +98,6 @@ public class AuthenticatedPerfectLink {
                 if(ack != null && verifySignature(serverPublicKey, ack.getFreshness().toByteArray(), ack.getSignature().toByteArray()) && verifyFreshness(Longs.fromByteArray(ack.getFreshness().toByteArray()))){
                     listenableFuture.onSuccess(ack);
                 }else{
-                    System.out.println("all NOT GOOD success: " + (ack!=null) + " " + verifySignature(serverPublicKey, ack.getFreshness().toByteArray(), ack.getSignature().toByteArray()) + " " + Longs.fromByteArray(ack.getFreshness().toByteArray()));
                     if(type.equals("PostRequest")){
                         post(request, listenableFuture, "PostRequest");
                     }else{
@@ -122,7 +118,6 @@ public class AuthenticatedPerfectLink {
                 if(e != null && e.getTrailers() != null && verifyExceptionSignature(e.getStatus(), e.getTrailers()) && verifyExceptionFreshness(e.getTrailers())){
                     listenableFuture.onFailure(e);
                 }else{
-                    System.out.println("all NOT GOOD failure: " + (e != null) + " " + (e.getTrailers() != null) + " " + verifyExceptionSignature(e.getStatus(), e.getTrailers()) + " " + verifyExceptionFreshness(e.getTrailers()));
                     if(type.equals("PostRequest")){
                         post(request, listenableFuture, "PostRequest");
                     }else{
@@ -149,7 +144,6 @@ public class AuthenticatedPerfectLink {
                 if(response != null && verifySignature(serverPublicKey, Bytes.concat(response.getAnnouncements().toByteArray(),response.getFreshness().toByteArray()), response.getSignature().toByteArray()) && verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray())) && verifyAnnouncementsSignature(response.getAnnouncements().toByteArray())){
                     listenableFuture.onSuccess(response);
                 }else{
-                    System.out.println("all NOT GOOD success: " + (response != null) + " " + verifySignature(serverPublicKey, Bytes.concat(response.getAnnouncements().toByteArray(),response.getFreshness().toByteArray()), response.getSignature().toByteArray()) + " " + verifyFreshness(Longs.fromByteArray(response.getFreshness().toByteArray())) + " " + verifyAnnouncementsSignature(response.getAnnouncements().toByteArray()));
                     if(type.equals("ReadRequest")){
                         read(request, listenableFuture, "ReadRequest");
                     }else{
@@ -170,8 +164,7 @@ public class AuthenticatedPerfectLink {
                 if(e != null && e.getTrailers() != null && verifyExceptionSignature(e.getStatus(), e.getTrailers()) && verifyExceptionFreshness(e.getTrailers())){
                     listenableFuture.onFailure(e);
                 }else{
-                    System.out.println("all NOT GOOD failure: " + (e != null) + " " + (e.getTrailers() != null) + " " + verifyExceptionSignature(e.getStatus(), e.getTrailers()) + " " + verifyExceptionFreshness(e.getTrailers()));
-                    if(type.equals("read")){
+                    if(type.equals("ReadRequest")){
                         read(request, listenableFuture, "ReadRequest");
                     }else{
                         read(request, listenableFuture, "ReadGeneralRequest");
