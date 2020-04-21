@@ -91,10 +91,10 @@ public class ClientLibrary {
 		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new RegisterRequest(getRegisterRequest()));
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new RegisterRequest(getRegisterRequest()), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum(minQuorumResponses);
+			int result = qr.waitForQuorum();
 
 			if(result == 1){
 				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
@@ -123,10 +123,10 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostRequest"));
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum(minQuorumResponses);
+			int result = qr.waitForQuorum();
 
 			if(result == 1){
 				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
@@ -155,10 +155,10 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostGeneralRequest"));
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostGeneralRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum(minQuorumResponses);
+			int result = qr.waitForQuorum();
 
 			if(result == 1){
 				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
@@ -180,10 +180,10 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadRequest(client, number), "ReadRequest"));
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum(minQuorumResponses);
+			int result = qr.waitForQuorum();
 
 			if(result == 0){
 				Contract.ReadResponse response = qr.getResult();
@@ -207,10 +207,10 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"));
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum(minQuorumResponses);
+			int result = qr.waitForQuorum();
 
 			if(result == 0){
 				Contract.ReadResponse response = qr.getResult();
