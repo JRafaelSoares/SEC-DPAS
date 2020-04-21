@@ -16,6 +16,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.security.PublicKey;
+import java.util.concurrent.Executors;
 
 public class AuthenticatedPerfectLink {
 
@@ -78,7 +79,7 @@ public class AuthenticatedPerfectLink {
                     register(request, listenableFuture);
                 }
             }
-        }, MoreExecutors.directExecutor());
+        }, Executors.newSingleThreadExecutor());
 
     }
 
@@ -124,7 +125,7 @@ public class AuthenticatedPerfectLink {
                     }
                 }
             }
-        }, MoreExecutors.directExecutor());
+        }, Executors.newSingleThreadExecutor());
 
     }
 
@@ -170,7 +171,7 @@ public class AuthenticatedPerfectLink {
                     }
                 }
             }
-        }, MoreExecutors.directExecutor());
+        }, Executors.newSingleThreadExecutor());
 
     }
 
