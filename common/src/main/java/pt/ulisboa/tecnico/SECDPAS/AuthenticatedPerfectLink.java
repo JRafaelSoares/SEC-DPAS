@@ -3,14 +3,10 @@ package pt.ulisboa.tecnico.SECDPAS;
 import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
-import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-import io.grpc.Metadata;
-import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -23,6 +19,9 @@ public class AuthenticatedPerfectLink {
     private DPASServiceGrpc.DPASServiceFutureStub futureStub;
     private FreshnessHandler freshnessHandler;
     private PublicKey serverPublicKey;
+
+    //for tests
+    private int numIterations = 0;
 
     AuthenticatedPerfectLink(DPASServiceGrpc.DPASServiceFutureStub futureStub, FreshnessHandler freshnessHandler, PublicKey serverPublicKey){
         this.futureStub = futureStub;
@@ -52,6 +51,7 @@ public class AuthenticatedPerfectLink {
     }
 
     private void register(Contract.RegisterRequest request, FutureCallback<Contract.ACK> listenableFuture){
+        numIterations++;
         ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
 
         Futures.addCallback(listenable, new FutureCallback<>() {
@@ -66,24 +66,14 @@ public class AuthenticatedPerfectLink {
 
             @Override
             public void onFailure(Throwable t) {
-                StatusRuntimeException e = null;
-                if(t.getClass().equals(StatusRuntimeException.class)){
-                    e = (StatusRuntimeException) t;
-                }
-                if(t.getCause() instanceof StatusRuntimeException){
-                    e = (StatusRuntimeException) t.getCause();
-                }
-                if(e != null && e.getTrailers() != null && verifyExceptionSignature(e.getStatus(), e.getTrailers())){
-                    listenableFuture.onFailure(e);
-                }else{
-                    register(request, listenableFuture);
-                }
+                register(request, listenableFuture);
             }
         }, Executors.newSingleThreadExecutor());
 
     }
 
     private void post(Contract.PostRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException{
+        numIterations++;
         ListenableFuture<Contract.ACK> listenable;
 
         if(type.equals("PostRequest")){
@@ -108,21 +98,10 @@ public class AuthenticatedPerfectLink {
 
             @Override
             public void onFailure(Throwable t) {
-                StatusRuntimeException e = null;
-                if(t.getClass().equals(StatusRuntimeException.class)){
-                    e = (StatusRuntimeException) t;
-                }
-                if(t.getCause() instanceof StatusRuntimeException){
-                    e = (StatusRuntimeException) t.getCause();
-                }
-                if(e != null && e.getTrailers() != null && verifyExceptionSignature(e.getStatus(), e.getTrailers()) && verifyExceptionFreshness(e.getTrailers())){
-                    listenableFuture.onFailure(e);
+                if(type.equals("PostRequest")){
+                    post(request, listenableFuture, "PostRequest");
                 }else{
-                    if(type.equals("PostRequest")){
-                        post(request, listenableFuture, "PostRequest");
-                    }else{
-                        post(request, listenableFuture, "PostGeneralRequest");
-                    }
+                    post(request, listenableFuture, "PostGeneralRequest");
                 }
             }
         }, Executors.newSingleThreadExecutor());
@@ -130,6 +109,7 @@ public class AuthenticatedPerfectLink {
     }
 
     private void read(Contract.ReadRequest request, FutureCallback<Contract.ReadResponse> listenableFuture, String type) throws StatusRuntimeException{
+        numIterations++;
         ListenableFuture<Contract.ReadResponse> listenable;
 
         if(type.equals("ReadRequest")){
@@ -154,21 +134,10 @@ public class AuthenticatedPerfectLink {
 
             @Override
             public void onFailure(Throwable t) {
-                StatusRuntimeException e = null;
-                if(t.getClass().equals(StatusRuntimeException.class)){
-                    e = (StatusRuntimeException) t;
-                }
-                if(t.getCause() instanceof StatusRuntimeException){
-                    e = (StatusRuntimeException) t.getCause();
-                }
-                if(e != null && e.getTrailers() != null && verifyExceptionSignature(e.getStatus(), e.getTrailers()) && verifyExceptionFreshness(e.getTrailers())){
-                    listenableFuture.onFailure(e);
+                if(type.equals("ReadRequest")){
+                    read(request, listenableFuture, "ReadRequest");
                 }else{
-                    if(type.equals("ReadRequest")){
-                        read(request, listenableFuture, "ReadRequest");
-                    }else{
-                        read(request, listenableFuture, "ReadGeneralRequest");
-                    }
+                    read(request, listenableFuture, "ReadGeneralRequest");
                 }
             }
         }, Executors.newSingleThreadExecutor());
@@ -183,26 +152,6 @@ public class AuthenticatedPerfectLink {
         return freshnessHandler.verifyFreshness(f);
     }
 
-    private boolean verifyExceptionFreshness(Metadata metadata){
-        Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-        byte[] clientFreshness = metadata.get(clientFreshnessKey);
-
-        return freshnessHandler.verifyExceptionFreshness(Longs.fromByteArray(clientFreshness));
-    }
-
-    private boolean verifyExceptionSignature(Status status, Metadata metadata) {
-        Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
-        Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-        Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
-
-        byte[] serializedClientKey = metadata.get(clientKey);
-        byte[] clientFreshness = metadata.get(clientFreshnessKey);
-        byte[] signature = metadata.get(signatureKey);
-
-        return status.getDescription() != null && SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey);
-
-    }
-
     private boolean verifyAnnouncementsSignature(byte[] announcementBytes){
         Announcement[] announcements = SerializationUtils.deserialize(announcementBytes);
         for(Announcement announcement : announcements){
@@ -215,5 +164,11 @@ public class AuthenticatedPerfectLink {
             }
         }
         return true;
+    }
+
+    public int getNumIterations(){
+        int aux = numIterations;
+        numIterations = 0;
+        return aux;
     }
 }

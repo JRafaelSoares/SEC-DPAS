@@ -90,8 +90,6 @@ public class DPASClient {
 					try{
 						api.register();
 						System.out.println("Registered successfully!");
-					} catch (ClientAlreadyRegisteredException e){
-						System.out.println("You are already registered!");
 					} catch(ComunicationException e){
 						System.out.println("Error in the communication - " + e.getMessage());
 					}
@@ -130,9 +128,6 @@ public class DPASClient {
 					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
-					} catch(ClientNotRegisteredException e){
-						System.out.println("Client not registered");
-						break;
 					} catch(ComunicationException e){
 						System.out.println("Error in the communication - " + e.getMessage());
 						break;
@@ -162,9 +157,6 @@ public class DPASClient {
 						}
 					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
-						break;
-					} catch(ClientNotRegisteredException e){
-						System.out.println("Client not registered");
 						break;
 					} catch(ComunicationException e){
 						System.out.println("Error in the communication - " + e.getMessage());
@@ -198,9 +190,6 @@ public class DPASClient {
 					}catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
-					}catch (ClientNotRegisteredException e){
-						System.out.println("Client not registered");
-						break;
 					} catch(ComunicationException e){
 						System.out.println("Error in the communication - " + e.getMessage());
 						break;
@@ -216,9 +205,6 @@ public class DPASClient {
 
 					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
-						break;
-					} catch (ClientNotRegisteredException e){
-						System.out.println("Client not registered");
 						break;
 					} catch(ComunicationException e){
 						System.out.println("Error in the communication - " + e.getMessage());

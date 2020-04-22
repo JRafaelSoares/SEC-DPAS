@@ -64,7 +64,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void readTest() throws InvalidArgumentException, ComunicationException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -81,7 +81,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void readAllAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -98,7 +98,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAzNumberBiggerThanPostsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void readAzNumberBiggerThanPostsTest() throws InvalidArgumentException, ComunicationException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -115,37 +115,13 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readInvalidNumberTest() throws ClientNotRegisteredException, ComunicationException {
+	public void readInvalidNumberTest() throws ComunicationException {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib1.readGeneral(-1);
 			fail("Exception InvalidArgument should have been thrown");
 
 		}catch(pt.ulisboa.tecnico.SECDPAS.InvalidArgumentException e){
-			assertNull(announcements);
-		}
-	}
-
-	@Test
-	public void readClientNotExistsTest() throws InvalidArgumentException, ComunicationException {
-		Announcement[] announcements = null;
-		try{
-			announcements = lib3.readGeneral(1);
-			fail("Exception ClientNotRegisteredException should have been thrown");
-
-		}catch(ClientNotRegisteredException e){
-			assertNull(announcements);
-		}
-	}
-
-	@Test
-	public void readAllClientNotExistsTest() throws InvalidArgumentException, ComunicationException {
-		Announcement[] announcements = null;
-		try{
-			announcements = lib3.readGeneral(0);
-			fail("Exception ClientNotRegisteredException should have been thrown");
-
-		}catch(ClientNotRegisteredException e){
 			assertNull(announcements);
 		}
 	}

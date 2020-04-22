@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
 import SECDPAS.grpc.Contract;
+import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.FutureCallback;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
@@ -41,7 +42,7 @@ public class Quorum<Key, Result> {
         return qr;
     }
 
-    public synchronized int waitForQuorum() throws InterruptedException {
+    public synchronized boolean waitForQuorum() throws InterruptedException {
         /*
         latch.await();
         return checkResults();
@@ -50,18 +51,12 @@ public class Quorum<Key, Result> {
             if (countResponses() >= quorum){
                 return checkResults();
             }
-            wait(1);
+            wait(50);
         }
     }
 
-    private synchronized int checkResults(){
-        if(successes.size() >= quorum && equalitySuccesses(quorum)){
-            return 0;
-        }
-        if(clientExceptions.size() >= quorum && equalityExceptions(quorum)){
-            return 1;
-        }
-        return -1;
+    private synchronized boolean checkResults(){
+        return successes.size() >= quorum && equalitySuccesses(quorum);
     }
 
     private void countDownLatch(){
@@ -109,20 +104,6 @@ public class Quorum<Key, Result> {
         return true;
     }
 
-    private synchronized boolean equalityExceptions(int numResponses){
-        Iterator<Throwable> iter = clientExceptions.values().iterator();
-
-        StatusRuntimeException value = (StatusRuntimeException) iter.next();
-
-        for (int i = 1; i < numResponses; i++) {
-            StatusRuntimeException entry = (StatusRuntimeException) iter.next();
-            if (!value.getStatus().getDescription().equals(entry.getStatus().getDescription()) || !value.getStatus().getCode().equals(entry.getStatus().getCode())) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     private synchronized void addResult(Key k, Result res) {
         successes.put(k, res);
     }
@@ -141,10 +122,6 @@ public class Quorum<Key, Result> {
 
     public synchronized HashMap<Key, Throwable> getExceptions() {
         return new HashMap<>(clientExceptions);
-    }
-
-    public synchronized Throwable getException() {
-        return clientExceptions.values().iterator().next();
     }
 
     public synchronized Result getResult() {

@@ -84,24 +84,17 @@ public class ClientLibrary {
 
 	//Testing single client purposes
 	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
-		this(host, port, publicKey, privateKey, 0);
+		this(host, port, publicKey, privateKey, 1);
 	}
 
-	public void register() throws ComunicationException, ClientAlreadyRegisteredException {
+	public void register() throws ComunicationException{
 		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
 		/* Create quorum */
 		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new RegisterRequest(getRegisterRequest()), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum();
-
-			if(result == 1){
-				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
-				handleRegistrationError(e.getStatus());
-			}
-
-			if(result == -1){
+			if(!qr.waitForQuorum()){
 				throw new ComunicationException("No consensus in quorum");
 			}
 
@@ -111,14 +104,14 @@ public class ClientLibrary {
 
 	}
 
-	public void post(char[] message) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	public void post(char[] message) throws InvalidArgumentException, ComunicationException {
 		checkMessage(message);
 
 		/* A post without announcements */
 		post(message, new String[0]);
 	}
 
-	public void post(char[] message, String[] references) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	public void post(char[] message, String[] references) throws InvalidArgumentException, ComunicationException {
 		if(debug != 0) System.out.println("[POST] RequestType from client.\n");
 		checkMessage(message);
 
@@ -126,14 +119,7 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum();
-
-			if(result == 1){
-				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
-				handlePostError(e.getStatus());
-			}
-
-			if(result == -1){
+			if(!qr.waitForQuorum()){
 				throw new ComunicationException("No consensus in quorum");
 			}
 
@@ -143,14 +129,14 @@ public class ClientLibrary {
 
 	}
 
-	public void postGeneral(char[] message) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	public void postGeneral(char[] message) throws InvalidArgumentException, ComunicationException {
 		checkMessage(message);
 
 		/* A post without announcements */
 		postGeneral(message, new String[0]);
 	}
 
-	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ComunicationException {
 		if(debug != 0) System.out.println("[POST GENERAL] RequestType from client.\n");
 		checkMessage(message);
 
@@ -158,14 +144,7 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostGeneralRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum();
-
-			if(result == 1){
-				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
-				handlePostError(e.getStatus());
-			}
-
-			if(result == -1){
+			if(!qr.waitForQuorum()){
 				throw new ComunicationException("No consensus in quorum");
 			}
 
@@ -175,7 +154,7 @@ public class ClientLibrary {
 
 	}
 
-	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException, ComunicationException {
 		if(debug != 0) System.out.println("[READ] RequestType from client.\n");
 		checkNumber(number);
 
@@ -183,16 +162,9 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum();
-
-			if(result == 0){
+			if(qr.waitForQuorum()){
 				Contract.ReadResponse response = qr.getResult();
 				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-			}
-
-			if(result == 1){
-				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
-				handleReadError(e.getStatus());
 			}
 
 		}catch (InterruptedException e){
@@ -202,7 +174,7 @@ public class ClientLibrary {
 		throw new ComunicationException("No consensus in quorum");
 	}
 
-	public Announcement[] readGeneral(int number) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
+	public Announcement[] readGeneral(int number) throws InvalidArgumentException, ComunicationException {
 		if(debug != 0) System.out.println("[READ GENERAL] RequestType from client.\n");
 		checkNumber(number);
 
@@ -210,16 +182,9 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
 
 		try{
-			int result = qr.waitForQuorum();
-
-			if(result == 0){
+			if(qr.waitForQuorum()){
 				Contract.ReadResponse response = qr.getResult();
 				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-			}
-
-			if(result == 1){
-				StatusRuntimeException e = (StatusRuntimeException) qr.getException();
-				handleReadError(e.getStatus());
 			}
 
 		}catch (InterruptedException e){
@@ -394,86 +359,6 @@ public class ClientLibrary {
 		if(n < 0){
 			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Number can not be negative \n");
 			throw new InvalidArgumentException("Number can not be negative");
-		}
-	}
-
-	/******************************/
-	/** ERROR HANDLING FUNCTIONS **/
-	/******************************/
-
-	private void handleRegistrationError(Status status) throws ClientAlreadyRegisteredException, ComunicationException {
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				switch(status.getDescription()){
-					case "PublicKey":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-						throw new ComunicationException("The public key could not be deserialised on the server");
-					case "ClientAlreadyRegistered":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - This client was already registered \n");
-						throw new ClientAlreadyRegisteredException("This client was already registered");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "ClientSignatureInvalid":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The signature of the request wasn't valid \n");
-						throw new ComunicationException("The signature of the request wasn't valid");
-					case "ServerSignatureException":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the server response was violated \n");
-						throw new ComunicationException("The integrity of the server response was violated");
-				}
-		}
-	}
-
-	private void handlePostError(Status status) throws ComunicationException, ClientNotRegisteredException {
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				switch (status.getDescription()){
-					case "PublicKey":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-						throw new ComunicationException("The public key could not be deserialised on the server");
-					case "NonExistentAnnouncementReference":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - There is a non-existent announcement referenced in this post \n");
-						throw new ComunicationException("There is a non-existent announcement referenced in this post");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "ClientNotRegistered":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The client wasn't registered yet \n");
-						throw new ClientNotRegisteredException("The client wasn't registered yet");
-					case "ClientRequestNotFresh":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The request received from the client wasn't fresh \n");
-						throw new ComunicationException("The request received from the client wasn't fresh");
-					case "ClientIntegrityViolation":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the request was violated \n");
-						throw new ComunicationException("The integrity of the request was violated");
-					case "AnnouncementSignatureInvalid":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - An announcement was not properly signed \n");
-						throw new ComunicationException("An announcement was not properly signed");
-				}
-		}
-	}
-
-	private void handleReadError(Status status) throws ComunicationException, ClientNotRegisteredException{
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				if ("PublicKey".equals(status.getDescription())) {
-					throw new ComunicationException("The public key could not be deserialised on the server");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "ClientNotRegistered":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The client wasn't registered yet \n");
-						throw new ClientNotRegisteredException("The client wasn't registered yet");
-					case "TargetClientNotRegistered":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The target wasn't registered yet \n");
-						throw new ComunicationException("The read target client wasn't registered yet");
-					case "ClientRequestNotFresh":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The request received from the client wasn't fresh \n");
-						throw new ComunicationException("The request received from the client wasn't fresh");
-					case "ClientIntegrityViolation":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the request was violated \n");
-						throw new ComunicationException("The integrity of the request was violated");
-				}
 		}
 	}
 
