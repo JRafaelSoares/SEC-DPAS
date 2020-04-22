@@ -7,20 +7,24 @@ import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class Quorum<Key, Result> {
 
-    private final Map<Key, Result> successes = new HashMap<>();
-    private final Map<Key, Throwable> clientExceptions = new HashMap<>();
-    private static CountDownLatch latch;// = new CountDownLatch(4);
+    private final Map<Key, Result> successes = new ConcurrentHashMap<>();
+    private final Map<Key, Throwable> clientExceptions = new ConcurrentHashMap<>();
+    private CountDownLatch latch;// = new CountDownLatch(4);
     private static int quorum;
 
+    private Quorum(int minResponses){
+        latch = new CountDownLatch(minResponses);
+    }
+
     static <Key, Result> Quorum<Key, Result> create(Map<Key, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
-        final Quorum<Key, Result> qr = new Quorum<>();
+        final Quorum<Key, Result> qr = new Quorum<>(minResponses);
         quorum = minResponses;
 
-        latch = new CountDownLatch(minResponses);
         for (Map.Entry<Key, AuthenticatedPerfectLink> e : calls.entrySet()) {
             FutureCallback<Result> futureCallback = new FutureCallback<>() {
                 @Override
@@ -42,17 +46,9 @@ public class Quorum<Key, Result> {
         return qr;
     }
 
-    public synchronized boolean waitForQuorum() throws InterruptedException {
-        /*
+    public boolean waitForQuorum() throws InterruptedException {
         latch.await();
         return checkResults();
-        */
-        while (true) {
-            if (countResponses() >= quorum){
-                return checkResults();
-            }
-            wait(50);
-        }
     }
 
     private synchronized boolean checkResults(){
@@ -104,15 +100,15 @@ public class Quorum<Key, Result> {
         return true;
     }
 
-    private synchronized void addResult(Key k, Result res) {
+    private void addResult(Key k, Result res) {
         successes.put(k, res);
     }
 
-    private synchronized void addException(Key k, Throwable t) {
+    private void addException(Key k, Throwable t) {
         clientExceptions.put(k, t);
     }
 
-    private synchronized int countResponses() {
+    private int countResponses() {
         return successes.size() + clientExceptions.size();
     }
 
