@@ -52,7 +52,7 @@ public class RegisterTest {
 	}
 
 	@Test
-	public void registerCorrectTest() throws ComunicationException {
+	public void registerCorrectTest() {
 		lib1.register();
 		assertTrue(lib1.clientRegisteredState());
 	}

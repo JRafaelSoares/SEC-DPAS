@@ -64,7 +64,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readTest() throws InvalidArgumentException, ComunicationException {
+	public void readTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -81,7 +81,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
+	public void readAllAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -98,7 +98,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readAzNumberBiggerThanPostsTest() throws InvalidArgumentException, ComunicationException {
+	public void readAzNumberBiggerThanPostsTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -115,7 +115,7 @@ public class ReadGeneralTest {
 	}
 
 	@Test
-	public void readInvalidNumberTest() throws ComunicationException {
+	public void readInvalidNumberTest() {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib1.readGeneral(-1);

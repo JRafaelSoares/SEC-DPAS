@@ -87,12 +87,9 @@ public class DPASClient {
 
 			switch(selectedOption){
 				case "Register":
-					try{
-						api.register();
-						System.out.println("Registered successfully!");
-					} catch(ComunicationException e){
-						System.out.println("Error in the communication - " + e.getMessage());
-					}
+					api.register();
+					System.out.println("Registered successfully!");
+
 					break;
 				case "See registered clients":
 					System.out.println("My Key 0:");
@@ -128,10 +125,8 @@ public class DPASClient {
 					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
-					} catch(ComunicationException e){
-						System.out.println("Error in the communication - " + e.getMessage());
-						break;
 					}
+
 					System.out.println("Unexpected input");
 					break;
 				case "Post on general board":
@@ -157,9 +152,6 @@ public class DPASClient {
 						}
 					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
-						break;
-					} catch(ComunicationException e){
-						System.out.println("Error in the communication - " + e.getMessage());
 						break;
 					}
 

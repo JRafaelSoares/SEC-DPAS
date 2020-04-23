@@ -56,7 +56,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postCorrectNoAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
+	public void postCorrectNoAnnouncementsTest() throws InvalidArgumentException {
 		String s = "NoAnnouncement";
 		lib1.post(s.toCharArray());
 
@@ -66,7 +66,7 @@ public class PostTest {
 	//TODO when read quorum is completed
 
 	@Test
-	public void postCorrectWithAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
+	public void postCorrectWithAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "NoAnnouncement";
 
 		lib1.post(s1.toCharArray());
@@ -82,7 +82,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageLimitTest() throws InvalidArgumentException, ComunicationException {
+	public void postMessageLimitTest() throws InvalidArgumentException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
@@ -93,7 +93,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageEmptyTest() throws InvalidArgumentException, ComunicationException {
+	public void postMessageEmptyTest() throws InvalidArgumentException {
 		char[] emptyMessage = new char[0];
 		lib1.post(emptyMessage);
 
@@ -101,7 +101,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageTooLongTest() throws ComunicationException {
+	public void postMessageTooLongTest() {
 		char[] messageTooLong = new char[256];
 		for (int i = 0; i< 256; i++){
 			messageTooLong[i] = 'a';
@@ -117,7 +117,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageNullTest() throws ComunicationException {
+	public void postMessageNullTest() {
 
 		try {
 			lib1.post(null);

@@ -65,7 +65,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readTest() throws InvalidArgumentException, ComunicationException {
+	public void readTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -80,7 +80,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
+	public void readAllAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -96,7 +96,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readOnlyMyAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
+	public void readOnlyMyAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -111,7 +111,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readInvalidNumberTest() throws ComunicationException {
+	public void readInvalidNumberTest() {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib1.read(pub,-1);

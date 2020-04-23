@@ -58,7 +58,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralCorrectNoAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
+	public void postGeneralCorrectNoAnnouncementsTest() throws InvalidArgumentException {
 		String s = "NoAnnouncement";
 		lib1.postGeneral(s.toCharArray());
 
@@ -66,7 +66,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralCorrectWithAnnouncementsTest() throws InvalidArgumentException, ComunicationException {
+	public void postGeneralCorrectWithAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "NoAnnouncement";
 		//Announcement a = new Announcement(s1.toCharArray(), pub1, 0);
 		lib1.postGeneral(s1.toCharArray());
@@ -82,7 +82,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageLimitTest() throws InvalidArgumentException, ComunicationException {
+	public void postGeneralMessageLimitTest() throws InvalidArgumentException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
@@ -93,7 +93,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageEmptyTest() throws InvalidArgumentException, ComunicationException {
+	public void postGeneralMessageEmptyTest() throws InvalidArgumentException {
 		char[] emptyMessage = new char[0];
 		lib1.postGeneral(emptyMessage);
 
@@ -101,7 +101,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageTooLongTest() throws ComunicationException {
+	public void postGeneralMessageTooLongTest() {
 		char[] messageTooLong = new char[256];
 		for (int i = 0; i<256; i++){
 			messageTooLong[i] = 'a';
@@ -116,7 +116,7 @@ public class PostGeneralTest {
 	}
 
 	@Test
-	public void postGeneralMessageNullTest() throws ComunicationException {
+	public void postGeneralMessageNullTest() {
 
 		try {
 			lib1.postGeneral(null);

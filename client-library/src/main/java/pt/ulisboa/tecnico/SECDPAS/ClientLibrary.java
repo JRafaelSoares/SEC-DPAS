@@ -84,7 +84,7 @@ public class ClientLibrary {
 		this(host, port, publicKey, privateKey, 1);
 	}
 
-	public void register() throws ComunicationException{
+	public void register() {
 		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
 		/* Create quorum */
@@ -99,14 +99,14 @@ public class ClientLibrary {
 
 	}
 
-	public void post(char[] message) throws InvalidArgumentException, ComunicationException {
+	public void post(char[] message) throws InvalidArgumentException {
 		checkMessage(message);
 
 		/* A post without announcements */
 		post(message, new String[0]);
 	}
 
-	public void post(char[] message, String[] references) throws InvalidArgumentException, ComunicationException {
+	public void post(char[] message, String[] references) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[POST] RequestType from client.\n");
 		checkMessage(message);
 
@@ -124,14 +124,14 @@ public class ClientLibrary {
 
 	}
 
-	public void postGeneral(char[] message) throws InvalidArgumentException, ComunicationException {
+	public void postGeneral(char[] message) throws InvalidArgumentException {
 		checkMessage(message);
 
 		/* A post without announcements */
 		postGeneral(message, new String[0]);
 	}
 
-	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ComunicationException {
+	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[POST GENERAL] RequestType from client.\n");
 		checkMessage(message);
 

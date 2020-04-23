@@ -77,7 +77,7 @@ public class MultiClientTest {
                 //System.out.println("\n\nT1 done");
                 assertTrue(result);
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ComunicationException | CertificateInvalidException e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client1: " + e.getMessage());
             }
         }
@@ -120,7 +120,7 @@ public class MultiClientTest {
 
                 assertTrue(result);
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ComunicationException | CertificateInvalidException e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client2: " + e.getMessage());
             }
         }
@@ -155,7 +155,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT3 done");
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ComunicationException | CertificateInvalidException e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client3: " + e.getMessage());
             }
         }
@@ -189,7 +189,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT4 done");
 
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | ComunicationException | CertificateInvalidException e){
+            } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client4: " + e.getMessage());
             }
         }
@@ -221,7 +221,7 @@ public class MultiClientTest {
 
                 //System.out.println("\n\nT5 done");
 
-            } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ComunicationException | CertificateInvalidException e){
+            } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client5: " + e.getMessage());
             }
         }
@@ -266,7 +266,7 @@ public class MultiClientTest {
 
                 assertTrue(result);
 
-            } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | ComunicationException | CertificateInvalidException e){
+            } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client6: " + e.getMessage());
             }
         }
