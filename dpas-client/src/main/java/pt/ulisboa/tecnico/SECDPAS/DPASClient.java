@@ -190,9 +190,6 @@ public class DPASClient {
 					}catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
 						break;
-					} catch(ComunicationException e){
-						System.out.println("Error in the communication - " + e.getMessage());
-						break;
 					}
 					break;
 				case "Read from the general board":
@@ -205,9 +202,6 @@ public class DPASClient {
 
 					} catch(InvalidArgumentException e){
 						System.out.println(e.getMessage());
-						break;
-					} catch(ComunicationException e){
-						System.out.println("Error in the communication - " + e.getMessage());
 						break;
 					}
 					break;

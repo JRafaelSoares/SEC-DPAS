@@ -91,9 +91,7 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(0), new RegisterRequest(getRegisterRequest()), minQuorumResponses);
 
 		try{
-			if(!qr.waitForQuorum()){
-				throw new ComunicationException("No consensus in quorum");
-			}
+			qr.waitForQuorum();
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
@@ -117,10 +115,7 @@ public class ClientLibrary {
 
 
 		try{
-			if(!qr.waitForQuorum()){
-				freshnessHandler.incrementFreshness();
-				throw new ComunicationException("No consensus in quorum");
-			}
+			qr.waitForQuorum();
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
@@ -144,10 +139,7 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references), "PostGeneralRequest"), minQuorumResponses);
 
 		try{
-			if(!qr.waitForQuorum()){
-				freshnessHandler.incrementFreshness();
-				throw new ComunicationException("No consensus in quorum");
-			}
+			qr.waitForQuorum();
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
@@ -157,7 +149,7 @@ public class ClientLibrary {
 
 	}
 
-	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException, ComunicationException {
+	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[READ] RequestType from client.\n");
 		checkNumber(number);
 
@@ -165,20 +157,21 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
 
 		try{
-			if(qr.waitForQuorum()){
-				freshnessHandler.incrementFreshness();
-				Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
-				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-			}
+			qr.waitForQuorum();
+
+			freshnessHandler.incrementFreshness();
+
+			Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
+			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
 		}
 
-		throw new ComunicationException("No consensus in quorum");
+		return null;
 	}
 
-	public Announcement[] readGeneral(int number) throws InvalidArgumentException, ComunicationException {
+	public Announcement[] readGeneral(int number) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[READ GENERAL] RequestType from client.\n");
 		checkNumber(number);
 
@@ -186,17 +179,18 @@ public class ClientLibrary {
 		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
 
 		try{
-			if(qr.waitForQuorum()){
-				freshnessHandler.incrementFreshness();
-				Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
-				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-			}
+			qr.waitForQuorum();
+
+			freshnessHandler.incrementFreshness();
+
+			Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
+			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
 		}
 
-		throw new ComunicationException("No consensus in quorum");
+		return null;
 	}
 
 	/*********************************/

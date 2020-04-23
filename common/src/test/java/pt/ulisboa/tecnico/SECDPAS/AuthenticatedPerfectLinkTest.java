@@ -88,10 +88,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -138,10 +141,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -162,7 +168,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(6);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
@@ -185,10 +191,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -209,7 +218,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(2);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         byte[] incorrectSignature = SignatureHandler.publicSign(freshness, wrongPrivServer);
 
@@ -235,10 +244,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -259,7 +271,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(17);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] wrongFreshness = Longs.toByteArray(-1);
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         byte[] incorrectSignature = SignatureHandler.publicSign(wrongFreshness, privServer);
@@ -286,10 +298,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -310,7 +325,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(11);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         byte[] incorrectSignature = SignatureHandler.publicSign(Longs.toByteArray(2), privServer);
 
@@ -336,10 +351,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -360,7 +378,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(4);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
 
         Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(Longs.toByteArray(1000))).setSignature(ByteString.copyFrom(new byte[0])).build();
@@ -386,10 +404,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(3, link.getNumIterations());
@@ -410,7 +431,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(14);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         byte[] incorrectSignature = SignatureHandler.publicSign(freshness, wrongPrivServer);
 
@@ -436,10 +457,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -460,7 +484,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(9);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] wrongFreshness = Longs.toByteArray(-1);
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         byte[] incorrectSignature = SignatureHandler.publicSign(wrongFreshness, privServer);
@@ -487,10 +511,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -511,7 +538,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(3);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] signature = SignatureHandler.publicSign(freshness, privServer);
         byte[] incorrectSignature = SignatureHandler.publicSign(Longs.toByteArray(2), privServer);
 
@@ -537,10 +564,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -561,7 +591,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(16);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
@@ -586,10 +616,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -610,7 +643,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(0);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
@@ -639,10 +672,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -663,7 +699,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(15);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] incorrectFreshness = Longs.toByteArray(-1);
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
@@ -692,10 +728,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -716,7 +755,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(8);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
@@ -743,10 +782,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -767,12 +809,12 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(1);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(Longs.toByteArray(0))).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(Longs.toByteArray(1000))).setSignature(ByteString.copyFrom(signature)).build();
 
         Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -794,10 +836,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -819,7 +864,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(13);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
@@ -844,10 +889,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -868,7 +916,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(12);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
@@ -897,10 +945,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -921,7 +972,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(5);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         byte[] incorrectFreshness = Longs.toByteArray(-1);
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
@@ -950,10 +1001,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -974,7 +1028,7 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(10);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
@@ -1001,10 +1055,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());
@@ -1025,12 +1082,12 @@ public class AuthenticatedPerfectLinkTest {
         Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(7);
+        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(Longs.toByteArray(0))).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(Longs.toByteArray(1000))).setSignature(ByteString.copyFrom(signature)).build();
 
         Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -1052,10 +1109,13 @@ public class AuthenticatedPerfectLinkTest {
                 }
             });
 
+            int timeout = 50;
             while(successes.size() != 1){
+                if(timeout-- == 0) break;
                 Thread.sleep(100);
             }
 
+            assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
             assertEquals(2, link.getNumIterations());

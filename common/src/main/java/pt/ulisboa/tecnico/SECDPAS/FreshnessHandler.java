@@ -10,11 +10,15 @@ public class FreshnessHandler {
     }
 
     public boolean verifyFreshness(long freshness) {
-        return freshness==this.sequenceNumber;
+        return freshness == this.sequenceNumber;
     }
 
-    public long getFreshness() {return this.sequenceNumber; }
+    public long getFreshness() {
+        return this.sequenceNumber;
+    }
 
-    public void incrementFreshness() {this.sequenceNumber++;}
+    public void incrementFreshness() {
+        this.sequenceNumber++;
+    }
 
 }
