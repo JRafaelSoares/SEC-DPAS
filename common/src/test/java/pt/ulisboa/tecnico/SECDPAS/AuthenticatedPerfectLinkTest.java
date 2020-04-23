@@ -49,7 +49,7 @@ public class AuthenticatedPerfectLinkTest {
             stub = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
             freshnessHandler = new FreshnessHandler();
 
-            link = new AuthenticatedPerfectLink(stub, freshnessHandler, publicKey);
+            link = new AuthenticatedPerfectLink(stub, freshnessHandler.getFreshness(), publicKey);
 
         }catch (Exception e){
             System.out.println(e.getMessage());

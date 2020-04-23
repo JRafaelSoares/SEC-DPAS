@@ -7,20 +7,21 @@ import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class Quorum<Key, Result> {
 
-    private final Map<Key, Result> successes = new HashMap<>();
-    private final Map<Key, Throwable> clientExceptions = new HashMap<>();
-    private static CountDownLatch latch;// = new CountDownLatch(4);
-    private static int quorum;
+    private final Map<Key, Result> successes = new ConcurrentHashMap<>();
+    private CountDownLatch latch;
+
+    private Quorum(int minResponses){
+        latch = new CountDownLatch(minResponses);
+    }
 
     static <Key, Result> Quorum<Key, Result> create(Map<Key, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
-        final Quorum<Key, Result> qr = new Quorum<>();
-        quorum = minResponses;
+        final Quorum<Key, Result> qr = new Quorum<>(minResponses);
 
-        latch = new CountDownLatch(minResponses);
         for (Map.Entry<Key, AuthenticatedPerfectLink> e : calls.entrySet()) {
             FutureCallback<Result> futureCallback = new FutureCallback<>() {
                 @Override
@@ -31,7 +32,6 @@ public class Quorum<Key, Result> {
 
                 @Override
                 public void onFailure(Throwable t) {
-                    qr.addException(e.getKey(), t);
                     qr.countDownLatch();
                 }
             };
@@ -42,21 +42,9 @@ public class Quorum<Key, Result> {
         return qr;
     }
 
-    public synchronized boolean waitForQuorum() throws InterruptedException {
-        /*
+    public boolean waitForQuorum() throws InterruptedException {
         latch.await();
-        return checkResults();
-        */
-        while (true) {
-            if (countResponses() >= quorum){
-                return checkResults();
-            }
-            wait(50);
-        }
-    }
-
-    private synchronized boolean checkResults(){
-        return successes.size() >= quorum && equalitySuccesses(quorum);
+        return true;
     }
 
     private void countDownLatch(){
@@ -104,27 +92,16 @@ public class Quorum<Key, Result> {
         return true;
     }
 
-    private synchronized void addResult(Key k, Result res) {
-        successes.put(k, res);
+    private void addResult(Key k, Result res) {
+        synchronized (successes){
+            successes.put(k, res);
+        }
+
     }
 
-    private synchronized void addException(Key k, Throwable t) {
-        clientExceptions.put(k, t);
-    }
-
-    private synchronized int countResponses() {
-        return successes.size() + clientExceptions.size();
-    }
-
-    public synchronized HashMap<Key, Result> getSuccesses() {
-        return new HashMap<>(successes);
-    }
-
-    public synchronized HashMap<Key, Throwable> getExceptions() {
-        return new HashMap<>(clientExceptions);
-    }
-
-    public synchronized Result getResult() {
-        return successes.values().iterator().next();
+    public HashMap<Key, Result> getSuccesses() {
+        synchronized (successes){
+            return new HashMap<>(successes);
+        }
     }
 }

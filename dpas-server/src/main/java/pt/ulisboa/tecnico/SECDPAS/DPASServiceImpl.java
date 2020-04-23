@@ -506,8 +506,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	private Contract.ACK buildACKresponse(PublicKey userKey){
-
-		byte[] freshness = Longs.toByteArray(this.clientFreshness.get(userKey).getNextFreshness());
+		byte[] freshness = Longs.toByteArray(this.clientFreshness.get(userKey).getFreshness());
+		this.clientFreshness.get(userKey).incrementFreshness();
 
 		byte[] signature = SignatureHandler.publicSign(freshness, this.privateKey);
 
@@ -515,7 +515,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	private Contract.ReadResponse buildReadResponse(PublicKey clientKey, byte[] responseAnnouncements){
-		byte[] responseFreshness = Longs.toByteArray(clientFreshness.get(clientKey).getNextFreshness());
+		byte[] responseFreshness = Longs.toByteArray(clientFreshness.get(clientKey).getFreshness());
+		this.clientFreshness.get(clientKey).incrementFreshness();
+
 		byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(responseAnnouncements, responseFreshness), this.privateKey);
 		return Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(responseAnnouncements)).setFreshness(ByteString.copyFrom(responseFreshness)).setSignature(ByteString.copyFrom(responseSignature)).build();
 	}

@@ -26,9 +26,8 @@ import java.util.Map;
 public class ClientLibrary {
 
 	private ManagedChannel[] channel;
-	private Map<PublicKey, AuthenticatedPerfectLink> calls;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
-	private FreshnessHandler[] freshnessHandlers;
+	private FreshnessHandler freshnessHandler;
 	private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
 
 	private PublicKey publicKey;
@@ -53,8 +52,7 @@ public class ClientLibrary {
 		this.minQuorumResponses = numServers;//2*faults+1;
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
-		this.calls = new HashMap<>();
-		this.freshnessHandlers = new FreshnessHandler[numServers];
+		this.freshnessHandler = new FreshnessHandler();
 		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
 		Path currentRelativePath = Paths.get("");
@@ -64,7 +62,6 @@ public class ClientLibrary {
 			String target = host + ":" + (port+server);
 			this.channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
 			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
-			this.freshnessHandlers[server] = new FreshnessHandler();
 
 			//Get certificate
 			try{
@@ -75,12 +72,12 @@ public class ClientLibrary {
 			} catch (CertificateException | FileNotFoundException e){
 				throw new CertificateInvalidException(e.getMessage());
 			}
-			this.calls.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshnessHandlers[server], serverPublicKey[server]));
 		}
 
 		//Test server
 		this.stub = DPASServiceGrpc.newBlockingStub(this.channel[0]);
 	}
+
 
 	//Testing single client purposes
 	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
@@ -91,7 +88,7 @@ public class ClientLibrary {
 		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new RegisterRequest(getRegisterRequest()), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(0), new RegisterRequest(getRegisterRequest()), minQuorumResponses);
 
 		try{
 			if(!qr.waitForQuorum()){
@@ -116,16 +113,19 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references), "PostRequest"), minQuorumResponses);
+
 
 		try{
 			if(!qr.waitForQuorum()){
+				freshnessHandler.incrementFreshness();
 				throw new ComunicationException("No consensus in quorum");
 			}
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
 		}
+		freshnessHandler.incrementFreshness();
 
 	}
 
@@ -141,16 +141,19 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, new PostRequest(getPostRequest(message, references), "PostGeneralRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references), "PostGeneralRequest"), minQuorumResponses);
 
 		try{
 			if(!qr.waitForQuorum()){
+				freshnessHandler.incrementFreshness();
 				throw new ComunicationException("No consensus in quorum");
 			}
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
 		}
+		freshnessHandler.incrementFreshness();
+
 
 	}
 
@@ -159,11 +162,12 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
 
 		try{
 			if(qr.waitForQuorum()){
-				Contract.ReadResponse response = qr.getResult();
+				freshnessHandler.incrementFreshness();
+				Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
 				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 			}
 
@@ -179,11 +183,12 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
 
 		try{
 			if(qr.waitForQuorum()){
-				Contract.ReadResponse response = qr.getResult();
+				freshnessHandler.incrementFreshness();
+				Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
 				return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 			}
 
@@ -194,10 +199,22 @@ public class ClientLibrary {
 		throw new ComunicationException("No consensus in quorum");
 	}
 
-	/*************************/
-	/**** AUX FUNCTIONS ******/
-	/*************************/
+	/*********************************/
+	/***** QUORUM AUX FUNCTIONS ******/
+	/*********************************/
+	public Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness){
+		Map<PublicKey, AuthenticatedPerfectLink> links = new HashMap<>();
 
+		for(int server = 0; server < numServers; server++){
+			links.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshness, serverPublicKey[server]));
+		}
+
+		return links;
+	}
+
+	/**********************************/
+	/***** REQUESTS AUX FUNCTIONS *****/
+	/**********************************/
 	public Contract.PostRequest getPostRequest(char[] message, String[] references) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
@@ -207,11 +224,7 @@ public class ClientLibrary {
 
 		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
 
-		byte[] freshness = null;
-
-		for(FreshnessHandler handler : freshnessHandlers){
-			freshness = Longs.toByteArray(handler.getNextFreshness());
-		}
+		byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
 
 		byte[] integrity = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, messageSignature, announcements, freshness), privateKey);
 
@@ -230,11 +243,7 @@ public class ClientLibrary {
 		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
 		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = null;
-
-		for(FreshnessHandler handler : freshnessHandlers){
-			freshness = Longs.toByteArray(handler.getNextFreshness());
-		}
+		byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
 
 		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, numberBytes, freshness), this.privateKey);
@@ -246,11 +255,8 @@ public class ClientLibrary {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 
-		byte[] freshness = null;
+		byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
 
-		for(FreshnessHandler handler : freshnessHandlers){
-			freshness = Longs.toByteArray(handler.getNextFreshness());
-		}
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, numberBytes, freshness), this.privateKey);
 
 		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();

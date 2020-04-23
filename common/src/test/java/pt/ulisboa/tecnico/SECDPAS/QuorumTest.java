@@ -34,7 +34,7 @@ public class QuorumTest {
     private static ArrayList<DPASServiceGrpc.DPASServiceFutureStub> stubs = new ArrayList<>();
     private static ArrayList<PrivateKey> privServer = new ArrayList<>();
     private static ArrayList<PublicKey> publicKey = new ArrayList<>();
-    private static ArrayList<FreshnessHandler> freshnessHandler = new ArrayList<>();
+    private static FreshnessHandler freshnessHandler = new FreshnessHandler();
     private static Map<PublicKey, AuthenticatedPerfectLink> calls = new HashMap<>();
 
     private static final int faults = 1;
@@ -49,10 +49,9 @@ public class QuorumTest {
                 KeyPair kp = kpg.genKeyPair();
                 privServer.add(kp.getPrivate());
                 publicKey.add(kp.getPublic());
-                freshnessHandler.add(new FreshnessHandler());
 
                 stubs.add(mock(DPASServiceGrpc.DPASServiceFutureStub.class));//.withDeadlineAfter(1, TimeUnit.MILLISECONDS);
-                link = new AuthenticatedPerfectLink(stubs.get(i), freshnessHandler.get(i), publicKey.get(i));
+                link = new AuthenticatedPerfectLink(stubs.get(i), freshnessHandler.getFreshness(), publicKey.get(i));
                 calls.put(publicKey.get(i), link);
             }
 
@@ -87,7 +86,7 @@ public class QuorumTest {
             boolean result = qr.waitForQuorum();
 
             assertTrue(result);
-            assertEquals(numServer, qr.getSuccesses().size());
+            assertEquals(faults*2+1, qr.getSuccesses().size());
 
         }catch (Exception e){
             System.out.println(e.getMessage());
