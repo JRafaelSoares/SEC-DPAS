@@ -23,16 +23,19 @@ public class FreshnessHandlerTest {
         int seq = 0;
 
         while(num-- != 0){
-            long freshnessClient = clientHandler.getNextFreshness();
-            assertEquals(seq++, freshnessClient);
+            long freshnessClient = clientHandler.getFreshness();
+            assertEquals(seq, freshnessClient);
             assertTrue(serverHandler.verifyFreshness(freshnessClient));
-            long freshnessServer = serverHandler.getNextFreshness();
-            assertEquals(seq++, freshnessServer);
+            clientHandler.incrementFreshness();
+            assertEquals(++seq, clientHandler.getFreshness());
+            serverHandler.incrementFreshness();
+            long freshnessServer = serverHandler.getFreshness();
+            assertEquals(seq, freshnessServer);
             assertTrue(clientHandler.verifyFreshness(freshnessServer));
 
         }
     }
-
+    /*
     @Test
     public void successExceptionFreshness(){
         clientHandler = new FreshnessHandler();
@@ -41,7 +44,8 @@ public class FreshnessHandlerTest {
         int seq = 0;
 
         while(num-- != 0){
-            long freshnessClient = clientHandler.getNextFreshness();
+            clientHandler.incrementFreshness();
+            long freshnessClient = clientHandler.getFreshness();
             assertEquals(seq, freshnessClient);
             assertTrue(serverHandler.verifyFreshness(freshnessClient));
 
@@ -49,27 +53,32 @@ public class FreshnessHandlerTest {
             assertTrue(clientHandler.verifyExceptionFreshness(freshnessClient));
         }
     }
-
+    */
     @Test
-    public void successOver(){
+    public void failOver(){
         clientHandler = new FreshnessHandler();
         serverHandler = new FreshnessHandler();
         int num = 10;
         int seq = 0;
 
         while(num-- != 0){
-            long freshnessClient = clientHandler.getNextFreshness();
-            assertEquals(seq++, freshnessClient);
-            freshnessClient = clientHandler.getNextFreshness();
-            assertEquals(seq++, freshnessClient);
-            freshnessClient = clientHandler.getNextFreshness();
-            assertEquals(seq++, freshnessClient);
+            clientHandler.incrementFreshness();
+            long freshnessClient = clientHandler.getFreshness();
+            assertEquals(++seq, freshnessClient);
 
-            assertTrue(serverHandler.verifyFreshness(freshnessClient));
-            long freshnessServer = serverHandler.getNextFreshness();
-            assertEquals(seq++, freshnessServer);
-            assertTrue(clientHandler.verifyFreshness(freshnessServer));
+            clientHandler.incrementFreshness();
+            freshnessClient = clientHandler.getFreshness();
+            assertEquals(++seq, freshnessClient);
 
+            clientHandler.incrementFreshness();
+            freshnessClient = clientHandler.getFreshness();
+            assertEquals(++seq, freshnessClient);
+
+            assertFalse(serverHandler.verifyFreshness(freshnessClient));
+
+            serverHandler.incrementFreshness();
+            long freshnessServer = serverHandler.getFreshness();
+            assertFalse(clientHandler.verifyFreshness(freshnessServer));
         }
     }
 
@@ -78,10 +87,10 @@ public class FreshnessHandlerTest {
         clientHandler = new FreshnessHandler();
         serverHandler = new FreshnessHandler();
 
-        long freshnessClient = clientHandler.getNextFreshness()-1;
+        long freshnessClient = clientHandler.getFreshness()-1;
         assertFalse(serverHandler.verifyFreshness(freshnessClient));
 
-        long freshnessServer = serverHandler.getNextFreshness()-1;
+        long freshnessServer = serverHandler.getFreshness()-1;
         assertFalse(clientHandler.verifyFreshness(freshnessServer));
     }
 

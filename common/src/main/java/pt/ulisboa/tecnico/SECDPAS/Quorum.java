@@ -13,9 +13,7 @@ import java.util.concurrent.CountDownLatch;
 public class Quorum<Key, Result> {
 
     private final Map<Key, Result> successes = new ConcurrentHashMap<>();
-    private final Map<Key, Throwable> clientExceptions = new ConcurrentHashMap<>();
-    private CountDownLatch latch;// = new CountDownLatch(4);
-    private static int quorum;
+    private CountDownLatch latch;
 
     private Quorum(int minResponses){
         latch = new CountDownLatch(minResponses);
@@ -23,7 +21,6 @@ public class Quorum<Key, Result> {
 
     static <Key, Result> Quorum<Key, Result> create(Map<Key, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
         final Quorum<Key, Result> qr = new Quorum<>(minResponses);
-        quorum = minResponses;
 
         for (Map.Entry<Key, AuthenticatedPerfectLink> e : calls.entrySet()) {
             FutureCallback<Result> futureCallback = new FutureCallback<>() {
@@ -35,7 +32,6 @@ public class Quorum<Key, Result> {
 
                 @Override
                 public void onFailure(Throwable t) {
-                    qr.addException(e.getKey(), t);
                     qr.countDownLatch();
                 }
             };
@@ -48,11 +44,7 @@ public class Quorum<Key, Result> {
 
     public boolean waitForQuorum() throws InterruptedException {
         latch.await();
-        return checkResults();
-    }
-
-    private synchronized boolean checkResults(){
-        return successes.size() >= quorum && equalitySuccesses(quorum);
+        return true;
     }
 
     private void countDownLatch(){
@@ -101,26 +93,15 @@ public class Quorum<Key, Result> {
     }
 
     private void addResult(Key k, Result res) {
-        successes.put(k, res);
+        synchronized (successes){
+            successes.put(k, res);
+        }
+
     }
 
-    private void addException(Key k, Throwable t) {
-        clientExceptions.put(k, t);
-    }
-
-    private int countResponses() {
-        return successes.size() + clientExceptions.size();
-    }
-
-    public synchronized HashMap<Key, Result> getSuccesses() {
-        return new HashMap<>(successes);
-    }
-
-    public synchronized HashMap<Key, Throwable> getExceptions() {
-        return new HashMap<>(clientExceptions);
-    }
-
-    public synchronized Result getResult() {
-        return successes.values().iterator().next();
+    public HashMap<Key, Result> getSuccesses() {
+        synchronized (successes){
+            return new HashMap<>(successes);
+        }
     }
 }

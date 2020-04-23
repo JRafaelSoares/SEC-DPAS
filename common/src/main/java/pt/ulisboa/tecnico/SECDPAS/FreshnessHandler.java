@@ -1,11 +1,8 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
-import java.security.SecureRandom;
-
 public class FreshnessHandler {
 
     // A cryptographically secure random number generator.
-    private static final SecureRandom secureRandom = new SecureRandom();
     private long sequenceNumber;
 
     public FreshnessHandler(){
@@ -13,28 +10,12 @@ public class FreshnessHandler {
     }
 
     public boolean verifyFreshness(long freshness) {
-        if(freshness >= this.sequenceNumber){
-            sequenceNumber = freshness + 1;
-            return true;
-        }else{
-            return false;
-        }
+        return freshness==this.sequenceNumber;
     }
 
-    // Generate a random byte array for cryptographic use.
-    public static byte[] generateRandomBytes(final int size) {
-        final byte[] rB = new byte[size];
-        secureRandom.nextBytes(rB);
-        return rB;
-    }
+    public long getFreshness() {return this.sequenceNumber; }
 
-    public boolean verifyExceptionFreshness(long freshness){
-        return (freshness == this.sequenceNumber-1);
-    }
-
-    public long getNextFreshness() {
-        return sequenceNumber++;
-    }
+    public void incrementFreshness() {this.sequenceNumber++;}
 
     public void setFreshness(long f){
         this.sequenceNumber = f;

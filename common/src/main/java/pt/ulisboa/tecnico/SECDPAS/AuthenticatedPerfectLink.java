@@ -17,15 +17,15 @@ import java.util.concurrent.Executors;
 public class AuthenticatedPerfectLink {
 
     private DPASServiceGrpc.DPASServiceFutureStub futureStub;
-    private FreshnessHandler freshnessHandler;
+    private long freshness;
     private PublicKey serverPublicKey;
 
     //for tests
     private int numIterations = 0;
 
-    AuthenticatedPerfectLink(DPASServiceGrpc.DPASServiceFutureStub futureStub, FreshnessHandler freshnessHandler, PublicKey serverPublicKey){
+    AuthenticatedPerfectLink(DPASServiceGrpc.DPASServiceFutureStub futureStub, long freshness, PublicKey serverPublicKey){
         this.futureStub = futureStub;
-        this.freshnessHandler = freshnessHandler;
+        this.freshness = freshness;
         this.serverPublicKey = serverPublicKey;
     }
 
@@ -149,7 +149,7 @@ public class AuthenticatedPerfectLink {
     }
 
     private boolean verifyFreshness(long f){
-        return freshnessHandler.verifyFreshness(f);
+        return this.freshness == f;
     }
 
     private boolean verifyAnnouncementsSignature(byte[] announcementBytes){
