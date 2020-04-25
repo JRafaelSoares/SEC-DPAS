@@ -37,6 +37,9 @@ public class ClientLibrary {
 	private int numServers;
 	private int minQuorumResponses;
 
+	private String privateBoardId = "0";
+	private String generalBoardId = "1";
+
 	/* for debugging change to 1 */
 	private int debug = 0;
 
@@ -88,7 +91,7 @@ public class ClientLibrary {
 		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(0), new RegisterRequest(getRegisterRequest()), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(-1), new RegisterRequest(getRegisterRequest()), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
@@ -111,7 +114,7 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references), "PostRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
 
 
 		try{
@@ -136,7 +139,7 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references), "PostGeneralRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
@@ -200,7 +203,7 @@ public class ClientLibrary {
 		Map<PublicKey, AuthenticatedPerfectLink> links = new HashMap<>();
 
 		for(int server = 0; server < numServers; server++){
-			links.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshness, serverPublicKey[server]));
+			links.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshness, serverPublicKey[server], publicKey));
 		}
 
 		return links;
@@ -209,39 +212,34 @@ public class ClientLibrary {
 	/**********************************/
 	/***** REQUESTS AUX FUNCTIONS *****/
 	/**********************************/
-	public Contract.PostRequest getPostRequest(char[] message, String[] references) {
+	public Contract.PostRequest getPostRequest(char[] message, String[] references, String board) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
+        long freshness = freshnessHandler.getFreshness();
 
-		byte[] postBytes = post.getBytes();
+        byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, post.getBytes(), announcements, Longs.toByteArray(freshness), board.getBytes()), privateKey);
 
-		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
-
-		byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-
-		byte[] integrity = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, messageSignature, announcements, freshness), privateKey);
-
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(postBytes)).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(board).setFreshness(freshness).build();
 	}
 
-	public Contract.PostRequest getTestPostRequest(char[] message, String[] references) {
+	public Contract.PostRequest getTestPostRequest(char[] message, String[] references, String board) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
 
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post.getBytes())).setAnnouncements(ByteString.copyFrom(announcements)).build();
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(board).build();
 	}
 
 	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){
 		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
 		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+		long freshness = freshnessHandler.getFreshness();
 
 		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, numberBytes, freshness), this.privateKey);
-		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, Ints.toByteArray(number), Longs.toByteArray(freshness)), this.privateKey);
+
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
 
@@ -249,11 +247,11 @@ public class ClientLibrary {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 
-		byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+		long freshness = freshnessHandler.getFreshness();
 
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, numberBytes, freshness), this.privateKey);
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, numberBytes, Longs.toByteArray(freshness)), this.privateKey);
 
-		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
 	}
 
@@ -283,7 +281,7 @@ public class ClientLibrary {
 		try{
 			checkMessage(message);
 
-			Contract.TestsResponse response = stub.postState(getTestPostRequest(message, references));
+			Contract.TestsResponse response = stub.postState(getTestPostRequest(message, references, privateBoardId));
 			return response.getTestResult();
 		} catch (InvalidArgumentException e){
 			return false;
@@ -304,7 +302,7 @@ public class ClientLibrary {
 		try{
 			checkMessage(message);
 
-			Contract.TestsResponse response = stub.postGeneralState(getTestPostRequest(message, references));
+			Contract.TestsResponse response = stub.postGeneralState(getTestPostRequest(message, references, generalBoardId));
 			return response.getTestResult();
 		} catch (InvalidArgumentException e){
 			return false;

@@ -4,36 +4,12 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 package SECDPAS.grpc;
 
-
-// Diffie-Hellman Connection Setup
-
-message DHExchangeRequest {
-    bytes publicKey = 1;
-    bytes clientAgreement = 2;
-    bytes clientChallenge = 3;
-    bytes signature = 4;
-}
-
-message DHExchangeResponse {
-    bytes serverAgreement = 1;
-    bytes serverResponse = 2;
-    bytes serverChallenge = 3;
-    bytes signature = 4;
-}
-
-message ClientHandshakeRequest {
-    bytes publicKey = 1;
-    bytes clientResponse = 2;
-    bytes signature = 3;
-}
-
 // Register
 
 message RegisterRequest {
     //Class PublicKey
     bytes publicKey = 1;
-    bytes freshness = 2;
-    bytes signature = 3;
+    bytes signature = 2;
 }
 
 // Post(General)
@@ -42,12 +18,12 @@ message PostRequest {
     //PublicKey
     bytes publicKey = 1;
     //Char[256]
-    bytes message = 2;
+    string message = 2;
     bytes messageSignature = 3;
     //Array Announcements
     bytes announcements = 4;
-    bytes freshness = 5;
-    bytes signature = 6;
+    string board = 5;
+    int64 freshness = 6;
 }
 
 message ReadRequest {
@@ -56,15 +32,16 @@ message ReadRequest {
     bytes clientPublicKey = 2;
     //Number of posts to see
     int32 number = 3;
-    bytes freshness = 4;
+    int64 freshness = 4;
     bytes signature = 5;
 }
 
 message ReadResponse {
     //Array of announcements
     bytes announcements = 1;
-    bytes freshness = 3;
-    bytes signature = 4;
+    int64 freshness = 2;
+    bytes signature = 3;
+    bytes publicKey = 4;
 }
 
 // Testing messages
@@ -74,29 +51,18 @@ message TestsResponse {
 
 // Server side ACK
 message ACK {
-    bytes freshness = 1;
-    bytes signature = 2;
-}
-
-message CloseSessionRequest {
-    //PublicKey
-    bytes publicKey = 1;
-    bytes freshness = 5;
-    bytes signature = 6;
+    int64 freshness = 1;
+    bytes publicKey = 2;
+    bytes signature = 3;
 }
 
 // Defining a Service, a Service can have multiple RPC operations
 service DPASService {
-    // Diffie-Hellman + Handshake
-    rpc diffieHellmanExchange(DHExchangeRequest) returns (DHExchangeResponse);
-    rpc clientHandshake(ClientHandshakeRequest) returns (ACK);
-
     rpc register(RegisterRequest) returns (ACK);
     rpc post(PostRequest) returns (ACK);
     rpc postGeneral(PostRequest) returns (ACK);
     rpc read(ReadRequest) returns (ReadResponse);
     rpc readGeneral(ReadRequest) returns (ReadResponse);
-    rpc closeSession(CloseSessionRequest) returns (ACK);
 
     // Testing Functions
     rpc clientRegisteredState(RegisterRequest) returns (TestsResponse);

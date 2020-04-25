@@ -32,6 +32,7 @@ public class AuthenticatedPerfectLinkTest {
     private static PrivateKey wrongPrivServer;
     private static PublicKey publicKey;
     private static FreshnessHandler freshnessHandler;
+    private static PublicKey clientPublicKey;
 
     @BeforeClass
     public static void setUp(){
@@ -46,10 +47,13 @@ public class AuthenticatedPerfectLinkTest {
             kp = kpg.genKeyPair();
             wrongPrivServer = kp.getPrivate();
 
+            kp = kpg.generateKeyPair();
+            clientPublicKey = kp.getPublic();
+
             stub = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
             freshnessHandler = new FreshnessHandler();
 
-            link = new AuthenticatedPerfectLink(stub, freshnessHandler.getFreshness(), publicKey);
+            link = new AuthenticatedPerfectLink(stub, freshnessHandler.getFreshness(), publicKey, clientPublicKey);
 
         }catch (Exception e){
             System.out.println(e.getMessage());
@@ -165,7 +169,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
@@ -215,7 +219,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
@@ -268,7 +272,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
@@ -322,7 +326,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
@@ -375,7 +379,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
@@ -428,7 +432,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
@@ -481,7 +485,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
@@ -535,7 +539,7 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
 
         //response
         byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());

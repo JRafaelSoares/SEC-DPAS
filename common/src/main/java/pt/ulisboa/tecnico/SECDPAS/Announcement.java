@@ -18,16 +18,22 @@ public class Announcement implements Serializable {
 
     private byte[] signature;
 
-    public Announcement(char[] post, PublicKey publicKey, String[] references, String announcementID, byte[] signature){
+    private long freshness;
+
+    private String board;
+
+    public Announcement(char[] post, PublicKey publicKey, String[] references, String announcementID, byte[] signature, long freshness, String board){
         this.post = post;
         this.publicKey = publicKey;
         this.references = references;
         this.announcementID = announcementID;
         this.signature = signature;
+        this.freshness = freshness;
+        this.board = board;
     }
 
-    public Announcement(char[] post, PublicKey publicKey, String announcementID, byte[] signature){
-        this(post, publicKey, new String[0], announcementID, signature);
+    public Announcement(char[] post, PublicKey publicKey, String announcementID, byte[] signature, long freshness, String board){
+        this(post, publicKey, new String[0], announcementID, signature, freshness, board);
     }
 
     public char[] getPost(){
@@ -48,6 +54,10 @@ public class Announcement implements Serializable {
 
     public byte[] getSignature() {
         return signature;
+    }
+
+    public long getFreshness() {
+        return freshness;
     }
 
     @Override
@@ -80,5 +90,10 @@ public class Announcement implements Serializable {
                 return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey) && equalArray);
             }
         }
+    }
+
+
+    public String getBoard() {
+        return board;
     }
 }

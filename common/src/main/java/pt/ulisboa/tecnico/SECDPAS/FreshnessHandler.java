@@ -13,6 +13,10 @@ public class FreshnessHandler {
         return freshness == this.sequenceNumber;
     }
 
+    public boolean verifyPostFreshness(long freshness) {
+        return freshness < this.sequenceNumber;
+    }
+
     public long getFreshness() {
         return this.sequenceNumber;
     }
