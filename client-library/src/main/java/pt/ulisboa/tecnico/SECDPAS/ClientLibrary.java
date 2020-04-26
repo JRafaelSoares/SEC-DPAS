@@ -84,14 +84,14 @@ public class ClientLibrary {
 
 	//Testing single client purposes
 	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
-		this(host, port, publicKey, privateKey, 1);
+		this(host, port, publicKey, privateKey, 0);
 	}
 
 	public void register() {
 		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(-1), new RegisterRequest(getRegisterRequest()), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(-1, null), new RegisterRequest(getRegisterRequest()), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
@@ -114,7 +114,7 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
 
 
 		try{
@@ -139,7 +139,7 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
@@ -157,21 +157,24 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
 
-			freshnessHandler.incrementFreshness();
 
 			Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
+			freshnessHandler.incrementFreshness();
+
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
+			freshnessHandler.incrementFreshness();
+			return null;
+
 		}
 
-		return null;
 	}
 
 	public Announcement[] readGeneral(int number) throws InvalidArgumentException {
@@ -179,7 +182,7 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness()), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
@@ -191,19 +194,20 @@ public class ClientLibrary {
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
+			freshnessHandler.incrementFreshness();
+			return null;
 		}
 
-		return null;
 	}
 
 	/*********************************/
 	/***** QUORUM AUX FUNCTIONS ******/
 	/*********************************/
-	public Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness){
+	public Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness, PublicKey targetClientKey){
 		Map<PublicKey, AuthenticatedPerfectLink> links = new HashMap<>();
 
 		for(int server = 0; server < numServers; server++){
-			links.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshness, serverPublicKey[server], publicKey));
+			links.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshness, serverPublicKey[server], targetClientKey));
 		}
 
 		return links;
@@ -258,7 +262,7 @@ public class ClientLibrary {
 	public Contract.RegisterRequest getRegisterRequest(){
 		/* Serializes key and changes to ByteString */
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey), privateKey);
+		byte[] signature = SignatureHandler.publicSign(publicKey, privateKey);
 
 		/* Prepare request */
 		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();

@@ -211,7 +211,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		PublicKey clientUserKey = verifyPublicKey(serializedClientPublicKey, responseObserver, freshness);
 
-		if(targetUserKey == null || clientUserKey == null || !verifyReadRequest(request, responseObserver)){
+		if(targetUserKey == null || clientUserKey == null || !verifyReadRequest(request, responseObserver, true)){
 			return;
 		}
 
@@ -244,7 +244,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		PublicKey clientUserKey = verifyPublicKey(serializedClientPublicKey, responseObserver, freshness);
 
-		if(clientUserKey == null || !verifyReadRequest(request, responseObserver)){
+		if(clientUserKey == null || !verifyReadRequest(request, responseObserver, false)){
 			return;
 		}
 
@@ -376,7 +376,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public boolean verifyRegisterRequest(StreamObserver<Contract.ACK> streamObserver, Contract.RegisterRequest request, PublicKey userKey){
 		return userKey != null &&
 				verifyRegisterSignature(streamObserver, userKey, request.getPublicKey().toByteArray(), request.getSignature().toByteArray()) &&
-				verifyClientIsAlreadyRegistered(userKey, streamObserver, SerializationUtils.serialize(userKey));
+				verifyClientIsNotRegistered(userKey, streamObserver, SerializationUtils.serialize(userKey));
 	}
 
 	private boolean verifyRegisterSignature(StreamObserver<?> responseObserver, PublicKey userKey, byte[] message, byte[] clientSignature){
@@ -388,13 +388,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return true;
 	}
 
-	private boolean verifyClientIsAlreadyRegistered(PublicKey userKey, StreamObserver<?> responseObserver, byte[] serializedClientKey){
+	private boolean verifyClientIsNotRegistered(PublicKey userKey, StreamObserver<?> responseObserver, byte[] serializedClientKey){
 		if(this.privateBoard.get(userKey) != null){
 			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientAlreadyRegistered.");
 			responseObserver.onError(buildException(Status.Code.INVALID_ARGUMENT, "ClientAlreadyRegistered", serializedClientKey, -1));
-			return true;
+			return false;
 		}
-		return false;
+		return true;
 	}
 
 	/************************/
@@ -439,7 +439,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness, String board){
-		if(!this.clientFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
+		if(this.clientFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
 			if(debug != 0) System.out.println("\t [POST] Already seen post, returning ACK");
 			responseObserver.onNext(buildACKresponse(userKey, board));
 			responseObserver.onCompleted();
@@ -467,11 +467,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return true;
 	}
 
-	private boolean verifyMessage(StreamObserver<?> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness){
-		return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
-				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
-				verifyFreshness(responseObserver, userKey, clientFreshness);
-	}
+
 
 	private boolean verifyFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
 		if(!this.clientFreshness.get(userKey).verifyFreshness(clientFreshness)){
@@ -496,7 +492,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	/*****  READ CHECKS *****/
 	/************************/
 
-	private boolean verifyReadRequest(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver){
+	private boolean verifyReadRequest(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver, boolean readType){
 		byte[] serializedTargetPublicKey = request.getTargetPublicKey().toByteArray();
 		byte[] serializedClientPublicKey = request.getClientPublicKey().toByteArray();
 
@@ -509,13 +505,25 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] signature = request.getSignature().toByteArray();
 
 
-		PublicKey targetUserKey = verifyPublicKey(serializedTargetPublicKey, responseObserver, freshness);
 
 		PublicKey clientUserKey = verifyPublicKey(serializedClientPublicKey, responseObserver, freshness);
 
-		return (verifyMessage(responseObserver, packet, signature, clientUserKey, freshness) && verifyClientIsRegistered(targetUserKey, responseObserver, serializedClientPublicKey, freshness));
+		boolean readGeneralCheck = clientUserKey != null && verifyMessage(responseObserver, packet, signature, clientUserKey, freshness);
+		boolean readCheck = true;
+		if(readType){
+			PublicKey targetUserKey = verifyPublicKey(serializedTargetPublicKey, responseObserver, freshness);
+
+			readGeneralCheck = targetUserKey != null && verifyClientIsRegistered(targetUserKey, responseObserver, serializedClientPublicKey, freshness);
+		}
+
+		return readCheck && readGeneralCheck;
 	}
 
+	private boolean verifyMessage(StreamObserver<?> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness){
+		return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
+				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
+				verifyFreshness(responseObserver, userKey, clientFreshness);
+	}
 	private StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, long clientFreshness){
 		Status status = Status.fromCode(code).withDescription(description);
 

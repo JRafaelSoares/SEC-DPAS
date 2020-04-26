@@ -14,7 +14,8 @@ public class FreshnessHandler {
     }
 
     public boolean verifyPostFreshness(long freshness) {
-        return freshness < this.sequenceNumber;
+        System.out.println(freshness < sequenceNumber);
+        return freshness < sequenceNumber;
     }
 
     public long getFreshness() {

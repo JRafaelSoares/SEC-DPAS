@@ -28,6 +28,8 @@ public class AuthenticatedPerfectLink {
     //for tests
     private int numIterations = 0;
 
+    private boolean debug = false;
+
     AuthenticatedPerfectLink(DPASServiceGrpc.DPASServiceFutureStub futureStub, long freshness, PublicKey serverPublicKey, PublicKey clientKey){
         this.futureStub = futureStub;
         this.freshness = freshness;
@@ -64,14 +66,17 @@ public class AuthenticatedPerfectLink {
             @Override
             public void onSuccess(Contract.@Nullable ACK ack) {
                 if(ack != null && verifySignature(serverPublicKey, request.getPublicKey().toByteArray(), ack.getSignature().toByteArray())){
+                    if(debug) System.out.println("[APL][REGISTER] Passed check");
                     listenableFuture.onSuccess(ack);
                 }else{
+                    if(debug) System.out.println("[APL][REGISTER] Failed check");
                     register(request, listenableFuture);
                 }
             }
 
             @Override
             public void onFailure(Throwable t) {
+                if(debug) System.out.println("[APL][REGISTER] Exception thrown");
                 register(request, listenableFuture);
             }
         }, Executors.newSingleThreadExecutor());
@@ -94,8 +99,11 @@ public class AuthenticatedPerfectLink {
             @Override
             public void onSuccess(Contract.@Nullable ACK ack) {
                 if(verifyPost(ack, board)){
+                    if(debug) System.out.println("[APL][POST] Passed check");
                     listenableFuture.onSuccess(ack);
                 }else{
+                    if(debug) System.out.println("[APL][POST] Failed check");
+
                     if(type.equals("PostRequest")){
                         post(request, listenableFuture, "PostRequest");
                     }else{
@@ -106,6 +114,8 @@ public class AuthenticatedPerfectLink {
 
             @Override
             public void onFailure(Throwable t) {
+                if(debug) System.out.println("[APL][POST] Exception Thrown");
+
                 if(type.equals("PostRequest")){
                     post(request, listenableFuture, "PostRequest");
                 }else{
@@ -132,8 +142,12 @@ public class AuthenticatedPerfectLink {
             @Override
             public void onSuccess(Contract.@Nullable ReadResponse response) {
                 if(verifyRead(response, board)){
+                    if(debug) System.out.println("[APL][READ] Passed check");
+
                     listenableFuture.onSuccess(response);
                 }else{
+                    if(debug) System.out.println("[APL][READ] Failed check");
+
                     if(type.equals("ReadRequest")){
                         read(request, listenableFuture, "ReadRequest");
                     }else{
@@ -144,6 +158,8 @@ public class AuthenticatedPerfectLink {
 
             @Override
             public void onFailure(Throwable t) {
+                if(debug) System.out.println("[APL][READ] Exception Thrown");
+
                 if(type.equals("ReadRequest")){
                     read(request, listenableFuture, "ReadRequest");
                 }else{
@@ -165,12 +181,17 @@ public class AuthenticatedPerfectLink {
                 verifyFreshness(response.getFreshness());
     }
 
-    private byte[] getReadSignature(Contract.ReadResponse response, String board){
-        return Bytes.concat(response.getPublicKey().toByteArray(), response.getAnnouncements().toByteArray(), Longs.toByteArray(response.getFreshness()), board.getBytes());
-    }
-
     private byte[] getPostSignature(Contract.ACK response, String board){
         return Bytes.concat(response.getPublicKey().toByteArray(), Longs.toByteArray(response.getFreshness()), board.getBytes());
+    }
+
+    private boolean verifyClient(ByteString clientResponse){
+
+        boolean clientCheck = clientResponse != null && this.clientPublicKey.equals(SerializationUtils.deserialize(clientResponse.toByteArray()));
+        if(!clientCheck){
+            if(debug) System.out.println("[APL][CLIENT] Failed Client Check");
+        }
+        return clientCheck;
     }
 
     private boolean verifyRead(Contract.ReadResponse response, String board){
@@ -180,17 +201,24 @@ public class AuthenticatedPerfectLink {
                 verifyAnnouncementsSignature(response.getAnnouncements().toByteArray(), board);
 
     }
-
-    private boolean verifyClient(ByteString clientResponse){
-        return clientResponse != null && this.clientPublicKey.equals(SerializationUtils.deserialize(clientResponse.toByteArray()));
+    private byte[] getReadSignature(Contract.ReadResponse response, String board){
+        return Bytes.concat(response.getPublicKey().toByteArray(), response.getAnnouncements().toByteArray(), Longs.toByteArray(response.getFreshness()), board.getBytes());
     }
 
     private boolean verifySignature(PublicKey k, byte[] m, byte[] s){
-        return s != null && m != null && SignatureHandler.verifyPublicSignature(m, s, k);
+        boolean signatureCheck = s != null && m != null && SignatureHandler.verifyPublicSignature(m, s, k);
+        if(!signatureCheck){
+            if(debug) System.out.println("[APL][SIGNATURE] Failed Signature Check");
+        }
+        return signatureCheck;
     }
 
     private boolean verifyFreshness(long f){
-        return this.freshness == f;
+        boolean freshnessCheck = this.freshness == f;
+        if(!freshnessCheck){
+            if(debug) System.out.println("[APL][FRESHNESS] Failed Freshness Check");
+        }
+        return freshnessCheck;
     }
 
     private boolean verifyAnnouncementsSignature(byte[] announcementBytes, String board){
@@ -206,12 +234,15 @@ public class AuthenticatedPerfectLink {
             byte[] signature = Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements, freshness, boardType);
 
             if(!verifySignature(announcement.getPublicKey(), signature, announcement.getSignature()) || !announcement.getBoard().equals(board)){
+                if(debug) System.out.println("[APL][ANNOUNCEMENT] Failed Announcement Signature Check");
                 return false;
             }
             //Extra checks - If from correct type of board and if private board, from my own
 
             if(board.equals(this.privateBoardId)){
-                if(announcement.getPublicKey() != this.clientPublicKey){
+                if(!announcement.getPublicKey().equals(this.clientPublicKey)){
+                    if(debug) System.out.println("[APL][ANNOUNCEMENT] Failed Board Check");
+
                     return false;
                 }
             }
