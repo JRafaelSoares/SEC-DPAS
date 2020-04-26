@@ -454,8 +454,6 @@ public class AuthenticatedPerfectLinkTest {
         byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), generalBoardId.getBytes());
         byte[] signature = SignatureHandler.publicSign(message, privServer);
 
-
-
         Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
 
@@ -772,7 +770,6 @@ public class AuthenticatedPerfectLinkTest {
         }
 
     }
-
 
     @Test
     public void successReadSignatureCompromise(){
@@ -1406,5 +1403,5 @@ public class AuthenticatedPerfectLinkTest {
         }
 
     }
-
+    //TODO - Add timeout test
 }

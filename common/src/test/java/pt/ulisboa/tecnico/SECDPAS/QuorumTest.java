@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 
 public class QuorumTest {
 
-    private static AuthenticatedPerfectLink link;
+    private static ArrayList<AuthenticatedPerfectLink> link = new ArrayList<>();
     private static ArrayList<DPASServiceGrpc.DPASServiceFutureStub> stubs = new ArrayList<>();
     private static ArrayList<PrivateKey> privServer = new ArrayList<>();
     private static ArrayList<PublicKey> publicKey = new ArrayList<>();
@@ -40,19 +40,19 @@ public class QuorumTest {
     public static void setUp(){
 
         try{
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            clientPublicKey = kp.getPublic();
+
             for(int i = 0; i < 3*faults+1; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.genKeyPair();
+                kp = kpg.generateKeyPair();
                 privServer.add(kp.getPrivate());
                 publicKey.add(kp.getPublic());
 
-                kp = kpg.generateKeyPair();
-                clientPublicKey = kp.getPublic();
-
                 stubs.add(mock(DPASServiceGrpc.DPASServiceFutureStub.class));
-                link = new AuthenticatedPerfectLink(stubs.get(i), freshnessHandler.getFreshness(), publicKey.get(i), clientPublicKey);
-                calls.put(publicKey.get(i), link);
+                link.add(new AuthenticatedPerfectLink(stubs.get(i), freshnessHandler.getFreshness(), publicKey.get(i), clientPublicKey));
+                calls.put(publicKey.get(i), link.get(i));
             }
 
         }catch (Exception e){
@@ -101,14 +101,17 @@ public class QuorumTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(0);
-
         try{
             int numServer = 0;
 
             for(DPASServiceGrpc.DPASServiceFutureStub stub : stubs){
-                byte[] signature = SignatureHandler.publicSign(freshness, privServer.get(numServer));
-                Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setFreshness(0).setSignature(ByteString.copyFrom(signature)).build();
+
+                //response
+                long freshness = freshnessHandler.getFreshness();
+                byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), privateBoardId.getBytes());
+                byte[] signature = SignatureHandler.publicSign(message, privServer.get(numServer));
+
+                Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
                 ListenableFuture<Contract.ACK> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
                 when(stub.post(isA(Contract.PostRequest.class))).thenReturn(successFutureRightAnswer);
@@ -136,14 +139,17 @@ public class QuorumTest {
         Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        long freshness = 0;
+        long freshness = freshnessHandler.getFreshness();
 
         try{
             int numServer = 0;
 
             for(DPASServiceGrpc.DPASServiceFutureStub stub : stubs){
-                byte[] signature = SignatureHandler.publicSign(Bytes.concat(Longs.toByteArray(freshness), privateBoardId.getBytes()), privServer.get(numServer));
-                Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+                //request
+                byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), generalBoardId.getBytes());
+                byte[] signature = SignatureHandler.publicSign(message, privServer.get(numServer));
+
+                Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
                 ListenableFuture<Contract.ACK> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
                 when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(successFutureRightAnswer);
@@ -168,19 +174,25 @@ public class QuorumTest {
     @Test
     public void successRead(){
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(0).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(0);
+        long freshness = freshnessHandler.getFreshness();
 
         try{
             int numServer = 0;
 
             for(DPASServiceGrpc.DPASServiceFutureStub stub : stubs){
+                //request
+
+                //response
                 Announcement[] announcements = new Announcement[0];
                 byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-                byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer.get(numServer));
-                Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(0).setSignature(ByteString.copyFrom(signature)).build();
+
+                byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), privateBoardId.getBytes());
+                byte[] signature = SignatureHandler.publicSign(message, privServer.get(numServer));
+
+                Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
                 ListenableFuture<Contract.ReadResponse> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
                 when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(successFutureRightAnswer);
@@ -201,4 +213,8 @@ public class QuorumTest {
             fail();
         }
     }
+
+    //TODO - Add 1 failure test
+    //TODO - Add 1 wrong type test
+
 }
