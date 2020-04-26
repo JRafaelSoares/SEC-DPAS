@@ -52,7 +52,7 @@ public class ClientLibrary {
 
 		//Byzantine Quorum number
 		this.numServers = faults*3+1;
-		this.minQuorumResponses = numServers;//2*faults+1;
+		this.minQuorumResponses = 2*faults+1;
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
 		this.freshnessHandler = new FreshnessHandler();
@@ -84,7 +84,7 @@ public class ClientLibrary {
 
 	//Testing single client purposes
 	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
-		this(host, port, publicKey, privateKey, 0);
+		this(host, port, publicKey, privateKey, 1);
 	}
 
 	public void register() {

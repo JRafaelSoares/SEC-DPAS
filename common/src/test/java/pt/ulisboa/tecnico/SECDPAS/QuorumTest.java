@@ -33,6 +33,7 @@ public class QuorumTest {
     private static Map<PublicKey, AuthenticatedPerfectLink> calls = new HashMap<>();
     private static PublicKey clientPublicKey;
     private static final int faults = 1;
+
     private static String privateBoardId = "0";
     private static String generalBoardId = "1";
     @BeforeClass

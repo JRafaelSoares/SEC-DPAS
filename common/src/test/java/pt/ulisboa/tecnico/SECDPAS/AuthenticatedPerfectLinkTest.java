@@ -33,7 +33,9 @@ public class AuthenticatedPerfectLinkTest {
     private static PublicKey publicKey;
     private static FreshnessHandler freshnessHandler;
     private static PublicKey clientPublicKey;
-    /*
+
+    private static String privateBoardId = "0";
+    private static String generalBoardId = "1";
     @BeforeClass
     public static void setUp(){
 
@@ -169,14 +171,14 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
         long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
 
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ACK> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
@@ -220,16 +222,20 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(freshness, wrongPrivServer);
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness));
 
-        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
 
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -268,22 +274,80 @@ public class AuthenticatedPerfectLinkTest {
     }
 
     @Test
-    public void successPostFreshnessCompromise(){
+    public void successPostFreshnessHigherCompromise(){
         ArrayList<Contract.ACK> successes = new ArrayList<>();
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] wrongFreshness = Longs.toByteArray(-1);
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(wrongFreshness, privServer);
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] messageWrongFreshness = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness+1), privateBoardId.getBytes());
 
-        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(wrongFreshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(messageWrongFreshness, privServer);
 
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
+        try{
+            ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
+            ListenableFuture<Contract.ACK> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
+
+            when(stub.post(isA(Contract.PostRequest.class))).thenReturn(successFutureWrongAnswer).thenReturn(successFutureRightAnswer);
+
+            link.process(new PostRequest(request, "PostRequest"), new FutureCallback<Contract.ACK>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    successes.add(ack);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            int timeout = 50;
+            while(successes.size() != 1){
+                if(timeout-- == 0) break;
+                Thread.sleep(100);
+            }
+
+            assertNotEquals(0, timeout);
+            assertEquals(1, successes.size());
+            assertEquals(0, failures.size());
+            assertEquals(2, link.getNumIterations());
+
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            fail();
+        }
+
+    }
+
+    @Test
+    public void successPostFreshnessLowerCompromise(){
+        ArrayList<Contract.ACK> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
+
+        //response
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] messageWrongFreshness = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness-1), privateBoardId.getBytes());
+
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(messageWrongFreshness, privServer);
+
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -327,16 +391,19 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(Longs.toByteArray(2), privServer);
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] messageWrongFreshness = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness-1));
 
-        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(Longs.toByteArray(-1))).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(messageWrongFreshness, privServer);
 
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -380,22 +447,23 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
 
-        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(Longs.toByteArray(1000))).setSignature(ByteString.copyFrom(new byte[0])).build();
 
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
 
         try{
             ListenableFuture<Contract.ACK> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
-            ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
             ListenableFuture<Contract.ACK> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
 
-            when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(failedFuture).thenReturn(successFutureWrongAnswer).thenReturn(successFutureRightAnswer);
+            when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(failedFuture).thenReturn(successFutureRightAnswer);
 
             link.process(new PostRequest(request, "PostGeneralRequest"), new FutureCallback<Contract.ACK>() {
                 @Override
@@ -418,7 +486,7 @@ public class AuthenticatedPerfectLinkTest {
             assertNotEquals(0, timeout);
             assertEquals(1, successes.size());
             assertEquals(0, failures.size());
-            assertEquals(3, link.getNumIterations());
+            assertEquals(2, link.getNumIterations());
 
         }catch (Exception e){
             System.out.println(e.getMessage());
@@ -433,16 +501,76 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(freshness, wrongPrivServer);
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness));
 
-        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
 
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
+        try{
+            ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
+            ListenableFuture<Contract.ACK> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
+
+            when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(successFutureWrongAnswer).thenReturn(successFutureRightAnswer);
+
+            link.process(new PostRequest(request, "PostGeneralRequest"), new FutureCallback<Contract.ACK>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    successes.add(ack);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            int timeout = 50;
+            while(successes.size() != 1){
+                if(timeout-- == 0) break;
+                Thread.sleep(100);
+            }
+
+            assertNotEquals(0, timeout);
+            assertEquals(1, successes.size());
+            assertEquals(0, failures.size());
+            assertEquals(2, link.getNumIterations());
+
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            fail();
+        }
+
+    }
+
+
+    @Test
+    public void successPostGeneralFreshnessUpCompromise(){
+        ArrayList<Contract.ACK> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
+
+        //response
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness+1), generalBoardId.getBytes());
+
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
+
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -481,22 +609,24 @@ public class AuthenticatedPerfectLinkTest {
     }
 
     @Test
-    public void successPostGeneralFreshnessCompromise(){
+    public void successPostGeneralFreshnessDownCompromise(){
         ArrayList<Contract.ACK> successes = new ArrayList<>();
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] wrongFreshness = Longs.toByteArray(-1);
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(wrongFreshness, privServer);
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness-1), generalBoardId.getBytes());
 
-        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(wrongFreshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
 
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -533,23 +663,25 @@ public class AuthenticatedPerfectLinkTest {
         }
 
     }
-
     @Test
     public void successPostGeneralIntegrityFreshnessCompromise(){
         ArrayList<Contract.ACK> successes = new ArrayList<>();
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage(ByteString.copyFrom(new byte[0])).setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(new byte[0])).build();
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] signature = SignatureHandler.publicSign(freshness, privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(Longs.toByteArray(2), privServer);
+        long freshness = freshnessHandler.getFreshness();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness-1));
 
-        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(Longs.toByteArray(-1))).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
 
-        Contract.ACK correctResponse = Contract.ACK.newBuilder().setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ACK incorrectResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+
+        Contract.ACK correctResponse = Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ACK> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -593,15 +725,17 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
@@ -639,25 +773,28 @@ public class AuthenticatedPerfectLinkTest {
 
     }
 
+
     @Test
     public void successReadSignatureCompromise(){
         ArrayList<Contract.ReadResponse> successes = new ArrayList<>();
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        byte[] incorrectSignature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), wrongPrivServer);
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness));
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -696,24 +833,26 @@ public class AuthenticatedPerfectLinkTest {
     }
 
     @Test
-    public void successReadFreshnessCompromise(){
+    public void successReadFreshnessUpCompromise(){
         ArrayList<Contract.ReadResponse> successes = new ArrayList<>();
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] incorrectFreshness = Longs.toByteArray(-1);
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, incorrectFreshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(incorrectFreshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness+1), privateBoardId.getBytes());
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -751,23 +890,83 @@ public class AuthenticatedPerfectLinkTest {
 
     }
 
+    @Test
+    public void successReadFreshnessDownCompromise(){
+        ArrayList<Contract.ReadResponse> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
+
+        //response
+        long freshness = freshnessHandler.getFreshness();
+        Announcement[] announcements = new Announcement[0];
+        byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
+
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness-1), privateBoardId.getBytes());
+
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
+        try{
+            ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
+            ListenableFuture<Contract.ReadResponse> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
+
+            when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(successFutureWrongAnswer).thenReturn(successFutureRightAnswer);
+
+            link.process(new ReadRequest(request, "ReadRequest"), new FutureCallback<Contract.ReadResponse>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ReadResponse result) {
+                    successes.add(result);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            int timeout = 50;
+            while(successes.size() != 1){
+                if(timeout-- == 0) break;
+                Thread.sleep(100);
+            }
+
+            assertNotEquals(0, timeout);
+            assertEquals(1, successes.size());
+            assertEquals(0, failures.size());
+            assertEquals(2, link.getNumIterations());
+
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            fail();
+        }
+
+    }
     @Test
     public void successReadIntegrityAnnouncementsCompromise(){
         ArrayList<Contract.ReadResponse> successes = new ArrayList<>();
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -811,17 +1010,21 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(Longs.toByteArray(1000))).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), privateBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness-1));
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -859,6 +1062,8 @@ public class AuthenticatedPerfectLinkTest {
 
     }
 
+    //TODO - Add test for bizantine server sending announcement from wrong board
+    //TODO - Add test for announcement with wrong signature inside
 
     @Test
     public void successReadGeneralSimple(){
@@ -866,15 +1071,17 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
@@ -918,19 +1125,21 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        byte[] incorrectSignature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), wrongPrivServer);
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness));
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -969,24 +1178,84 @@ public class AuthenticatedPerfectLinkTest {
     }
 
     @Test
-    public void successReadGeneralFreshnessCompromise(){
+    public void successReadGeneralFreshnessUpCompromise(){
         ArrayList<Contract.ReadResponse> successes = new ArrayList<>();
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
-        byte[] incorrectFreshness = Longs.toByteArray(-1);
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
-        byte[] incorrectSignature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, incorrectFreshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(incorrectFreshness)).setSignature(ByteString.copyFrom(incorrectSignature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness+1), generalBoardId.getBytes());
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
+        try{
+            ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
+            ListenableFuture<Contract.ReadResponse> successFutureRightAnswer = Futures.immediateFuture(correctResponse);
+
+            when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureWrongAnswer).thenReturn(successFutureRightAnswer);
+
+            link.process(new ReadRequest(request, "ReadGeneralRequest"), new FutureCallback<Contract.ReadResponse>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ReadResponse result) {
+                    successes.add(result);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            int timeout = 50;
+            while(successes.size() != 1){
+                if(timeout-- == 0) break;
+                Thread.sleep(100);
+            }
+
+            assertNotEquals(0, timeout);
+            assertEquals(1, successes.size());
+            assertEquals(0, failures.size());
+            assertEquals(2, link.getNumIterations());
+
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            fail();
+        }
+
+    }
+
+    @Test
+    public void successReadGeneralFreshnessDownCompromise(){
+        ArrayList<Contract.ReadResponse> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
+
+        //response
+        long freshness = freshnessHandler.getFreshness();
+        Announcement[] announcements = new Announcement[0];
+        byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
+
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness-1), generalBoardId.getBytes());
+
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -1030,17 +1299,19 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -1084,17 +1355,21 @@ public class AuthenticatedPerfectLinkTest {
         ArrayList<Throwable> failures = new ArrayList<>();
 
         //request
-        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
 
         //response
-        byte[] freshness = Longs.toByteArray(freshnessHandler.getFreshness());
+        long freshness = freshnessHandler.getFreshness();
         Announcement[] announcements = new Announcement[0];
         byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
-        byte[] signature = SignatureHandler.publicSign(Bytes.concat(serializedAnnouncements, freshness), privServer);
 
-        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(Longs.toByteArray(1000))).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), generalBoardId.getBytes());
+        byte[] wrongMessage = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness-1));
 
-        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
+        byte[] signature = SignatureHandler.publicSign(message, privServer);
+        byte[] wrongSignature = SignatureHandler.publicSign(wrongMessage, privServer);
+
+        Contract.ReadResponse incorrectResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(wrongSignature)).build();
+        Contract.ReadResponse correctResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
         try{
             ListenableFuture<Contract.ReadResponse> successFutureWrongAnswer = Futures.immediateFuture(incorrectResponse);
@@ -1131,5 +1406,5 @@ public class AuthenticatedPerfectLinkTest {
         }
 
     }
-    */
+
 }
