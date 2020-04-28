@@ -116,9 +116,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(debug != 0) System.out.println(String.format("[REGISTER] Client %s registered", userKey));
 		byte[] signature = SignatureHandler.publicSign(encodedClientKey, this.privateKey);
 
-		responseObserver.onNext(Contract.ACK.newBuilder().setPublicKey(request.getPublicKey()).setSignature(ByteString.copyFrom(signature)).build());
+		responseObserver.onNext(buildRegisterResponse(encodedClientKey));
 		responseObserver.onCompleted();
 	}
+
+
 
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
@@ -392,10 +394,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return true;
 	}
 
-	private boolean verifyClientIsNotRegistered(PublicKey userKey, StreamObserver<?> responseObserver, byte[] serializedClientKey){
+	private boolean verifyClientIsNotRegistered(PublicKey userKey, StreamObserver<Contract.ACK> responseObserver, byte[] serializedClientKey){
 		if(this.privateBoard.get(userKey) != null){
 			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientAlreadyRegistered.");
-			responseObserver.onError(buildException(Status.Code.INVALID_ARGUMENT, "ClientAlreadyRegistered", serializedClientKey, -1));
+			responseObserver.onNext(buildRegisterResponse(serializedClientKey));
+			responseObserver.onCompleted();
 			return false;
 		}
 		return true;
@@ -556,7 +559,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	/******************************/
 	/*****  RESPONSE BUILDERS *****/
 	/******************************/
-
+	public Contract.ACK buildRegisterResponse(byte[] publicKey){
+		byte[] signature = SignatureHandler.publicSign(publicKey, this.privateKey);
+		return Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
+	}
 
 	private Contract.ACK buildACKresponse(PublicKey userKey, String boardType){
 		long freshness = this.clientWriteFreshness.get(userKey).getFreshness();

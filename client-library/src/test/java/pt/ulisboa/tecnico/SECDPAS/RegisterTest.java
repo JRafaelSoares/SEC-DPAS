@@ -57,5 +57,12 @@ public class RegisterTest {
 		assertTrue(lib1.clientRegisteredState());
 	}
 
+	@Test
+	public void registerTwiceCorrectTest() {
+		lib2.register();
+		lib2.register();
+		assertTrue(lib2.clientRegisteredState());
+	}
+
 }
 
