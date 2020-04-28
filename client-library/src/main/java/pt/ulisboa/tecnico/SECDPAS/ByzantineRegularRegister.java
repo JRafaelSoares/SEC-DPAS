@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class ByzantineRegularRegister {
 
-    public static void write(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
+    public void write(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
 
         /* Create quorum */
         Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, request, minResponses);
@@ -22,7 +22,7 @@ public class ByzantineRegularRegister {
     }
 
 
-    public static Announcement[] read(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses, int numberAnnouncements) {
+    public Announcement[] read(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses, int numberAnnouncements) {
 
         /* Create quorum */
         Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, request, minResponses);
@@ -36,7 +36,7 @@ public class ByzantineRegularRegister {
         }
     }
 
-    public static Announcement[] getHighestReads(HashMap<PublicKey, Contract.ReadResponse> responses, int numberAnnouncements){
+    public Announcement[] getHighestReads(HashMap<PublicKey, Contract.ReadResponse> responses, int numberAnnouncements){
 
         long maxWrite = -1;
 
@@ -80,32 +80,4 @@ public class ByzantineRegularRegister {
         }
         return response;
     }
-    /*
-
-    public Contract.ReadResponse getHighestValueResponse(HashMap<PublicKey, Contract.ReadResponse> responses){
-        Contract.ReadResponse highestValueResponse = null;
-        for( Contract.ReadResponse response : responses.values()){
-            if(highestValueResponse == null){
-                highestValueResponse = response;
-            }
-
-            else{
-
-                if(response.getAnnouncements())
-            }
-
-        }
-    }
-
-    public boolean checkHighestValue(Contract.ReadResponse currentMax, Contract.ReadResponse trying){
-        Announcement[] maxAnnouncements = SerializationUtils.deserialize(currentMax.getAnnouncements().toByteArray());
-        Announcement[] tryingAnnouncements = SerializationUtils.deserialize(trying.getAnnouncements().toByteArray());
-
-        //(1,N) Regular only has 1 writer, so maxLenght is always the most recent one.
-        if(tryingAnnouncements.length > maxAnnouncements.length){
-
-        }
-
-    }
-    */
 }

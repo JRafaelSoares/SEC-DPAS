@@ -159,8 +159,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			e.getCause();
 		}
 
-		responseObserver.onNext(buildACKresponse(userKey, privateBoardId));
+		responseObserver.onNext(buildACKresponse(userKey, privateBoardId, this.clientWriteFreshness.get(userKey).getFreshness()));
 		responseObserver.onCompleted();
+		this.clientWriteFreshness.get(userKey).incrementFreshness();
 	}
 
 	@Override
@@ -199,8 +200,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			e.getCause();
 		}
 
-		responseObserver.onNext(buildACKresponse(userKey, generalBoardId));
+		responseObserver.onNext(buildACKresponse(userKey, generalBoardId, this.clientWriteFreshness.get(userKey).getFreshness()));
 		responseObserver.onCompleted();
+		this.clientWriteFreshness.get(userKey).incrementFreshness();
 	}
 
 	@Override
@@ -448,7 +450,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness, String board){
 		if(this.clientWriteFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
 			if(debug != 0) System.out.println("\t [POST] Already seen post, returning ACK");
-			responseObserver.onNext(buildACKresponse(userKey, board));
+			responseObserver.onNext(buildACKresponse(userKey, board, clientFreshness));
 			responseObserver.onCompleted();
 			return false;
 		}
@@ -564,9 +566,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
-	private Contract.ACK buildACKresponse(PublicKey userKey, String boardType){
-		long freshness = this.clientWriteFreshness.get(userKey).getFreshness();
-		this.clientWriteFreshness.get(userKey).incrementFreshness();
+	private Contract.ACK buildACKresponse(PublicKey userKey, String boardType, long freshness){
 		byte[] publicKey = SerializationUtils.serialize(userKey);
 
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, Longs.toByteArray(freshness), boardType.getBytes()), this.privateKey);

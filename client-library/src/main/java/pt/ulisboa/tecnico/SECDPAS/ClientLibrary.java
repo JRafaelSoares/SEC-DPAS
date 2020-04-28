@@ -42,6 +42,7 @@ public class ClientLibrary {
 	private String privateBoardId = "0";
 	private String generalBoardId = "1";
 
+	private ByzantineAtomicRegister atomicRegister;
 	/* for debugging change to 1 */
 	private int debug = 0;
 
@@ -54,7 +55,7 @@ public class ClientLibrary {
 
 		//Byzantine Quorum number
 		this.numServers = faults*3+1;
-		this.minQuorumResponses = 2*faults+1;
+		this.minQuorumResponses = (numServers + faults)/2;
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
 		this.writeFreshnessHandler = new FreshnessHandler();
@@ -79,6 +80,8 @@ public class ClientLibrary {
 				throw new CertificateInvalidException(e.getMessage());
 			}
 		}
+
+		this.atomicRegister = new ByzantineAtomicRegister(this.futureStubs, this.serverPublicKey, this.publicKey, this.privateKey, this.minQuorumResponses);
 
 		//Test server
 		this.stub = DPASServiceGrpc.newBlockingStub(this.channel[0]);
@@ -106,8 +109,6 @@ public class ClientLibrary {
 	}
 
 	public void post(char[] message) throws InvalidArgumentException {
-		checkMessage(message);
-
 		/* A post without announcements */
 		post(message, new String[0]);
 	}
@@ -115,14 +116,11 @@ public class ClientLibrary {
 	public void post(char[] message, String[] references) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[POST] RequestType from client.\n");
 		checkMessage(message);
-		ByzantineRegularRegister.write(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
-		writeFreshnessHandler.incrementFreshness();
 
+		this.atomicRegister.write(message, references);
 	}
 
 	public void postGeneral(char[] message) throws InvalidArgumentException {
-		checkMessage(message);
-
 		/* A post without announcements */
 		postGeneral(message, new String[0]);
 	}
@@ -131,24 +129,21 @@ public class ClientLibrary {
 		if(debug != 0) System.out.println("[POST GENERAL] RequestType from client.\n");
 		checkMessage(message);
 
-		ByzantineRegularRegister.write(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
+		new ByzantineRegularRegister().write(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
 		writeFreshnessHandler.incrementFreshness();
 	}
 
 	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[READ] RequestType from client.\n");
 		checkNumber(number);
-
-		Announcement[] announcements = ByzantineRegularRegister.read(getLinks(readFreshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses, number);
-		readFreshnessHandler.incrementFreshness();
-		return announcements;
+		return this.atomicRegister.read(client, number);
 	}
 
 	public Announcement[] readGeneral(int number) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[READ GENERAL] RequestType from client.\n");
 		checkNumber(number);
 
-		Announcement[] announcements = ByzantineRegularRegister.read(getLinks(readFreshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses, number);
+		Announcement[] announcements = new ByzantineRegularRegister().read(getLinks(readFreshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses, number);
 		readFreshnessHandler.incrementFreshness();
 		return announcements;
 	}
@@ -156,6 +151,7 @@ public class ClientLibrary {
 	/*********************************/
 	/***** QUORUM AUX FUNCTIONS ******/
 	/*********************************/
+
 	public Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness, PublicKey targetClientKey){
 		Map<PublicKey, AuthenticatedPerfectLink> links = new HashMap<>();
 
