@@ -145,7 +145,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		String announcementID = getAnnouncementId(userKey, request.getFreshness(), privateBoardId);
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, privateBoardId);
 
-		synchronized (this) {
+		synchronized (this.privateBoard) {
 			announcementList.add(announcement);
 		}
 
@@ -186,9 +186,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		String announcementID = getAnnouncementId(userKey, request.getFreshness(), generalBoardId);
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, generalBoardId);
 		
-		synchronized(generalBoardId) {
+		synchronized(generalBoard) {
 			this.generalBoard.add(announcement);
 		}
+
 		this.announcementIDs.put(announcementID, announcement);
 		if(debug != 0) System.out.println(String.format("[POST_GENERAL] Post %s with announcementID %s from Client %s posted", post, announcementID, userKey));
 
@@ -198,6 +199,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}catch (DatabaseException e){
 			e.getCause();
 		}
+
 
 		responseObserver.onNext(buildACKresponse(userKey, generalBoardId, writeTimeStamp));
 		responseObserver.onCompleted();
@@ -278,10 +280,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			/* write in file */
 			switch (file) {
 				case "posts":
+					synchronized (privateBoard){
 						myWriter.write(SerializationUtils.serialize(privateBoard));
+					}
 					break;
 				case "generalPosts":
+					synchronized (generalBoard){
 						myWriter.write(SerializationUtils.serialize(generalBoard));
+					}
 					break;
 			}
 			myWriter.close();
