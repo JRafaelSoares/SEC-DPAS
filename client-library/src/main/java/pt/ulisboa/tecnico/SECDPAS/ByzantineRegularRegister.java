@@ -9,12 +9,7 @@ import java.util.Map;
 
 public class ByzantineRegularRegister {
 
-    private FreshnessHandler freshnessHandler;
-
-    public ByzantineRegularRegister(FreshnessHandler handler){
-        this.freshnessHandler = handler;
-    }
-    public void write(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
+    public static void write(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses) {
 
         /* Create quorum */
         Quorum<PublicKey, Contract.ACK> qr = Quorum.create(calls, request, minResponses);
@@ -27,27 +22,23 @@ public class ByzantineRegularRegister {
     }
 
 
-    public Announcement[] read(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses, int numberAnnouncements) {
+    public static Announcement[] read(Map<PublicKey, AuthenticatedPerfectLink> calls, RequestType request, int minResponses, int numberAnnouncements) {
 
+        /* Create quorum */
         Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(calls, request, minResponses);
 
         try{
             qr.waitForQuorum();
-            //return getHighestReads(qr.getSuccesses(), numberAnnouncements);
+            return getHighestReads(qr.getSuccesses(), numberAnnouncements);
         }catch (InterruptedException e){
             System.out.println(e.getMessage());
+            return null;
         }
-
-        //Increment Read Freshness
-        //Quorum Read
-        //Return
-        return null;
     }
-    /*
 
-    public Announcement[] getHighestReads(HashMap<PublicKey, Contract.ReadResponse> responses, int numberAnnouncements){
+    public static Announcement[] getHighestReads(HashMap<PublicKey, Contract.ReadResponse> responses, int numberAnnouncements){
 
-        int maxWrite = -1;
+        long maxWrite = -1;
 
         for(Contract.ReadResponse response: responses.values()){
             Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
@@ -59,21 +50,37 @@ public class ByzantineRegularRegister {
             }
         }
 
-        int numAnnouncementsToGet = maxWrite >= numberAnnouncements ? numberAnnouncements : maxWrite;
+        int numAnnouncementsToGet = maxWrite+1 >= numberAnnouncements && numberAnnouncements != 0 ? numberAnnouncements : (int) maxWrite+1;
 
+        long slide = maxWrite - numAnnouncementsToGet +1;
         Announcement[] response = new Announcement[numAnnouncementsToGet];
 
-        for(Contract.ReadResponse response: responses.values()){
-            Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+        //TODO - This probably wont work for client + server bizantine.
+        //TODO - Announcement will need to be signed by f+1 servers?
+
+        //Ineficient AND ugly but works
+        int numAnnouncements = 0;
+        for(Contract.ReadResponse response2: responses.values()){
+            Announcement[] announcements = SerializationUtils.deserialize(response2.getAnnouncements().toByteArray());
 
             for(Announcement announcement: announcements){
-                if(announcement.getFreshness() > maxWrite){
-                    maxWrite = announcement.getFreshness();
+                long position = announcement.getFreshness() - slide;
+                if(announcement.getFreshness() - slide >= 0 && response[(int)position] == null){
+                    response[(int)position] = announcement;
+                    numAnnouncements++;
+                }
+
+                if(numAnnouncements == numAnnouncementsToGet){
+                    break;
                 }
             }
+            if(numAnnouncements == numAnnouncementsToGet){
+                break;
+            }
         }
-        return null;
+        return response;
     }
+    /*
 
     public Contract.ReadResponse getHighestValueResponse(HashMap<PublicKey, Contract.ReadResponse> responses){
         Contract.ReadResponse highestValueResponse = null;

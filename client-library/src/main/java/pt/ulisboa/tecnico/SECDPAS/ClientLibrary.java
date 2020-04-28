@@ -115,17 +115,7 @@ public class ClientLibrary {
 	public void post(char[] message, String[] references) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[POST] RequestType from client.\n");
 		checkMessage(message);
-
-		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
-
-
-		try{
-			qr.waitForQuorum();
-
-		}catch (InterruptedException e){
-			System.out.println(e.getMessage());
-		}
+		ByzantineRegularRegister.write(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
 		writeFreshnessHandler.incrementFreshness();
 
 	}
@@ -141,66 +131,26 @@ public class ClientLibrary {
 		if(debug != 0) System.out.println("[POST GENERAL] RequestType from client.\n");
 		checkMessage(message);
 
-		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
-
-		try{
-			qr.waitForQuorum();
-
-		}catch (InterruptedException e){
-			System.out.println(e.getMessage());
-		}
+		ByzantineRegularRegister.write(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
 		writeFreshnessHandler.incrementFreshness();
-
-
 	}
 
 	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[READ] RequestType from client.\n");
 		checkNumber(number);
 
-		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(readFreshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
-
-		try{
-			qr.waitForQuorum();
-
-
-			Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
-			readFreshnessHandler.incrementFreshness();
-
-			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-
-		}catch (InterruptedException e){
-			System.out.println(e.getMessage());
-			readFreshnessHandler.incrementFreshness();
-			return null;
-
-		}
-
+		Announcement[] announcements = ByzantineRegularRegister.read(getLinks(readFreshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses, number);
+		readFreshnessHandler.incrementFreshness();
+		return announcements;
 	}
 
 	public Announcement[] readGeneral(int number) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[READ GENERAL] RequestType from client.\n");
 		checkNumber(number);
 
-		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(readFreshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
-
-		try{
-			qr.waitForQuorum();
-
-			readFreshnessHandler.incrementFreshness();
-
-			Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
-			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-
-		}catch (InterruptedException e){
-			System.out.println(e.getMessage());
-			readFreshnessHandler.incrementFreshness();
-			return null;
-		}
-
+		Announcement[] announcements = ByzantineRegularRegister.read(getLinks(readFreshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses, number);
+		readFreshnessHandler.incrementFreshness();
+		return announcements;
 	}
 
 	/*********************************/
@@ -271,6 +221,36 @@ public class ClientLibrary {
 		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
+	/*********************/
+	/** CHECK ARGUMENTS **/
+	/*********************/
+
+	private void checkConstructor(String host, int port, PublicKey publicKey, PrivateKey privateKey, int faults) throws InvalidArgumentException {
+		if(host == null || host.isEmpty() || port < 0 || publicKey == null || privateKey == null || faults < 0){
+			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Invalid constructor arguments \n");
+			throw new InvalidArgumentException("Invalid constructor arguments");
+		}
+	}
+
+	private void checkMessage(char[] message) throws InvalidArgumentException {
+		if(message == null){
+			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Public key can not be null \n");
+			throw new InvalidArgumentException("Public key can not be null");
+		}
+		if(message.length > 255) {
+			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Post too long, must be smaller than 256 chars \n");
+			throw new InvalidArgumentException("Post too long, must be smaller than 256 chars");
+		}
+	}
+
+	private void checkNumber(int n) throws InvalidArgumentException {
+		if(n < 0){
+			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Number can not be negative \n");
+			throw new InvalidArgumentException("Number can not be negative");
+		}
+	}
+
+
 	/********************/
 	/** TEST FUNCTIONS **/
 	/********************/
@@ -338,34 +318,6 @@ public class ClientLibrary {
 		}
 	}
 
-	/*********************/
-	/** CHECK ARGUMENTS **/
-	/*********************/
-
-	private void checkConstructor(String host, int port, PublicKey publicKey, PrivateKey privateKey, int faults) throws InvalidArgumentException {
-		if(host == null || host.isEmpty() || port < 0 || publicKey == null || privateKey == null || faults < 0){
-			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Invalid constructor arguments \n");
-			throw new InvalidArgumentException("Invalid constructor arguments");
-		}
-	}
-
-	private void checkMessage(char[] message) throws InvalidArgumentException {
-		if(message == null){
-			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Public key can not be null \n");
-			throw new InvalidArgumentException("Public key can not be null");
-		}
-		if(message.length > 255) {
-			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Post too long, must be smaller than 256 chars \n");
-			throw new InvalidArgumentException("Post too long, must be smaller than 256 chars");
-		}
-	}
-
-	private void checkNumber(int n) throws InvalidArgumentException {
-		if(n < 0){
-			if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - Number can not be negative \n");
-			throw new InvalidArgumentException("Number can not be negative");
-		}
-	}
 
 	/***********************/
 	/** Channel Shut Down **/
