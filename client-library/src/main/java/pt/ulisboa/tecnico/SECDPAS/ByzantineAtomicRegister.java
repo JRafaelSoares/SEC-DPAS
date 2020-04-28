@@ -27,7 +27,7 @@ public class ByzantineAtomicRegister {
     private String privateBoardId = "0";
     private int minQuorumResponses;
 
-    public ByzantineAtomicRegister(DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKey, PublicKey clientKey, PrivateKey clientPrivateKey, int minQuorumResponses){
+    public ByzantineAtomicRegister(DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKey, PublicKey clientKey, PrivateKey clientPrivateKey, int minQuorumResponses, FreshnessHandler readFreshnessHandler){
         this.futureStubs = futureStubs;
         this.serverPublicKey = serverPublicKey;
 
@@ -35,7 +35,7 @@ public class ByzantineAtomicRegister {
         this.clientPrivateKey = clientPrivateKey;
 
         this.writeFreshnessHandler = new FreshnessHandler();
-        this.readFreshnessHandler = new FreshnessHandler();
+        this.readFreshnessHandler = readFreshnessHandler;
         this.minQuorumResponses = minQuorumResponses;
     }
 

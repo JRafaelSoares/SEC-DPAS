@@ -169,7 +169,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(debug != 0) System.out.println("[POST_GENERAL] PostGeneral request from client\n");
 
 		/* Verify request */
-		String postString = verifyPostRequest(request, responseObserver);
+		String postString = verifyPostGeneralRequest(request, responseObserver);
 
 		/* In case the request is faulty */
 		if(postString == null){
@@ -180,18 +180,17 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 		long writeTimeStamp = request.getFreshness();
 
-
 		/* create post */
 		char[] post = postString.toCharArray();
 
 		String announcementID = getAnnouncementId(userKey, request.getFreshness(), generalBoardId);
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, generalBoardId);
 		
-		synchronized(this) {
+		synchronized(generalBoardId) {
 			this.generalBoard.add(announcement);
 		}
 		this.announcementIDs.put(announcementID, announcement);
-		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %s from Client %s posted", post, announcementID, userKey));
+		if(debug != 0) System.out.println(String.format("[POST_GENERAL] Post %s with announcementID %s from Client %s posted", post, announcementID, userKey));
 
 		/* Save posts */
 		try{
@@ -200,9 +199,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			e.getCause();
 		}
 
-		responseObserver.onNext(buildACKresponse(userKey, generalBoardId, this.clientWriteFreshness.get(userKey).getFreshness()));
+		responseObserver.onNext(buildACKresponse(userKey, generalBoardId, writeTimeStamp));
 		responseObserver.onCompleted();
-		this.clientWriteFreshness.get(userKey).incrementFreshness();
 	}
 
 	@Override
@@ -440,12 +438,65 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return post;
 	}
 
-	private boolean verifyPostMessage(StreamObserver<Contract.ACK> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness, String board){
-		return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
-				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
-				verifyPostFreshness(responseObserver, userKey, clientFreshness, board) &&
-				verifyWriteFreshness(responseObserver, userKey, clientFreshness);
-	}
+    private boolean verifyPostMessage(StreamObserver<Contract.ACK> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness, String board){
+        return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
+                verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
+                verifyPostFreshness(responseObserver, userKey, clientFreshness, board) &&
+                verifyWriteFreshness(responseObserver, userKey, clientFreshness);
+    }
+
+    /********************************/
+    /*****  POST GENERAL CHECKS *****/
+    /********************************/
+    private String verifyPostGeneralRequest(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver){
+
+        //PostRequest Arguments
+        byte[] serializedPublicKey = request.getPublicKey().toByteArray();
+        String post = request.getMessage();
+        byte[] serializedAnnouncements = request.getAnnouncements().toByteArray();
+        long freshness = request.getFreshness();
+        String board = request.getBoard();
+
+        byte[] packet = Bytes.concat(serializedPublicKey, post.getBytes(), serializedAnnouncements, Longs.toByteArray(freshness), board.getBytes());
+
+        byte[] messageSignature = request.getMessageSignature().toByteArray();
+
+        /* Obtaining the Public Key of the Client */
+        PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, freshness);
+
+        /* Verify message freshness and integrity-signature. References exists.*/
+        if(userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness, board)){
+            return null;
+        }
+
+        String[] announcements = verifyAnnouncements(serializedAnnouncements, responseObserver, serializedPublicKey, freshness);
+
+        if(announcements == null || !verifyReferences(announcements, responseObserver, serializedPublicKey, freshness)){
+            return null;
+        }
+
+        return post;
+    }
+
+    private boolean verifyPostGeneralMessage(StreamObserver<Contract.ACK> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness, String board){
+        return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
+                verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
+                verifyWriteGeneralFreshness(responseObserver, userKey, clientFreshness);
+    }
+
+    private boolean verifyWriteGeneralFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
+        synchronized (generalBoard){
+			System.out.println(String.format("CLIENT FRESHNESS: %d Board size: %d COMPARISSON: %b", clientFreshness, this.generalBoard.size(), clientFreshness <=this.generalBoard.size()));
+
+			if(clientFreshness > this.generalBoard.size() ){
+                if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+                responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
+                return false;
+            }
+            return true;
+        }
+    }
+
 
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness, String board){
 		if(this.clientWriteFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
@@ -635,7 +686,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 		long writeTimeStamp = request.getFreshness();
-		System.out.println("FRESHNESS: " + writeTimeStamp);
 
 		String announcementID = getAnnouncementId(userKey, request.getFreshness(), generalBoardId);
 		Announcement testingAnnouncement = new Announcement(post, userKey,announcements, announcementID, null , writeTimeStamp, generalBoardId);
@@ -647,7 +697,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				response = Contract.TestsResponse.newBuilder().setTestResult(true).build();
 			}
 		}
-
 		responseObserver.onNext(response);
 		responseObserver.onCompleted();
 	}

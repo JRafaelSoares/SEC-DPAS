@@ -27,7 +27,6 @@ public class ClientLibrary {
 
 	private ManagedChannel[] channel;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
-	private FreshnessHandler writeFreshnessHandler;
 	private FreshnessHandler readFreshnessHandler;
 
 	private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
@@ -39,10 +38,12 @@ public class ClientLibrary {
 	private int numServers;
 	private int minQuorumResponses;
 
+
 	private String privateBoardId = "0";
 	private String generalBoardId = "1";
 
 	private ByzantineAtomicRegister atomicRegister;
+	private ByzantineNNRegularRegister regularNNRegister;
 	/* for debugging change to 1 */
 	private int debug = 0;
 
@@ -55,10 +56,9 @@ public class ClientLibrary {
 
 		//Byzantine Quorum number
 		this.numServers = faults*3+1;
-		this.minQuorumResponses = (numServers + faults)/2;
+		this.minQuorumResponses = (int)Math.ceil(((double)numServers + faults)/2);
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
-		this.writeFreshnessHandler = new FreshnessHandler();
 		this.readFreshnessHandler = new FreshnessHandler();
 		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
@@ -81,7 +81,8 @@ public class ClientLibrary {
 			}
 		}
 
-		this.atomicRegister = new ByzantineAtomicRegister(this.futureStubs, this.serverPublicKey, this.publicKey, this.privateKey, this.minQuorumResponses);
+		this.atomicRegister = new ByzantineAtomicRegister(this.futureStubs, this.serverPublicKey, this.publicKey, this.privateKey, this.minQuorumResponses, this.readFreshnessHandler);
+		this.regularNNRegister = new ByzantineNNRegularRegister(this.futureStubs, this.serverPublicKey, this.publicKey, this.privateKey, this.minQuorumResponses, this.readFreshnessHandler);
 
 		//Test server
 		this.stub = DPASServiceGrpc.newBlockingStub(this.channel[0]);
@@ -128,9 +129,7 @@ public class ClientLibrary {
 	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[POST GENERAL] RequestType from client.\n");
 		checkMessage(message);
-
-		new ByzantineRegularRegister().write(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
-		writeFreshnessHandler.incrementFreshness();
+		this.regularNNRegister.write(message, references);
 	}
 
 	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException {
@@ -142,10 +141,7 @@ public class ClientLibrary {
 	public Announcement[] readGeneral(int number) throws InvalidArgumentException {
 		if(debug != 0) System.out.println("[READ GENERAL] RequestType from client.\n");
 		checkNumber(number);
-
-		Announcement[] announcements = new ByzantineRegularRegister().read(getLinks(readFreshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses, number);
-		readFreshnessHandler.incrementFreshness();
-		return announcements;
+		return this.regularNNRegister.read(number);
 	}
 
 	/*********************************/
@@ -165,16 +161,6 @@ public class ClientLibrary {
 	/**********************************/
 	/***** REQUESTS AUX FUNCTIONS *****/
 	/**********************************/
-	public Contract.PostRequest getPostRequest(char[] message, String[] references, String board) {
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		String post = new String(message);
-		byte[] announcements = SerializationUtils.serialize(references);
-        long freshness = writeFreshnessHandler.getFreshness();
-
-        byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, post.getBytes(), announcements, Longs.toByteArray(freshness), board.getBytes()), privateKey);
-
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(board).setFreshness(freshness).build();
-	}
 
 	public Contract.PostRequest getTestPostRequest(char[] message, String[] references, String board) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
@@ -182,30 +168,6 @@ public class ClientLibrary {
 		byte[] announcements = SerializationUtils.serialize(references);
 
 		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(board).build();
-	}
-
-	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){
-		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
-		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
-		long freshness = readFreshnessHandler.getFreshness();
-
-		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, Ints.toByteArray(number), Longs.toByteArray(freshness)), this.privateKey);
-
-		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
-
-	}
-
-	public Contract.ReadRequest getReadGeneralRequest(int number){
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] numberBytes = Ints.toByteArray(number);
-
-		long freshness = readFreshnessHandler.getFreshness();
-
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, numberBytes, Longs.toByteArray(freshness)), this.privateKey);
-
-		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
-
 	}
 
 	public Contract.RegisterRequest getRegisterRequest(){
