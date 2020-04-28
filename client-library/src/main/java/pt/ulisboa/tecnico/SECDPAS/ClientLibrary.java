@@ -27,7 +27,9 @@ public class ClientLibrary {
 
 	private ManagedChannel[] channel;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
-	private FreshnessHandler freshnessHandler;
+	private FreshnessHandler writeFreshnessHandler;
+	private FreshnessHandler readFreshnessHandler;
+
 	private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
 
 	private PublicKey publicKey;
@@ -55,7 +57,8 @@ public class ClientLibrary {
 		this.minQuorumResponses = 2*faults+1;
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
-		this.freshnessHandler = new FreshnessHandler();
+		this.writeFreshnessHandler = new FreshnessHandler();
+		this.readFreshnessHandler = new FreshnessHandler();
 		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
 		Path currentRelativePath = Paths.get("");
@@ -114,7 +117,7 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, privateBoardId), "PostRequest"), minQuorumResponses);
 
 
 		try{
@@ -123,7 +126,7 @@ public class ClientLibrary {
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
 		}
-		freshnessHandler.incrementFreshness();
+		writeFreshnessHandler.incrementFreshness();
 
 	}
 
@@ -139,7 +142,7 @@ public class ClientLibrary {
 		checkMessage(message);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(writeFreshnessHandler.getFreshness(), this.publicKey), new PostRequest(getPostRequest(message, references, generalBoardId), "PostGeneralRequest"), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
@@ -147,7 +150,7 @@ public class ClientLibrary {
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
 		}
-		freshnessHandler.incrementFreshness();
+		writeFreshnessHandler.incrementFreshness();
 
 
 	}
@@ -157,20 +160,20 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(readFreshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number), "ReadRequest"), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
 
 
 			Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
-			freshnessHandler.incrementFreshness();
+			readFreshnessHandler.incrementFreshness();
 
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
-			freshnessHandler.incrementFreshness();
+			readFreshnessHandler.incrementFreshness();
 			return null;
 
 		}
@@ -182,19 +185,19 @@ public class ClientLibrary {
 		checkNumber(number);
 
 		/* Create quorum */
-		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(freshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
+		Quorum<PublicKey, Contract.ReadResponse> qr = Quorum.create(getLinks(readFreshnessHandler.getFreshness(), this.publicKey), new ReadRequest(getReadGeneralRequest(number), "ReadGeneralRequest"), minQuorumResponses);
 
 		try{
 			qr.waitForQuorum();
 
-			freshnessHandler.incrementFreshness();
+			readFreshnessHandler.incrementFreshness();
 
 			Contract.ReadResponse response = qr.getSuccesses().values().iterator().next();
 			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
 		}catch (InterruptedException e){
 			System.out.println(e.getMessage());
-			freshnessHandler.incrementFreshness();
+			readFreshnessHandler.incrementFreshness();
 			return null;
 		}
 
@@ -220,7 +223,7 @@ public class ClientLibrary {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
-        long freshness = freshnessHandler.getFreshness();
+        long freshness = writeFreshnessHandler.getFreshness();
 
         byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, post.getBytes(), announcements, Longs.toByteArray(freshness), board.getBytes()), privateKey);
 
@@ -238,7 +241,7 @@ public class ClientLibrary {
 	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){
 		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
 		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
-		long freshness = freshnessHandler.getFreshness();
+		long freshness = readFreshnessHandler.getFreshness();
 
 		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, Ints.toByteArray(number), Longs.toByteArray(freshness)), this.privateKey);
@@ -251,7 +254,7 @@ public class ClientLibrary {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		byte[] numberBytes = Ints.toByteArray(number);
 
-		long freshness = freshnessHandler.getFreshness();
+		long freshness = readFreshnessHandler.getFreshness();
 
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, numberBytes, Longs.toByteArray(freshness)), this.privateKey);
 

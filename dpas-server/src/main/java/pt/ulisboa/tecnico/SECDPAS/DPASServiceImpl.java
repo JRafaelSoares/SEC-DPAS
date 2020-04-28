@@ -36,7 +36,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private ConcurrentHashMap<PublicKey, ArrayList<Announcement>> privateBoard = new ConcurrentHashMap<>();
 	private ArrayList<Announcement> generalBoard = new ArrayList<>();
-	private ConcurrentHashMap<PublicKey, FreshnessHandler> clientFreshness = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<PublicKey, FreshnessHandler> clientReadFreshness = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<PublicKey, FreshnessHandler> clientWriteFreshness = new ConcurrentHashMap<>();
+
 	private ConcurrentHashMap<String, Announcement> announcementIDs = new ConcurrentHashMap<>();
 
 	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
@@ -102,7 +104,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		/* Registering client */
 		this.privateBoard.put(userKey, new ArrayList<>());
-		this.clientFreshness.put(userKey, new FreshnessHandler());
+		this.clientReadFreshness.put(userKey, new FreshnessHandler());
+		this.clientWriteFreshness.put(userKey, new FreshnessHandler());
 		/* Saving posts */
 		try{
 			save("posts");
@@ -320,7 +323,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				FileInputStream myReader = new FileInputStream(String.format("%s/posts%d.txt", this.databasePath, this.serverID));
 				this.privateBoard = SerializationUtils.deserialize(myReader.readAllBytes());
 				for(PublicKey key: this.privateBoard.keySet()){
-					this.clientFreshness.put(key, new FreshnessHandler());
+					this.clientReadFreshness.put(key, new FreshnessHandler());
+					this.clientWriteFreshness.put(key, new FreshnessHandler());
 				}
 				myReader.close();
 			}
@@ -435,11 +439,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
 				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
 				verifyPostFreshness(responseObserver, userKey, clientFreshness, board) &&
-				verifyFreshness(responseObserver, userKey, clientFreshness);
+				verifyWriteFreshness(responseObserver, userKey, clientFreshness);
 	}
 
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness, String board){
-		if(this.clientFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
+		if(this.clientWriteFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
 			if(debug != 0) System.out.println("\t [POST] Already seen post, returning ACK");
 			responseObserver.onNext(buildACKresponse(userKey, board));
 			responseObserver.onCompleted();
@@ -469,8 +473,17 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 
 
-	private boolean verifyFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
-		if(!this.clientFreshness.get(userKey).verifyFreshness(clientFreshness)){
+	private boolean verifyWriteFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
+		if(!this.clientWriteFreshness.get(userKey).verifyFreshness(clientFreshness)){
+			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
+			return false;
+		}
+		return true;
+	}
+
+	private boolean verifyReadFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
+		if(!this.clientReadFreshness.get(userKey).verifyFreshness(clientFreshness)){
 			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
 			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
 			return false;
@@ -522,7 +535,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private boolean verifyMessage(StreamObserver<?> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness){
 		return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
 				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
-				verifyFreshness(responseObserver, userKey, clientFreshness);
+				verifyReadFreshness(responseObserver, userKey, clientFreshness);
 	}
 	private StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, long clientFreshness){
 		Status status = Status.fromCode(code).withDescription(description);
@@ -546,8 +559,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 
 	private Contract.ACK buildACKresponse(PublicKey userKey, String boardType){
-		long freshness = this.clientFreshness.get(userKey).getFreshness();
-		this.clientFreshness.get(userKey).incrementFreshness();
+		long freshness = this.clientWriteFreshness.get(userKey).getFreshness();
+		this.clientWriteFreshness.get(userKey).incrementFreshness();
 		byte[] publicKey = SerializationUtils.serialize(userKey);
 
 		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, Longs.toByteArray(freshness), boardType.getBytes()), this.privateKey);
@@ -556,8 +569,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
 	private Contract.ReadResponse buildReadResponse(PublicKey clientKey, byte[] responseAnnouncements, String board){
-		long responseFreshness = clientFreshness.get(clientKey).getFreshness();
-		this.clientFreshness.get(clientKey).incrementFreshness();
+		long responseFreshness = clientReadFreshness.get(clientKey).getFreshness();
+		this.clientReadFreshness.get(clientKey).incrementFreshness();
 		byte[] publicKey = SerializationUtils.serialize(clientKey);
 
 		byte[] responseSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, responseAnnouncements, Longs.toByteArray(responseFreshness), board.getBytes()), this.privateKey);
