@@ -74,7 +74,6 @@ public class MultiClientTest {
                     result = ("message" + i).equals(new String(announcements[i].getPost()));
                     if(!result) break;
                 }
-                //System.out.println("\n\nT1 done");
                 assertTrue(result);
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
@@ -116,8 +115,6 @@ public class MultiClientTest {
                     if (!result) break;
                 }
 
-                //System.out.println("\n\nT2 done");
-
                 assertTrue(result);
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
@@ -128,7 +125,7 @@ public class MultiClientTest {
     }
 
     public static class Client3{
-        /* post general and read general */
+        /* post general */
         private static ClientLibrary lib;
         @Test
         public void run(){
@@ -149,11 +146,9 @@ public class MultiClientTest {
                     lib.postGeneral(("message" + i).toCharArray());
                 }
 
-                Announcement[] announcements = lib.readGeneral(100);
+                Announcement[] announcements = lib.readGeneral(num);
 
                 assertEquals(num, announcements.length);
-
-                //System.out.println("\n\nT3 done");
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client3: " + e.getMessage());
@@ -162,7 +157,7 @@ public class MultiClientTest {
     }
 
     public static class Client4{
-        /* post general and read general */
+        /* post general */
         private static ClientLibrary lib;
         @Test
         public void run(){
@@ -182,12 +177,9 @@ public class MultiClientTest {
                 for(int i=0; i<num; i++){
                     lib.postGeneral(("message" + i).toCharArray());
                 }
-
-                Announcement[] announcements = lib.readGeneral(100);
+                Announcement[] announcements = lib.readGeneral(num);
 
                 assertEquals(num, announcements.length);
-
-                //System.out.println("\n\nT4 done");
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client4: " + e.getMessage());
@@ -213,13 +205,11 @@ public class MultiClientTest {
 
                 lib.register();
 
-                Thread.sleep(15000);
+                Thread.sleep(25000);
 
                 Announcement[] announcements = lib.readGeneral(0);
 
                 assertEquals(num*2, announcements.length);
-
-                //System.out.println("\n\nT5 done");
 
             } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client5: " + e.getMessage());
@@ -256,13 +246,6 @@ public class MultiClientTest {
                     result = ("message" + i).equals(new String(announcements[i].getPost()));
                     if(!result) break;
                 }
-
-                for(int i=0; i<announcements.length; i++){
-                    result = ("message" + i).equals(new String(announcements[i].getPost()));
-                    if(!result) break;
-                }
-
-                //System.out.println("\n\nT6 done");
 
                 assertTrue(result);
 

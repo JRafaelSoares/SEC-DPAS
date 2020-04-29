@@ -4,8 +4,7 @@ import SECDPAS.grpc.Contract;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.security.PublicKey;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class ByzantineRegularRegister {
 
@@ -29,7 +28,11 @@ public class ByzantineRegularRegister {
 
         try{
             qr.waitForQuorum();
-            return getHighestReads(qr.getSuccesses(), numberAnnouncements);
+            if(request.getId().equals("ReadRequest")){
+                return getHighestReads(qr.getSuccesses(), numberAnnouncements);
+            }else{
+                return getHighestReadsGeneral(qr.getSuccesses(), numberAnnouncements);
+            }
         }catch (InterruptedException e){
             System.out.println(e.getMessage());
             return null;
@@ -58,7 +61,7 @@ public class ByzantineRegularRegister {
         //TODO - This probably wont work for client + server bizantine.
         //TODO - Announcement will need to be signed by f+1 servers?
 
-        //Ineficient AND ugly but works
+        //Inefficient AND ugly but works
         int numAnnouncements = 0;
         for(Contract.ReadResponse response2: responses.values()){
             Announcement[] announcements = SerializationUtils.deserialize(response2.getAnnouncements().toByteArray());
@@ -79,5 +82,55 @@ public class ByzantineRegularRegister {
             }
         }
         return response;
+    }
+
+    public Announcement[] getHighestReadsGeneral(HashMap<PublicKey, Contract.ReadResponse> responses, int numberAnnouncements){
+
+        List<Announcement> list = new ArrayList<>();
+
+        for(Contract.ReadResponse response: responses.values()){
+            Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
+            for(Announcement announcement: announcements){
+                if(!list.contains(announcement)) {
+                    list.add(announcement);
+                }
+            }
+        }
+
+        list.sort(new Comparator<>() {
+            @Override
+            public int compare(Announcement o1, Announcement o2) {
+                if(o1.getFreshness() > o2.getFreshness()){
+                    return 1;
+                }else{
+                    if(o1.getFreshness() == o2.getFreshness()){
+                        if(o1.getAnnouncementID().compareTo(o2.getAnnouncementID()) > 0){
+                            return 1;
+                        }else{
+                            return -1;
+                        }
+                    }else{
+                        return -1;
+                    }
+                }
+            }
+        });
+
+        int numAnnouncementsToGet = list.size() >= numberAnnouncements && numberAnnouncements != 0 ? numberAnnouncements : list.size();
+
+        if(numAnnouncementsToGet == 0){
+            return new Announcement[0];
+        }
+        list = list.subList(0, numAnnouncementsToGet);
+
+        Announcement[] response = new Announcement[list.size()];
+
+        for(int i=0; i<list.size(); i++){
+            response[i] = list.get(i);
+        }
+
+        return response;
+
     }
 }

@@ -65,8 +65,10 @@ public class Announcement implements Serializable {
         if(obj.getClass() != this.getClass()){
             return false;
         }else{
-
             Announcement announcement = (Announcement) obj;
+
+            return announcement.getAnnouncementID().equals(announcementID);
+            /*
 
             if(announcement.getPublicKey() == null && this.publicKey == null){
                 return true;
@@ -75,6 +77,7 @@ public class Announcement implements Serializable {
             if (announcement.getAnnouncements().length != this.references.length){
                 return false;
             }
+
             if(announcement.getAnnouncements().length == 0 && this.references.length == 0){
                 return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey));
             }
@@ -88,7 +91,7 @@ public class Announcement implements Serializable {
                     }
                 }
                 return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey) && equalArray);
-            }
+            }*/
         }
     }
 

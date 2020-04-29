@@ -150,7 +150,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		this.announcementIDs.put(announcementID, announcement);
-		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %s from Client %s posted", post, announcementID, userKey));
+		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %s from Client %s posted", new String(post), announcementID, userKey));
 
 		/* Save posts */
 		try{
@@ -191,7 +191,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		this.announcementIDs.put(announcementID, announcement);
-		if(debug != 0) System.out.println(String.format("[POST_GENERAL] Post %s with announcementID %s from Client %s posted", post, announcementID, userKey));
+		if(debug != 0) System.out.println(String.format("[POST_GENERAL] Post %s with announcementID %s from Client %s posted", new String(post), announcementID, userKey));
 
 		/* Save posts */
 		try{
@@ -255,7 +255,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		if(debug != 0) System.out.println(String.format("[READ] Read request from client %s\n", clientUserKey));
+		if(debug != 0) System.out.println(String.format("[READ GENERAL] Read request from client %s\n", clientUserKey));
 
 		/* Prepare announcements */
 		byte[] responseAnnouncements;
@@ -492,7 +492,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
     private boolean verifyWriteGeneralFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
         synchronized (generalBoard){
-			System.out.println(String.format("CLIENT FRESHNESS: %d Board size: %d COMPARISSON: %b", clientFreshness, this.generalBoard.size(), clientFreshness <=this.generalBoard.size()));
+			System.out.println(String.format("CLIENT FRESHNESS: %d Board size: %d COMPARISSON: %b", clientFreshness, this.generalBoard.size(), clientFreshness <= this.generalBoard.size()));
 
 			if(clientFreshness > this.generalBoard.size() ){
                 if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
