@@ -105,7 +105,7 @@ public class ByzantineRegularRegister {
                     return 1;
                 }else{
                     if(o1.getFreshness() == o2.getFreshness()){
-                        if(o1.getAnnouncementID().compareTo(o2.getAnnouncementID()) > 0){
+                        if(o1.getPublicKey().toString().compareTo(o2.getPublicKey().toString()) > 0){
                             return 1;
                         }else{
                             return -1;

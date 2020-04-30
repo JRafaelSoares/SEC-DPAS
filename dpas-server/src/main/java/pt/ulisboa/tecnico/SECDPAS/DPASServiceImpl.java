@@ -184,10 +184,33 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		char[] post = postString.toCharArray();
 
 		String announcementID = getAnnouncementId(userKey, request.getFreshness(), generalBoardId);
+		if(announcementIDs.containsKey(announcementID)){
+			return;
+		}
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, generalBoardId);
 		
 		synchronized(generalBoard) {
-			this.generalBoard.add(announcement);
+			if(this.generalBoard.isEmpty()){
+				this.generalBoard.add(announcement);
+			}else{
+				for(int i = generalBoard.size()-1; i >= 0; i--){
+
+					if(generalBoard.get(i).getFreshness() < announcement.getFreshness()){
+						this.generalBoard.add(announcement);
+						break;
+					}
+
+					if(generalBoard.get(i).getFreshness() == announcement.getFreshness()){
+						if(generalBoard.get(i).getPublicKey().toString().compareTo(announcement.getPublicKey().toString()) > 0){
+							this.generalBoard.add(i, announcement);
+						}else{
+							this.generalBoard.add(i+1, announcement);
+						}
+						break;
+					}
+
+				}
+			}
 		}
 
 		this.announcementIDs.put(announcementID, announcement);
