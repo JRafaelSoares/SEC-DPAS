@@ -8,12 +8,14 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.ByteString;
+import io.grpc.Deadline;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.security.PublicKey;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 
 public class AuthenticatedPerfectLink {
 
@@ -70,17 +72,26 @@ public class AuthenticatedPerfectLink {
                     listenableFuture.onSuccess(ack);
                 }else{
                     if(debug) System.out.println("[APL][REGISTER] Failed check");
-                    register(request, listenableFuture);
+                    Deadline deadline = futureStub.getCallOptions().getDeadline();
+                    if(deadline != null && !deadline.isExpired()){
+                        register(request, listenableFuture);
+                    }else{
+                        listenableFuture.onFailure(new TimeoutException());
+                    }
                 }
             }
 
             @Override
             public void onFailure(Throwable t) {
-                if(debug) System.out.println("[APL][REGISTER] Exception thrown");
-                register(request, listenableFuture);
+                if(debug) System.out.println("[APL][REGISTER] Exception thrown: " + t.getClass());
+                Deadline deadline = futureStub.getCallOptions().getDeadline();
+                if(deadline != null && !deadline.isExpired()){
+                    register(request, listenableFuture);
+                }else{
+                    listenableFuture.onFailure(new TimeoutException());
+                }
             }
         }, Executors.newSingleThreadExecutor());
-
     }
 
     private void post(Contract.PostRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException{
@@ -103,12 +114,17 @@ public class AuthenticatedPerfectLink {
                     listenableFuture.onSuccess(ack);
                 }else{
                     if(debug) System.out.println("[APL][POST] Failed check");
-
-                    if(type.equals("PostRequest")){
-                        post(request, listenableFuture, "PostRequest");
+                    Deadline deadline = futureStub.getCallOptions().getDeadline();
+                    if(deadline != null && !deadline.isExpired()){
+                        if(type.equals("PostRequest")){
+                            post(request, listenableFuture, "PostRequest");
+                        }else{
+                            post(request, listenableFuture, "PostGeneralRequest");
+                        }
                     }else{
-                        post(request, listenableFuture, "PostGeneralRequest");
+                        listenableFuture.onFailure(new TimeoutException());
                     }
+
                 }
             }
 
@@ -116,10 +132,15 @@ public class AuthenticatedPerfectLink {
             public void onFailure(Throwable t) {
                 if(debug) System.out.println("[APL][POST] Exception Thrown");
 
-                if(type.equals("PostRequest")){
-                    post(request, listenableFuture, "PostRequest");
+                Deadline deadline = futureStub.getCallOptions().getDeadline();
+                if(deadline != null && !deadline.isExpired()){
+                    if(type.equals("PostRequest")){
+                        post(request, listenableFuture, "PostRequest");
+                    }else{
+                        post(request, listenableFuture, "PostGeneralRequest");
+                    }
                 }else{
-                    post(request, listenableFuture, "PostGeneralRequest");
+                    listenableFuture.onFailure(new TimeoutException());
                 }
             }
         }, Executors.newSingleThreadExecutor());
@@ -147,11 +168,15 @@ public class AuthenticatedPerfectLink {
                     listenableFuture.onSuccess(response);
                 }else{
                     if(debug) System.out.println("[APL][READ] Failed check");
-
-                    if(type.equals("ReadRequest")){
-                        read(request, listenableFuture, "ReadRequest");
+                    Deadline deadline = futureStub.getCallOptions().getDeadline();
+                    if(deadline != null && !deadline.isExpired()){
+                        if(type.equals("ReadRequest")){
+                            read(request, listenableFuture, "ReadRequest");
+                        }else{
+                            read(request, listenableFuture, "ReadGeneralRequest");
+                        }
                     }else{
-                        read(request, listenableFuture, "ReadGeneralRequest");
+                        listenableFuture.onFailure(new TimeoutException());
                     }
                 }
             }
@@ -160,10 +185,15 @@ public class AuthenticatedPerfectLink {
             public void onFailure(Throwable t) {
                 if(debug) System.out.println("[APL][READ] Exception Thrown");
 
-                if(type.equals("ReadRequest")){
-                    read(request, listenableFuture, "ReadRequest");
+                Deadline deadline = futureStub.getCallOptions().getDeadline();
+                if(deadline != null && !deadline.isExpired()){
+                    if(type.equals("ReadRequest")){
+                        read(request, listenableFuture, "ReadRequest");
+                    }else{
+                        read(request, listenableFuture, "ReadGeneralRequest");
+                    }
                 }else{
-                    read(request, listenableFuture, "ReadGeneralRequest");
+                    listenableFuture.onFailure(new TimeoutException());
                 }
             }
         }, Executors.newSingleThreadExecutor());

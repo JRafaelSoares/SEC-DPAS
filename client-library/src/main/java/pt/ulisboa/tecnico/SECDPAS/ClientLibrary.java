@@ -22,6 +22,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class ClientLibrary {
 
@@ -68,7 +69,7 @@ public class ClientLibrary {
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			this.channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
+			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(this.channel[server]).withDeadlineAfter(40, TimeUnit.SECONDS);
 
 			//Get certificate
 			try{

@@ -8,8 +8,11 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.ByteString;
+import io.grpc.CallOptions;
+import io.grpc.Deadline;
 import org.apache.commons.lang3.SerializationUtils;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -19,6 +22,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.isA;
@@ -33,6 +37,7 @@ public class AuthenticatedPerfectLinkTest {
     private static PublicKey publicKey;
     private static FreshnessHandler freshnessHandler;
     private static PublicKey clientPublicKey;
+    private static Deadline deadline;
 
     private static String privateBoardId = "0";
     private static String generalBoardId = "1";
@@ -52,14 +57,229 @@ public class AuthenticatedPerfectLinkTest {
             kp = kpg.generateKeyPair();
             clientPublicKey = kp.getPublic();
 
-            stub = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
             freshnessHandler = new FreshnessHandler();
-
-            link = new AuthenticatedPerfectLink(stub, freshnessHandler.getFreshness(), publicKey, clientPublicKey);
 
         }catch (Exception e){
             System.out.println(e.getMessage());
         }
+    }
+
+    private void createLink(){
+        stub = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
+        deadline = Deadline.after(5, TimeUnit.SECONDS);
+        when(stub.getCallOptions()).thenReturn(CallOptions.DEFAULT.withDeadline(deadline));
+
+        link = new AuthenticatedPerfectLink(stub, freshnessHandler.getFreshness(), publicKey, clientPublicKey);
+    }
+
+    @Before
+    public void beforeEachTest(){
+        createLink();
+    }
+
+    @Test
+    public void failureRegisterTimeoutTest(){
+        ArrayList<Contract.ACK> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setSignature(ByteString.copyFrom(new byte[0])).build();
+
+        try{
+            ListenableFuture<Contract.ACK> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
+
+            when(stub.register(isA(Contract.RegisterRequest.class))).thenReturn(failedFuture);
+
+            link.process(new RegisterRequest(request), new FutureCallback<Contract.ACK>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    successes.add(ack);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            while(!deadline.isExpired()){
+                Thread.sleep(1500);
+            }
+
+
+            assertEquals(0, successes.size());
+            assertEquals(1, failures.size());
+            link.getNumIterations();
+
+        }catch (Exception e){
+            System.out.println(e.getClass() + ":" + e.getMessage());
+            fail();
+        }
+
+    }
+
+    @Test
+    public void failurePostTimeoutTest(){
+        ArrayList<Contract.ACK> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
+
+        try{
+            ListenableFuture<Contract.ACK> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
+
+            when(stub.post(isA(Contract.PostRequest.class))).thenReturn(failedFuture);
+
+            link.process(new PostRequest(request, "PostRequest"), new FutureCallback<Contract.ACK>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    successes.add(ack);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            while(!deadline.isExpired()){
+                Thread.sleep(1500);
+            }
+
+
+            assertEquals(0, successes.size());
+            assertEquals(1, failures.size());
+            link.getNumIterations();
+
+        }catch (Exception e){
+            System.out.println(e.getClass() + ":" + e.getMessage());
+            fail();
+        }
+
+    }
+
+    @Test
+    public void failurePostGeneralTimeoutTest(){
+        ArrayList<Contract.ACK> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.PostRequest request = Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(new byte[0])).setMessage("").setMessageSignature(ByteString.copyFrom(new byte[0])).setAnnouncements(ByteString.copyFrom(new byte[0])).setFreshness(0).build();
+
+        try{
+            ListenableFuture<Contract.ACK> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
+
+            when(stub.postGeneral(isA(Contract.PostRequest.class))).thenReturn(failedFuture);
+
+            link.process(new PostRequest(request, "PostGeneralRequest"), new FutureCallback<Contract.ACK>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    successes.add(ack);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            while(!deadline.isExpired()){
+                Thread.sleep(1500);
+            }
+
+
+            assertEquals(0, successes.size());
+            assertEquals(1, failures.size());
+            link.getNumIterations();
+
+        }catch (Exception e){
+            System.out.println(e.getClass() + ": " + e.getMessage());
+            fail();
+        }
+
+    }
+
+    @Test
+    public void failureReadTimeoutTest(){
+        ArrayList<Contract.ACK> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
+
+        try{
+            ListenableFuture<Contract.ReadResponse> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
+
+            when(stub.read(isA(Contract.ReadRequest.class))).thenReturn(failedFuture);
+
+            link.process(new ReadRequest(request, "ReadRequest"), new FutureCallback<Contract.ACK>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    successes.add(ack);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            while(!deadline.isExpired()){
+                Thread.sleep(1500);
+            }
+
+
+            assertEquals(0, successes.size());
+            assertEquals(1, failures.size());
+            link.getNumIterations();
+
+        }catch (Exception e){
+            System.out.println(e.getClass() + ": " + e.getMessage());
+            fail();
+        }
+
+    }
+
+    @Test
+    public void failureReadGeneralTimeoutTest(){
+        ArrayList<Contract.ACK> successes = new ArrayList<>();
+        ArrayList<Throwable> failures = new ArrayList<>();
+
+        //request
+        Contract.ReadRequest request = Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(new byte[0])).setTargetPublicKey(ByteString.copyFrom(new byte[0])).setNumber(0).setFreshness(-1).setSignature(ByteString.copyFrom(new byte[0])).build();
+
+        try{
+            ListenableFuture<Contract.ReadResponse> failedFuture = Futures.immediateFailedFuture(new ExecutionException("test", new Throwable()));
+
+            when(stub.readGeneral(isA(Contract.ReadRequest.class))).thenReturn(failedFuture);
+
+            link.process(new ReadRequest(request, "ReadGeneralRequest"), new FutureCallback<Contract.ACK>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    successes.add(ack);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    failures.add(t);
+                }
+            });
+
+            while(!deadline.isExpired()){
+                Thread.sleep(1500);
+            }
+
+
+            assertEquals(0, successes.size());
+            assertEquals(1, failures.size());
+            link.getNumIterations();
+
+        }catch (Exception e){
+            System.out.println(e.getClass() + ": " + e.getMessage());
+            fail();
+        }
+
     }
 
     @Test
@@ -1403,5 +1623,5 @@ public class AuthenticatedPerfectLinkTest {
         }
 
     }
-    //TODO - Add timeout test
+
 }
