@@ -297,8 +297,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private synchronized void save(String file) throws DatabaseException{
 		try {
-
-			FileOutputStream myWriter = new FileOutputStream(String.format("%s/%s%d_try.txt", this.databasePath, file, this.serverID));
+			FileOutputStream myWriter = new FileOutputStream(String.format("%s/%s/%s%d_try.txt", this.databasePath, file, file, this.serverID));
 
 			/* write in file */
 			switch (file) {
@@ -316,12 +315,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			myWriter.close();
 
 			/* File successfully created, transferring to official file */
-			Path src = Paths.get(String.format("%s/%s%d_try.txt", this.databasePath, file, this.serverID));
-			Path dst = Paths.get(String.format("%s/%s%d.txt", this.databasePath, file, this.serverID));
+			Path src = Paths.get(String.format("%s/%s/%s%d_try.txt", this.databasePath, file, file, this.serverID));
+			Path dst = Paths.get(String.format("%s/%s/%s%d.txt", this.databasePath, file, file, this.serverID));
 
 			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
 			//Saves the IDs persistently
 			saveIDs();
+			saveFreshness();
 		} catch (IOException e) {
 			throw new DatabaseException("Unable to save: " + e.getMessage());
 		}
@@ -330,13 +330,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private void saveIDs() throws DatabaseException{
 		try {
-			FileOutputStream myWriter = new FileOutputStream(String.format("%s/announcementsID%d_try.txt", this.databasePath, this.serverID));
+			FileOutputStream myWriter = new FileOutputStream(String.format("%s/announcementsID/announcementsID%d_try.txt", this.databasePath, this.serverID));
 			myWriter.write(SerializationUtils.serialize(this.announcementIDs));
 			myWriter.close();
 
 			/* File successfully created, transferring to official file */
-			Path src = Paths.get(String.format("%s/announcementsID%d_try.txt", this.databasePath, this.serverID));
-			Path dst = Paths.get(String.format("%s/announcementsID%d.txt", this.databasePath, this.serverID));
+			Path src = Paths.get(String.format("%s/announcementsID/announcementsID%d_try.txt", this.databasePath, this.serverID));
+			Path dst = Paths.get(String.format("%s/announcementsID/announcementsID%d.txt", this.databasePath, this.serverID));
 
 			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
 
@@ -344,14 +344,41 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			throw new DatabaseException("Unable to save: " + e.getMessage());
 		}
 
+	}
+
+	private void saveFreshness() throws DatabaseException{
+		try {
+			FileOutputStream myWriter = new FileOutputStream(String.format("%s/clientReadFreshness/clientReadFreshness%d_try.txt", this.databasePath, this.serverID));
+			myWriter.write(SerializationUtils.serialize(this.clientReadFreshness));
+			myWriter.close();
+
+			/* File successfully created, transferring to official file */
+			Path src = Paths.get(String.format("%s/clientReadFreshness/clientReadFreshness%d_try.txt", this.databasePath, this.serverID));
+			Path dst = Paths.get(String.format("%s/clientReadFreshness/clientReadFreshness%d.txt", this.databasePath, this.serverID));
+
+			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
+
+			myWriter = new FileOutputStream(String.format("%s/clientWriteFreshness/clientWriteFreshness%d_try.txt", this.databasePath, this.serverID));
+			myWriter.write(SerializationUtils.serialize(this.clientWriteFreshness));
+			myWriter.close();
+
+			/* File successfully created, transferring to official file */
+			src = Paths.get(String.format("%s/clientWriteFreshness/clientWriteFreshness%d_try.txt", this.databasePath, this.serverID));
+			dst = Paths.get(String.format("%s/clientWriteFreshness/clientWriteFreshness%d.txt", this.databasePath, this.serverID));
+
+			Files.move(src, dst, StandardCopyOption.ATOMIC_MOVE);
+
+		} catch (IOException e) {
+			throw new DatabaseException("Unable to save: " + e.getMessage());
+		}
 
 	}
 
 	private synchronized void load() throws DatabaseException{
 		try {
-			if (new File(String.format("%s/posts%d.txt", this.databasePath, this.serverID)).exists()) {
+			if (new File(String.format("%s/posts/posts%d.txt", this.databasePath, this.serverID)).exists()) {
 				/* read from file posts */
-				FileInputStream myReader = new FileInputStream(String.format("%s/posts%d.txt", this.databasePath, this.serverID));
+				FileInputStream myReader = new FileInputStream(String.format("%s/posts/posts%d.txt", this.databasePath, this.serverID));
 				this.privateBoard = SerializationUtils.deserialize(myReader.readAllBytes());
 				for(PublicKey key: this.privateBoard.keySet()){
 					this.clientReadFreshness.put(key, new FreshnessHandler());
@@ -359,19 +386,30 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				}
 				myReader.close();
 			}
-			if (new File(String.format("%s/generalPosts%d.txt", this.databasePath, this.serverID)).exists()) {
+			if (new File(String.format("%s/generalPosts/generalPosts%d.txt", this.databasePath, this.serverID)).exists()) {
 				/* read from file generalPosts */
-				FileInputStream myReader = new FileInputStream(String.format("%s/generalPosts%d.txt", this.databasePath, this.serverID));
+				FileInputStream myReader = new FileInputStream(String.format("%s/generalPosts/generalPosts%d.txt", this.databasePath, this.serverID));
 				this.generalBoard = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
 			}
-			if(new File(String.format("%s/announcementsID%d.txt", this.databasePath, this.serverID)).exists()) {
+			if(new File(String.format("%s/announcementsID/announcementsID%d.txt", this.databasePath, this.serverID)).exists()) {
 				/* read from file generalPosts */
-				FileInputStream myReader = new FileInputStream(String.format("%s/announcementsID%d.txt", this.databasePath, this.serverID));
+				FileInputStream myReader = new FileInputStream(String.format("%s/announcementsID/announcementsID%d.txt", this.databasePath, this.serverID));
 				this.announcementIDs = SerializationUtils.deserialize(myReader.readAllBytes());
 				myReader.close();
 			}
-
+			if(new File(String.format("%s/clientReadFreshness/clientReadFreshness%d.txt", this.databasePath, this.serverID)).exists()) {
+				/* read from file generalPosts */
+				FileInputStream myReader = new FileInputStream(String.format("%s/clientReadFreshness/clientReadFreshness%d.txt", this.databasePath, this.serverID));
+				this.clientReadFreshness = SerializationUtils.deserialize(myReader.readAllBytes());
+				myReader.close();
+			}
+			if(new File(String.format("%s/clientWriteFreshness/clientWriteFreshness%d.txt", this.databasePath, this.serverID)).exists()) {
+				/* read from file generalPosts */
+				FileInputStream myReader = new FileInputStream(String.format("%s/clientWriteFreshness/clientWriteFreshness%d.txt", this.databasePath, this.serverID));
+				this.clientWriteFreshness = SerializationUtils.deserialize(myReader.readAllBytes());
+				myReader.close();
+			}
 
 		} catch (IOException e) {
 			throw new DatabaseException("Unable to load: " + e.getMessage());

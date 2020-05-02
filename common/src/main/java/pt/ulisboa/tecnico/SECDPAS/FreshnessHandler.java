@@ -1,6 +1,8 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
-public class FreshnessHandler {
+import java.io.Serializable;
+
+public class FreshnessHandler implements Serializable {
 
     // A cryptographically secure random number generator.
     private long sequenceNumber;
