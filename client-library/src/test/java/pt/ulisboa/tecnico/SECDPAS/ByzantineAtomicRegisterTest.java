@@ -190,6 +190,7 @@ public class ByzantineAtomicRegisterTest {
             Assert.assertEquals(0, announcements[0].getFreshness());
 
             for(int i=0; i < numServers; i++){
+                verify(futureStubs[i], times(1)).post(any());
                 verify(futureStubs[i], times(1)).read(any());
             }
 
@@ -281,6 +282,7 @@ public class ByzantineAtomicRegisterTest {
             Assert.assertEquals(0, announcements[0].getFreshness());
 
             for(int i=0; i < numServers; i++){
+                verify(futureStubs[i], times(1)).post(any());
                 verify(futureStubs[i], times(1)).read(any());
             }
 
@@ -389,6 +391,7 @@ public class ByzantineAtomicRegisterTest {
 
             for(int i=0; i < numServers; i++){
                 verify(futureStubs[i], times(1)).read(any());
+                verify(futureStubs[i], times(1)).post(any());
             }
 
         }catch (Exception e){
