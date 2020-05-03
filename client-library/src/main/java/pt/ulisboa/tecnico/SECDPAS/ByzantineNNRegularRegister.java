@@ -10,8 +10,7 @@ import org.apache.commons.lang3.SerializationUtils;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class ByzantineNNRegularRegister {
 
@@ -45,12 +44,64 @@ public class ByzantineNNRegularRegister {
     }
 
     public Announcement[] read(int number){
-        Announcement[] announcements = new ByzantineRegularRegister().read(getLinks(readFreshnessHandler.getFreshness(), this.clientKey), new ReadRequest(getReadGeneralRequest(number, readFreshnessHandler.getFreshness()), "ReadGeneralRequest"), minQuorumResponses, number);
+        ArrayList<Contract.ReadResponse> responses = new ByzantineRegularRegister().read(getLinks(readFreshnessHandler.getFreshness(), this.clientKey), new ReadRequest(getReadGeneralRequest(number, readFreshnessHandler.getFreshness()), "ReadGeneralRequest"), minQuorumResponses, number);
+        Announcement[] announcements = getHighestReads(responses, number);
+
         readFreshnessHandler.incrementFreshness();
         return announcements;
     }
 
-    public Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness, PublicKey targetClientKey){
+    private Announcement[] getHighestReads(ArrayList<Contract.ReadResponse> responses, int numberAnnouncements){
+
+        List<Announcement> list = new ArrayList<>();
+
+        for(Contract.ReadResponse response: responses){
+            Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
+            for(Announcement announcement: announcements){
+                if(!list.contains(announcement)) {
+                    list.add(announcement);
+                }
+            }
+        }
+
+        list.sort(new Comparator<>() {
+            @Override
+            public int compare(Announcement o1, Announcement o2) {
+                if(o1.getFreshness() > o2.getFreshness()){
+                    return 1;
+                }else{
+                    if(o1.getFreshness() == o2.getFreshness()){
+                        if(o1.getPublicKey().toString().compareTo(o2.getPublicKey().toString()) > 0){
+                            return 1;
+                        }else{
+                            return -1;
+                        }
+                    }else{
+                        return -1;
+                    }
+                }
+            }
+        });
+
+        int numAnnouncementsToGet = list.size() >= numberAnnouncements && numberAnnouncements != 0 ? numberAnnouncements : list.size();
+
+        if(numAnnouncementsToGet == 0){
+            return new Announcement[0];
+        }
+        list = list.subList(0, numAnnouncementsToGet);
+
+        Announcement[] response = new Announcement[list.size()];
+
+        for(int i=0; i<list.size(); i++){
+            response[i] = list.get(i);
+        }
+
+        return response;
+
+    }
+
+    private Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness, PublicKey targetClientKey){
         Map<PublicKey, AuthenticatedPerfectLink> links = new HashMap<>();
 
         for(int server = 0; server < serverPublicKey.length; server++){
@@ -60,7 +111,7 @@ public class ByzantineNNRegularRegister {
         return links;
     }
 
-    public Contract.PostRequest getPostRequest(char[] message, String[] references, long freshness) {
+    private Contract.PostRequest getPostRequest(char[] message, String[] references, long freshness) {
         byte[] publicKey = SerializationUtils.serialize(this.clientKey);
         String post = new String(message);
         byte[] announcements = SerializationUtils.serialize(references);
@@ -70,7 +121,7 @@ public class ByzantineNNRegularRegister {
         return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(this.generalBoardId).setFreshness(freshness).build();
     }
 
-    public Contract.ReadRequest getReadGeneralRequest(int number, long freshness){
+    private Contract.ReadRequest getReadGeneralRequest(int number, long freshness){
         byte[] publicKey = SerializationUtils.serialize(this.clientKey);
         byte[] numberBytes = Ints.toByteArray(number);
 

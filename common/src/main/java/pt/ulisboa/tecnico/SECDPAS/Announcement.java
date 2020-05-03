@@ -68,30 +68,6 @@ public class Announcement implements Serializable {
             Announcement announcement = (Announcement) obj;
 
             return announcement.getAnnouncementID().equals(announcementID);
-            /*
-
-            if(announcement.getPublicKey() == null && this.publicKey == null){
-                return true;
-            }
-
-            if (announcement.getAnnouncements().length != this.references.length){
-                return false;
-            }
-
-            if(announcement.getAnnouncements().length == 0 && this.references.length == 0){
-                return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey));
-            }
-
-            else {
-                boolean equalArray = true;
-                for(int i = 0; i < this.references.length; i++){
-                    if(!this.references[i].equals(announcement.references[i])){
-                        equalArray = false;
-                        break;
-                    }
-                }
-                return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey) && equalArray);
-            }*/
         }
     }
 

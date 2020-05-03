@@ -254,6 +254,7 @@ public class AuthenticatedPerfectLink {
     private boolean verifyAnnouncementsSignature(byte[] announcementBytes, String board){
 
         Announcement[] announcements = SerializationUtils.deserialize(announcementBytes);
+
         for(Announcement announcement : announcements){
             byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
             byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());

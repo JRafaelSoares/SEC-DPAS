@@ -10,7 +10,9 @@ import org.apache.commons.lang3.SerializationUtils;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ByzantineAtomicRegister {
@@ -45,7 +47,9 @@ public class ByzantineAtomicRegister {
     }
 
     public Announcement[] read(PublicKey client, int number){
-        Announcement[] announcements = new ByzantineRegularRegister().read(getLinks(readFreshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number, this.readFreshnessHandler.getFreshness()), "ReadRequest"), this.minQuorumResponses, number);
+        ArrayList<Contract.ReadResponse> responses = new ByzantineRegularRegister().read(getLinks(readFreshnessHandler.getFreshness(), client), new ReadRequest(getReadRequest(client, number, this.readFreshnessHandler.getFreshness()), "ReadRequest"), this.minQuorumResponses, number);
+
+        Announcement[] announcements = getHighestReads(responses, number);
         readFreshnessHandler.incrementFreshness();
         if(announcements != null && announcements.length > 0){
             Announcement lastAnnouncement = announcements[announcements.length-1];
@@ -54,7 +58,52 @@ public class ByzantineAtomicRegister {
         return announcements;
     }
 
-    public Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness, PublicKey targetClientKey){
+    private Announcement[] getHighestReads(ArrayList<Contract.ReadResponse> responses, int numberAnnouncements){
+
+        long maxWrite = -1;
+
+        for(Contract.ReadResponse response: responses){
+            Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
+            for(Announcement announcement: announcements){
+                if(announcement.getFreshness() > maxWrite){
+                    maxWrite = announcement.getFreshness();
+                }
+            }
+        }
+
+        int numAnnouncementsToGet = maxWrite+1 >= numberAnnouncements && numberAnnouncements != 0 ? numberAnnouncements : (int) maxWrite+1;
+
+        long slide = maxWrite - numAnnouncementsToGet +1;
+        Announcement[] response = new Announcement[numAnnouncementsToGet];
+
+        //TODO - This probably wont work for client + server bizantine.
+        //TODO - Announcement will need to be signed by f+1 servers?
+
+        //Inefficient AND ugly but works
+        int numAnnouncements = 0;
+        for(Contract.ReadResponse response2: responses){
+            Announcement[] announcements = SerializationUtils.deserialize(response2.getAnnouncements().toByteArray());
+
+            for(Announcement announcement: announcements){
+                long position = announcement.getFreshness() - slide;
+                if(announcement.getFreshness() - slide >= 0 && response[(int)position] == null){
+                    response[(int)position] = announcement;
+                    numAnnouncements++;
+                }
+
+                if(numAnnouncements == numAnnouncementsToGet){
+                    break;
+                }
+            }
+            if(numAnnouncements == numAnnouncementsToGet){
+                break;
+            }
+        }
+        return response;
+    }
+
+    private Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness, PublicKey targetClientKey){
         Map<PublicKey, AuthenticatedPerfectLink> links = new HashMap<>();
 
         for(int server = 0; server < serverPublicKey.length; server++){
@@ -64,7 +113,7 @@ public class ByzantineAtomicRegister {
         return links;
     }
 
-    public Contract.PostRequest getPostRequest(char[] message, String[] references, long freshness) {
+    private Contract.PostRequest getPostRequest(char[] message, String[] references, long freshness) {
         byte[] publicKey = SerializationUtils.serialize(this.clientKey);
         String post = new String(message);
         byte[] announcements = SerializationUtils.serialize(references);
@@ -74,7 +123,7 @@ public class ByzantineAtomicRegister {
         return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(this.privateBoardId).setFreshness(freshness).build();
     }
 
-    public Contract.ReadRequest getReadRequest(PublicKey clientTargetKey, int number, long freshness){
+    private Contract.ReadRequest getReadRequest(PublicKey clientTargetKey, int number, long freshness){
         byte[] targetPublicKey = SerializationUtils.serialize(clientTargetKey);
         byte[] userPublicKey = SerializationUtils.serialize(this.clientKey);
 
