@@ -183,8 +183,6 @@ public class QuorumTest {
             int numServer = 0;
 
             for(DPASServiceGrpc.DPASServiceFutureStub stub : stubs){
-                //request
-
                 //response
                 Announcement[] announcements = new Announcement[0];
                 byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
