@@ -1,109 +1,70 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
-import SECDPAS.grpc.Contract;
+
 import SECDPAS.grpc.DPASServiceGrpc;
-import com.google.protobuf.ByteString;
-import org.apache.commons.lang3.SerializationUtils;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
-
-enum TypeMessage{
-    SEND,
-    ECHO,
-    READY
-}
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AuthenticatedDoubleEchoBroadcast {
     private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
     private int numFaults;
     private int numServers;
-    private boolean sentEcho;
-    private boolean sentReady;
-    private boolean delivered;
-    private HashMap<Integer, Contract.RegisterRequest> echos;
-    private HashMap<Integer, Contract.RegisterRequest> readys;
+    private int minResponses;
+    private int serverID;
+    private AtomicBoolean sentEcho;
+    private AtomicBoolean sentReady;
+    private AtomicBoolean hasDelivered;
+    private final HashSet<Integer> echos;
+    private final HashSet<Integer> readys;
+    private final CountDownLatch readyCountDownLatch;
 
-    public AuthenticatedDoubleEchoBroadcast(int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStub){
+    public AuthenticatedDoubleEchoBroadcast(int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStub){
+        this.serverID = serverID;
         this.futureStub = futureStub;
         this.numFaults = numFaults;
         this.numServers = numServers;
-        this.sentEcho = false;
-        this.sentReady = false;
-        this.delivered = false;
-        this.echos = new HashMap<>(numServers);
-        this.readys = new HashMap<>(numServers);
+        this.sentEcho = new AtomicBoolean(false);
+        this.sentReady = new AtomicBoolean(false);
+        this.hasDelivered = new AtomicBoolean(false);
+        this.minResponses = (int)Math.ceil(((double)numServers + numFaults)/2);
+        this.echos = new HashSet<>(numServers);
+        this.readys = new HashSet<>(numServers);
+        this.readyCountDownLatch = new CountDownLatch(1);
     }
-/*
-    public void deliver(int serverId, Contract.RegisterRequest request){
-        TypeMessage typeMessageReceived = SerializationUtils.deserialize(request.getTypeMessage().toByteArray());
 
-        switch (typeMessageReceived){
-            case SEND:
-                if(!sentEcho){
-                    sentEcho = true;
-                    byte[] typeMessage = SerializationUtils.serialize(TypeMessage.ECHO);
+    public synchronized void addECHO(int serverID, RequestType request){
+        echos.add(serverID);
 
-                    CountDownLatch latch = new CountDownLatch((numServers + numFaults)/2);
-
-                    for(DPASServiceGrpc.DPASServiceFutureStub stub : this.futureStub){
-                        //communicate
-                    }
-
-                    try{
-                        latch.await();
-
-                    }catch (InterruptedException e){
-
-                    }
-                }
-                break;
-            case ECHO:
-                if(!echos.containsKey(serverId)){
-                    echos.put(serverId, request);
-                    if(!sentReady && getNumEqualMessageECHOs(request) > (numFaults + numServers)/2){
-                        sentReady = true;
-                        byte[] typeMessage = SerializationUtils.serialize(TypeMessage.READY);
-
-                        for(DPASServiceGrpc.DPASServiceFutureStub stub : this.futureStub){
-                            //communicate
-                        }
-                        wait()
-                    }
-                }
-                break;
-            case READY:
-                if(!readys.containsKey(serverId)) {
-                    readys.put(serverId, request);
-                    if(!delivered && getNumEqualMessageREADYs(request) > 2*numFaults){
-                        delivered = true;
-                        //deliiiiiiiiiiiiiiiiiiiiiiver
-                        return;
-                    }
-                }
-                break;
+        if(echos.size() > minResponses && !sentReady.get()){
+            addReady(this.serverID, request);
+            // broadcast to servers other than me with signature
+            sentReady.set(true);
         }
     }
 
-    private int getNumEqualMessageECHOs(Contract.RegisterRequest request){
-        int num = 0;
-        for(Contract.RegisterRequest r : echos.values()){
-            if(r.equals(request)){
-                num++;
-            }
+    public synchronized void addReady(int serverID, RequestType request){
+        readys.add(serverID);
+
+        // If we have received more than f readys, than at least one correct server has received 2f + 1 echos
+        if(readys.size() > numFaults && !sentReady.get()){
+            readys.add(this.serverID);
+            // broadcast to servers other than me with signature
+            sentReady.set(true);
         }
-        return num;
+
+        if(readys.size() > minResponses && !hasDelivered.get()){
+            // post announcement
+            readyCountDownLatch.countDown();
+        }
     }
 
-    private int getNumEqualMessageREADYs(Contract.RegisterRequest request){
-        int num = 0;
-        for(Contract.RegisterRequest r : echos.values()){
-            if(r.equals(request)){
-                num++;
-            }
-        }
-        return num;
+    public boolean hasDelivered(){
+        return hasDelivered.get();
     }
 
-*/
+    public void waitForReadys() throws InterruptedException {
+        readyCountDownLatch.await();
+    }
 }

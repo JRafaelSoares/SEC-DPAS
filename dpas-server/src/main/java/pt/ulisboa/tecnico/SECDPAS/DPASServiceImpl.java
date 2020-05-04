@@ -26,6 +26,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,7 +44,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
 	private PublicKey[] serverPublicKey;
-	private AuthenticatedDoubleEchoBroadcast authenticatedDoubleEchoBroadcast;
+	private HashMap<RequestType, AuthenticatedDoubleEchoBroadcast> authenticatedDoubleEchoBroadcasts;
 
 	private String databasePath;
 
@@ -85,7 +86,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			}
 		}
 
-		this.authenticatedDoubleEchoBroadcast = new AuthenticatedDoubleEchoBroadcast(numServers, faults, this.futureStub);
 		load();
 	}
 
@@ -102,16 +102,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		/* Registering client */
-		this.privateBoard.put(userKey, new ArrayList<>());
-		this.clientReadFreshness.put(userKey, new FreshnessHandler());
-		this.clientWriteFreshness.put(userKey, new FreshnessHandler());
-		/* Saving posts */
-		try{
-			save("posts");
-		}catch (DatabaseException e){
-			System.out.println("[REGISTER] ERROR - DatabaseException -  " + e.getMessage() + "\n");
-		}
+		executeRegister(request);
 
 		if(debug != 0) System.out.println(String.format("[REGISTER] Client %s registered", userKey));
 		byte[] signature = SignatureHandler.publicSign(encodedClientKey, this.privateKey);
@@ -119,8 +110,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		responseObserver.onNext(buildRegisterResponse(encodedClientKey));
 		responseObserver.onCompleted();
 	}
-
-
 
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
@@ -135,29 +124,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
-		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
-		long writeTimeStamp = request.getFreshness();
 
-		/* create post */
-		char[] post = postString.toCharArray();
-		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
-
-		String announcementID = getAnnouncementId(userKey, request.getFreshness(), privateBoardId);
-		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, privateBoardId);
-
-		synchronized (this.privateBoard) {
-			announcementList.add(announcement);
-		}
-
-		this.announcementIDs.put(announcementID, announcement);
-		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %s from Client %s posted", new String(post), announcementID, userKey));
-
-		/* Save posts */
-		try{
-			save("posts");
-		} catch (DatabaseException e){
-			e.getCause();
-		}
+		executePost(request);
 
 		responseObserver.onNext(buildACKresponse(userKey, privateBoardId, this.clientWriteFreshness.get(userKey).getFreshness()));
 		responseObserver.onCompleted();
@@ -177,56 +145,19 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
-		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 		long writeTimeStamp = request.getFreshness();
 
-		/* create post */
-		char[] post = postString.toCharArray();
-
-		String announcementID = getAnnouncementId(userKey, request.getFreshness(), generalBoardId);
-		if(announcementIDs.containsKey(announcementID)){
-			return;
-		}
-		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, generalBoardId);
-		
-		synchronized(generalBoard) {
-			if(this.generalBoard.isEmpty()){
-				this.generalBoard.add(announcement);
-			}else{
-				for(int i = generalBoard.size()-1; i >= 0; i--){
-
-					if(generalBoard.get(i).getFreshness() < announcement.getFreshness()){
-						this.generalBoard.add(announcement);
-						break;
-					}
-
-					if(generalBoard.get(i).getFreshness() == announcement.getFreshness()){
-						if(generalBoard.get(i).getPublicKey().toString().compareTo(announcement.getPublicKey().toString()) > 0){
-							this.generalBoard.add(i, announcement);
-						}else{
-							this.generalBoard.add(i+1, announcement);
-						}
-						break;
-					}
-
-				}
-			}
-		}
-
-		this.announcementIDs.put(announcementID, announcement);
-		if(debug != 0) System.out.println(String.format("[POST_GENERAL] Post %s with announcementID %s from Client %s posted", new String(post), announcementID, userKey));
-
-		/* Save posts */
-		try{
-			save("generalPosts");
-		}catch (DatabaseException e){
-			e.getCause();
-		}
-
+		executePostGeneral(request);
 
 		responseObserver.onNext(buildACKresponse(userKey, generalBoardId, writeTimeStamp));
 		responseObserver.onCompleted();
 	}
+
+	/**********************************************/
+	/** AUTHENTICATED DOUBLE BROADCAST FUNCTIONS **/
+	/**********************************************/
+
+
 
 	@Override
 	public void read(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
@@ -420,6 +351,100 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	/** AUXILIAR FUNCTIONS **/
 	/************************/
 
+	protected void executeRegister(Contract.RegisterRequest request){
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+
+		/* Registering client */
+		this.privateBoard.put(userKey, new ArrayList<>());
+		this.clientReadFreshness.put(userKey, new FreshnessHandler());
+		this.clientWriteFreshness.put(userKey, new FreshnessHandler());
+
+		/* Saving posts */
+		try{
+			save("posts");
+		} catch (DatabaseException e){
+			System.out.println("[REGISTER] ERROR - DatabaseException -  " + e.getMessage() + "\n");
+		}
+	}
+
+	protected void executePost(Contract.PostRequest request){
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+		long writeTimeStamp = request.getFreshness();
+		String postString = request.getMessage();
+
+		/* create post */
+		char[] post = postString.toCharArray();
+		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
+
+		String announcementID = getAnnouncementId(userKey, request.getFreshness(), privateBoardId);
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, privateBoardId);
+
+		synchronized (this.privateBoard) {
+			announcementList.add(announcement);
+		}
+
+		this.announcementIDs.put(announcementID, announcement);
+		if(debug != 0) System.out.println(String.format("[POST] Post %s with announcementID %s from Client %s posted", new String(post), announcementID, userKey));
+
+		/* Save posts */
+		try{
+			save("posts");
+		} catch (DatabaseException e){
+			e.getCause();
+		}
+	}
+
+	protected void executePostGeneral(Contract.PostRequest request){
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
+		long writeTimeStamp = request.getFreshness();
+		String postString = request.getMessage();
+
+		/* create post */
+		char[] post = postString.toCharArray();
+
+		String announcementID = getAnnouncementId(userKey, request.getFreshness(), generalBoardId);
+		if(announcementIDs.containsKey(announcementID)){
+			return;
+		}
+		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, generalBoardId);
+
+		synchronized(generalBoard) {
+			if(this.generalBoard.isEmpty()){
+				this.generalBoard.add(announcement);
+			}else{
+				for(int i = generalBoard.size()-1; i >= 0; i--){
+
+					if(generalBoard.get(i).getFreshness() < announcement.getFreshness()){
+						this.generalBoard.add(announcement);
+						break;
+					}
+
+					if(generalBoard.get(i).getFreshness() == announcement.getFreshness()){
+						if(generalBoard.get(i).getPublicKey().toString().compareTo(announcement.getPublicKey().toString()) > 0){
+							this.generalBoard.add(i, announcement);
+						}else{
+							this.generalBoard.add(i+1, announcement);
+						}
+						break;
+					}
+
+				}
+			}
+		}
+
+		this.announcementIDs.put(announcementID, announcement);
+		if(debug != 0) System.out.println(String.format("[POST_GENERAL] Post %s with announcementID %s from Client %s posted", new String(post), announcementID, userKey));
+
+		/* Save posts */
+		try{
+			save("generalPosts");
+		} catch (DatabaseException e){
+			e.getCause();
+		}
+	}
+
 	private String getAnnouncementId(PublicKey user, long freshness, String id){
 		return user.toString() + freshness + id;
 	}
@@ -564,7 +589,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
         }
     }
 
-
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness, String board){
 		if(this.clientWriteFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
 			if(debug != 0) System.out.println("\t [POST] Already seen post, returning ACK");
@@ -660,6 +684,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
 				verifyReadFreshness(responseObserver, userKey, clientFreshness);
 	}
+
 	private StatusRuntimeException buildException(Status.Code code, String description, byte[] serializedClientKey, long clientFreshness){
 		Status status = Status.fromCode(code).withDescription(description);
 

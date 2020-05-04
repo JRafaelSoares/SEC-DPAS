@@ -28,7 +28,7 @@ public class Quorum<Key, Result> {
 
                 @Override
                 public void onFailure(Throwable t) {
-                    qr.countDownLatch();
+
                 }
             };
 

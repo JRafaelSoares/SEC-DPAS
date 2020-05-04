@@ -56,6 +56,7 @@ public class AuthenticatedPerfectLink {
             case "ReadGeneralRequest":
                 read((Contract.ReadRequest) request.getRequest(), (FutureCallback<Contract.ReadResponse>) listenableFuture, "ReadGeneralRequest");
                 break;
+            case "EchoRequest":
 
         }
     }
@@ -200,6 +201,60 @@ public class AuthenticatedPerfectLink {
 
     }
 
+    private void echo(Contract.PostRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException{
+        numIterations++;
+        ListenableFuture<Contract.ACK> listenable;
+        String board;
+        if(type.equals("PostRequest")){
+            listenable = futureStub.post(request);
+            board = this.privateBoardId;
+        }else{
+            listenable = futureStub.postGeneral(request);
+            board = this.generalBoardId;
+        }
+
+        Futures.addCallback(listenable, new FutureCallback<>() {
+            @Override
+            public void onSuccess(Contract.@Nullable ACK ack) {
+                if(verifyPost(ack, board)){
+                    if(debug) System.out.println("[APL][POST] Passed check");
+                    listenableFuture.onSuccess(ack);
+                }else{
+                    if(debug) System.out.println("[APL][POST] Failed check");
+                    Deadline deadline = futureStub.getCallOptions().getDeadline();
+                    if(deadline != null && !deadline.isExpired()){
+                        if(type.equals("PostRequest")){
+                            post(request, listenableFuture, "PostRequest");
+                        }else{
+                            post(request, listenableFuture, "PostGeneralRequest");
+                        }
+                    }else{
+                        listenableFuture.onFailure(new TimeoutException());
+                    }
+
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                if(debug) System.out.println("[APL][POST] Exception Thrown");
+
+                Deadline deadline = futureStub.getCallOptions().getDeadline();
+                if(deadline != null && !deadline.isExpired()){
+                    if(type.equals("PostRequest")){
+                        post(request, listenableFuture, "PostRequest");
+                    }else{
+                        post(request, listenableFuture, "PostGeneralRequest");
+                    }
+                }else{
+                    listenableFuture.onFailure(new TimeoutException());
+                }
+            }
+        }, Executors.newSingleThreadExecutor());
+
+    }
+
+
     /*********************/
     /** RESPONSE CHECKS **/
     /*********************/
@@ -231,6 +286,7 @@ public class AuthenticatedPerfectLink {
                 verifyAnnouncementsSignature(response.getAnnouncements().toByteArray(), board);
 
     }
+
     private byte[] getReadSignature(Contract.ReadResponse response, String board){
         return Bytes.concat(response.getPublicKey().toByteArray(), response.getAnnouncements().toByteArray(), Longs.toByteArray(response.getFreshness()), board.getBytes());
     }

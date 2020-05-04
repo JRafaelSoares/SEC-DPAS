@@ -36,6 +36,12 @@ message ReadRequest {
     bytes signature = 5;
 }
 
+message EchoRequest {
+    string type = 1;
+    bytes request = 2;
+    bytes signature = 3;
+}
+
 message ReadResponse {
     //Array of announcements
     bytes announcements = 1;
