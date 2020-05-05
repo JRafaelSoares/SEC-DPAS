@@ -13,9 +13,7 @@ import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
 
-import javax.crypto.*;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,11 +22,9 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
@@ -42,8 +38,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private ConcurrentHashMap<String, Announcement> announcementIDs = new ConcurrentHashMap<>();
 
-	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
-	private PublicKey[] serverPublicKey;
+	private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
+	private PublicKey[] serverPublicKeys;
 	private HashMap<RequestType, AuthenticatedDoubleEchoBroadcast> authenticatedDoubleEchoBroadcasts;
 
 	private String databasePath;
@@ -54,6 +50,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private String generalBoardId = "1";
 
 	private int serverID;
+	private int numServers;
+	private int numFaults;
 	/* for debugging change to 1 */
 	private int debug = 1;
 
@@ -63,24 +61,27 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		this.privateKey = privateKey;
 		this.serverID = id;
 
-		int numServers = faults*3+1;
+		this.numServers = faults*3+1;
+		this.numFaults = faults;
+
+		this.authenticatedDoubleEchoBroadcasts = new HashMap<>();
 
 		ManagedChannel[] channel = new ManagedChannel[numServers];
-		this.serverPublicKey = new PublicKey[numServers];
-		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+		this.serverPublicKeys = new PublicKey[numServers];
+		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
 		//Stub and certificate for each server
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStub[server] = DPASServiceGrpc.newFutureStub(channel[server]);
+			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);
 
 			//Get certificate
 			try{
 				CertificateFactory fact = CertificateFactory.getInstance("X.509");
 				FileInputStream is = new FileInputStream (String.format("%s/src/main/security/certificates/server/certServer%d.der", currentRelativePath.toAbsolutePath().toString(), server));
 				X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
-				this.serverPublicKey[server] = cer.getPublicKey();
+				this.serverPublicKeys[server] = cer.getPublicKey();
 			} catch (CertificateException | FileNotFoundException e){
 				//throw new CertificateInvalidException(e.getMessage());
 			}
@@ -102,7 +103,27 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		executeRegister(request);
+		RequestType<Contract.RegisterRequest> clientRequest = new RegisterRequest(request);
+
+		AuthenticatedDoubleEchoBroadcast aDEB;
+
+		synchronized (authenticatedDoubleEchoBroadcasts){
+			aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
+
+			if(aDEB == null){
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, r -> executeRegister((Contract.RegisterRequest) r.getRequest()));
+				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
+			}
+		}
+
+		aDEB.addECHO(this.serverID);
+		aDEB.broadcast("Echo");
+
+		try {
+			aDEB.waitForReadys();
+		} catch (InterruptedException e) {
+			System.out.println(e.getMessage());
+		}
 
 		if(debug != 0) System.out.println(String.format("[REGISTER] Client %s registered", userKey));
 		byte[] signature = SignatureHandler.publicSign(encodedClientKey, this.privateKey);
@@ -125,7 +146,27 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 
-		executePost(request);
+		RequestType<Contract.PostRequest> clientRequest = new PostRequest(request, "Post");
+
+		AuthenticatedDoubleEchoBroadcast aDEB;
+
+		synchronized (authenticatedDoubleEchoBroadcasts){
+			aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
+
+			if(aDEB == null){
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, r -> executePost((Contract.PostRequest) r.getRequest()));
+				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
+			}
+		}
+
+		aDEB.addECHO(this.serverID);
+		aDEB.broadcast("Echo");
+
+		try {
+			aDEB.waitForReadys();
+		} catch (InterruptedException e) {
+			System.out.println(e.getMessage());
+		}
 
 		responseObserver.onNext(buildACKresponse(userKey, privateBoardId, this.clientWriteFreshness.get(userKey).getFreshness()));
 		responseObserver.onCompleted();
@@ -147,7 +188,27 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		long writeTimeStamp = request.getFreshness();
 
-		executePostGeneral(request);
+		RequestType<Contract.PostRequest> clientRequest = new PostRequest(request, "PostGeneral");
+
+		AuthenticatedDoubleEchoBroadcast aDEB;
+
+		synchronized (authenticatedDoubleEchoBroadcasts){
+			aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
+
+			if(aDEB == null){
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, r -> executePostGeneral((Contract.PostRequest) r.getRequest()));
+				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
+			}
+		}
+
+		aDEB.addECHO(this.serverID);
+		aDEB.broadcast("Echo");
+
+		try {
+			aDEB.waitForReadys();
+		} catch (InterruptedException e) {
+			System.out.println(e.getMessage());
+		}
 
 		responseObserver.onNext(buildACKresponse(userKey, generalBoardId, writeTimeStamp));
 		responseObserver.onCompleted();
@@ -157,7 +218,45 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	/** AUTHENTICATED DOUBLE BROADCAST FUNCTIONS **/
 	/**********************************************/
 
+	@Override
+	public void echo(Contract.EchoRequest request, StreamObserver<Contract.ACK> responseObserver) {
 
+		if(debug != 0) System.out.println("[ECHO] Echo request from server " + request.getServerID() + "\n");
+
+		RequestType clientRequest = SerializationUtils.deserialize(request.getRequest().toByteArray());
+		Consumer<RequestType> executer = verifyEchoOrReady(clientRequest, responseObserver);
+
+		synchronized (authenticatedDoubleEchoBroadcasts){
+			AuthenticatedDoubleEchoBroadcast aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
+
+			if(aDEB == null){
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executer);
+				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
+			}
+
+			aDEB.addECHO(request.getServerID());
+		}
+	}
+
+	@Override
+	public void ready(Contract.EchoRequest request, StreamObserver<Contract.ACK> responseObserver) {
+
+		if(debug != 0) System.out.println("[READY] Ready request from server " + request.getServerID() + "\n");
+
+		RequestType clientRequest = SerializationUtils.deserialize(request.getRequest().toByteArray());
+		Consumer<RequestType> executer = verifyEchoOrReady(clientRequest, responseObserver);
+
+		synchronized (authenticatedDoubleEchoBroadcasts){
+			AuthenticatedDoubleEchoBroadcast aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
+
+			if(aDEB == null){
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executer);
+				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
+			}
+
+			aDEB.addReady(request.getServerID());
+		}
+	}
 
 	@Override
 	public void read(Contract.ReadRequest request, StreamObserver<Contract.ReadResponse> responseObserver) {
@@ -578,8 +677,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
     private boolean verifyWriteGeneralFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
         synchronized (generalBoard){
-			System.out.println(String.format("CLIENT FRESHNESS: %d Board size: %d COMPARISSON: %b", clientFreshness, this.generalBoard.size(), clientFreshness <= this.generalBoard.size()));
-
 			if(clientFreshness > this.generalBoard.size() ){
                 if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
                 responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
@@ -617,8 +714,6 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 		return true;
 	}
-
-
 
 	private boolean verifyWriteFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
 		if(!this.clientWriteFreshness.get(userKey).verifyFreshness(clientFreshness)){
@@ -700,6 +795,63 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		return status.asRuntimeException(metadata);
 	}
+
+
+	/************************/
+	/*****  READ CHECKS *****/
+	/************************/
+
+	private Consumer<RequestType> verifyEchoOrReady(RequestType<?> clientRequest, StreamObserver<Contract.ACK> responseObserver){
+		Consumer<RequestType> executer;
+
+		switch(clientRequest.getId()){
+			case "RegisterRequest":
+				Contract.RegisterRequest registerRequest = (Contract.RegisterRequest)clientRequest.getRequest();
+
+				/* Obtaining the Public Key of the Client */
+				PublicKey userKey = verifyPublicKey(registerRequest.getPublicKey().toByteArray(), responseObserver, 0);
+				verifyRegisterRequest(responseObserver, registerRequest, userKey);
+
+				executer = new Consumer<RequestType>() {
+					@Override
+					public void accept(RequestType requestType) {
+						executeRegister((Contract.RegisterRequest) requestType.getRequest());
+					}
+				};
+				break;
+			case "PostRequest":
+				verifyPostRequest((Contract.PostRequest) clientRequest.getRequest(), responseObserver);
+
+				executer = new Consumer<RequestType>() {
+					@Override
+					public void accept(RequestType requestType) {
+						executePost((Contract.PostRequest) requestType.getRequest());
+					}
+				};
+				break;
+			case "PostGeneralRequest":
+				verifyPostGeneralRequest((Contract.PostRequest) clientRequest.getRequest(), responseObserver);
+
+				executer = new Consumer<RequestType>() {
+					@Override
+					public void accept(RequestType requestType) {
+						executePostGeneral((Contract.PostRequest) requestType.getRequest());
+					}
+				};
+				break;
+			default:
+				executer = new Consumer<RequestType>() {
+					@Override
+					public void accept(RequestType requestType) {
+						//do nothing if request doesn't have correct type
+					}
+				};
+				break;
+		}
+
+		return executer;
+	}
+
 
 	/******************************/
 	/*****  RESPONSE BUILDERS *****/
@@ -797,6 +949,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void cleanPosts(Empty request, StreamObserver<Empty> responseObserver) {
 		this.privateBoard = new ConcurrentHashMap<>();
 		this.announcementIDs = new ConcurrentHashMap<>();
+		this.authenticatedDoubleEchoBroadcasts = new HashMap<>();
+		this.clientReadFreshness = new ConcurrentHashMap<>();
+		this.clientWriteFreshness = new ConcurrentHashMap<>();
 		try{
 			save("posts");
 		}catch (DatabaseException e){
@@ -810,6 +965,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	public void cleanGeneralPosts(Empty request, StreamObserver<Empty> responseObserver) {
 		this.generalBoard = new ArrayList<>();
 		this.announcementIDs = new ConcurrentHashMap<>();
+		this.authenticatedDoubleEchoBroadcasts = new HashMap<>();
+		this.clientReadFreshness = new ConcurrentHashMap<>();
+		this.clientWriteFreshness = new ConcurrentHashMap<>();
 		try{
 			save("generalPosts");
 		}catch (DatabaseException e){

@@ -8,6 +8,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.ByteString;
+import io.grpc.Context;
 import io.grpc.Deadline;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.SerializationUtils;
@@ -56,12 +57,16 @@ public class AuthenticatedPerfectLink {
             case "ReadGeneralRequest":
                 read((Contract.ReadRequest) request.getRequest(), (FutureCallback<Contract.ReadResponse>) listenableFuture, "ReadGeneralRequest");
                 break;
-            case "EchoRequest":
-
+            case "Echo":
+                echo((Contract.EchoRequest) request.getRequest(), (FutureCallback<Contract.ACK>) listenableFuture, "Echo");
+                break;
+            case "Ready":
+                echo((Contract.EchoRequest) request.getRequest(), (FutureCallback<Contract.ACK>) listenableFuture, "Ready");
+                break;
         }
     }
 
-    private void register(Contract.RegisterRequest request, FutureCallback<Contract.ACK> listenableFuture){
+    private void register(Contract.RegisterRequest request, FutureCallback<Contract.ACK> listenableFuture) {
         numIterations++;
         ListenableFuture<Contract.ACK> listenable = futureStub.register(request);
 
@@ -95,7 +100,7 @@ public class AuthenticatedPerfectLink {
         }, Executors.newSingleThreadExecutor());
     }
 
-    private void post(Contract.PostRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException{
+    private void post(Contract.PostRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException {
         numIterations++;
         ListenableFuture<Contract.ACK> listenable;
         String board;
@@ -148,7 +153,7 @@ public class AuthenticatedPerfectLink {
 
     }
 
-    private void read(Contract.ReadRequest request, FutureCallback<Contract.ReadResponse> listenableFuture, String type) throws StatusRuntimeException{
+    private void read(Contract.ReadRequest request, FutureCallback<Contract.ReadResponse> listenableFuture, String type) throws StatusRuntimeException {
         numIterations++;
         ListenableFuture<Contract.ReadResponse> listenable;
         String board;
@@ -201,57 +206,46 @@ public class AuthenticatedPerfectLink {
 
     }
 
-    private void echo(Contract.PostRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException{
+    private void echo(Contract.EchoRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException {
         numIterations++;
-        ListenableFuture<Contract.ACK> listenable;
-        String board;
-        if(type.equals("PostRequest")){
-            listenable = futureStub.post(request);
-            board = this.privateBoardId;
-        }else{
-            listenable = futureStub.postGeneral(request);
-            board = this.generalBoardId;
-        }
 
-        Futures.addCallback(listenable, new FutureCallback<>() {
-            @Override
-            public void onSuccess(Contract.@Nullable ACK ack) {
-                if(verifyPost(ack, board)){
-                    if(debug) System.out.println("[APL][POST] Passed check");
-                    listenableFuture.onSuccess(ack);
-                }else{
-                    if(debug) System.out.println("[APL][POST] Failed check");
+        Context ctx = Context.current().fork();
+        ctx.run(() -> {
+            ListenableFuture<Contract.ACK> listenable;
+
+            if(type.equals("Echo")){
+                listenable = futureStub.echo(request);
+            } else{
+                listenable = futureStub.ready(request);
+            }
+
+            Futures.addCallback(listenable, new FutureCallback<>() {
+                @Override
+                public void onSuccess(Contract.@Nullable ACK ack) {
+                    if(verifyEcho(ack)){
+                        if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Passed check");
+                        listenableFuture.onSuccess(ack);
+                    } else{
+                        if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Failed check");
+                        Deadline deadline = futureStub.getCallOptions().getDeadline();
+
+                        echo(request, listenableFuture, type);
+                    }
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Exception Thrown");
+
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline != null && !deadline.isExpired()){
-                        if(type.equals("PostRequest")){
-                            post(request, listenableFuture, "PostRequest");
-                        }else{
-                            post(request, listenableFuture, "PostGeneralRequest");
-                        }
-                    }else{
+                        echo(request, listenableFuture, type);
+                    } else{
                         listenableFuture.onFailure(new TimeoutException());
                     }
-
                 }
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                if(debug) System.out.println("[APL][POST] Exception Thrown");
-
-                Deadline deadline = futureStub.getCallOptions().getDeadline();
-                if(deadline != null && !deadline.isExpired()){
-                    if(type.equals("PostRequest")){
-                        post(request, listenableFuture, "PostRequest");
-                    }else{
-                        post(request, listenableFuture, "PostGeneralRequest");
-                    }
-                }else{
-                    listenableFuture.onFailure(new TimeoutException());
-                }
-            }
-        }, Executors.newSingleThreadExecutor());
-
+            }, Executors.newSingleThreadExecutor());
+        });
     }
 
 
@@ -285,6 +279,11 @@ public class AuthenticatedPerfectLink {
                 verifyFreshness(response.getFreshness()) &&
                 verifyAnnouncementsSignature(response.getAnnouncements().toByteArray(), board);
 
+    }
+
+    private boolean verifyEcho(Contract.ACK response){
+        // TODO- Properly check if Echo response is correct (Signature)
+        return true;
     }
 
     private byte[] getReadSignature(Contract.ReadResponse response, String board){

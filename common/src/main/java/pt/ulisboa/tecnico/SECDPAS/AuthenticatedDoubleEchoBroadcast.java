@@ -1,14 +1,26 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
 
+import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.protobuf.ByteString;
+import org.apache.commons.lang3.SerializationUtils;
 
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class AuthenticatedDoubleEchoBroadcast {
-    private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
+    private Consumer<RequestType> executer;
+    private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
+    private RequestType clientRequest;
+    private PublicKey[] serverPublicKeys;
+    private PrivateKey serverPrivateKey;
     private int numFaults;
     private int numServers;
     private int minResponses;
@@ -20,9 +32,12 @@ public class AuthenticatedDoubleEchoBroadcast {
     private final HashSet<Integer> readys;
     private final CountDownLatch readyCountDownLatch;
 
-    public AuthenticatedDoubleEchoBroadcast(int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStub){
+    public AuthenticatedDoubleEchoBroadcast(RequestType clientRequest, int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys, PrivateKey serverPrivateKey, Consumer<RequestType> executer){
         this.serverID = serverID;
-        this.futureStub = futureStub;
+        this.futureStubs = futureStubs;
+        this.clientRequest = clientRequest;
+        this.serverPublicKeys = serverPublicKeys;
+        this.serverPrivateKey = serverPrivateKey;
         this.numFaults = numFaults;
         this.numServers = numServers;
         this.sentEcho = new AtomicBoolean(false);
@@ -32,31 +47,75 @@ public class AuthenticatedDoubleEchoBroadcast {
         this.echos = new HashSet<>(numServers);
         this.readys = new HashSet<>(numServers);
         this.readyCountDownLatch = new CountDownLatch(1);
+        this.executer = executer;
     }
 
-    public synchronized void addECHO(int serverID, RequestType request){
+    public synchronized void addECHO(int serverID){
         echos.add(serverID);
 
-        if(echos.size() > minResponses && !sentReady.get()){
-            addReady(this.serverID, request);
-            // broadcast to servers other than me with signature
-            sentReady.set(true);
+        if(echos.size() >= minResponses && !sentReady.get()){
+            addReady(this.serverID);
+
+            broadcast("Ready");
         }
     }
 
-    public synchronized void addReady(int serverID, RequestType request){
+    public synchronized void addReady(int serverID){
         readys.add(serverID);
 
         // If we have received more than f readys, than at least one correct server has received 2f + 1 echos
         if(readys.size() > numFaults && !sentReady.get()){
             readys.add(this.serverID);
-            // broadcast to servers other than me with signature
-            sentReady.set(true);
+
+            broadcast("Ready");
         }
 
-        if(readys.size() > minResponses && !hasDelivered.get()){
-            // post announcement
+        if(readys.size() >= minResponses && !hasDelivered.get()){
+            hasDelivered.set(true);
+            executer.accept(this.clientRequest);
             readyCountDownLatch.countDown();
+        }
+    }
+
+    public void broadcast(String type){
+        switch(type){
+            case "Echo":
+                synchronized (sentEcho){
+                    if(sentEcho.get()) return;
+                    sentEcho.set(true);
+                }
+                break;
+            case "Ready":
+                synchronized (sentReady){
+                    if(sentReady.get()) return;
+                    sentReady.set(true);
+                }
+                break;
+        }
+
+        //TODO- Build signature into echo request
+        Contract.EchoRequest echoRequest = Contract.EchoRequest.newBuilder().setServerID(this.serverID).setRequest(ByteString.copyFrom(SerializationUtils.serialize(clientRequest))).setSignature(ByteString.copyFrom(new byte[0])).build();
+
+        RequestType request = new EchoRequest(echoRequest, type);
+
+        // broadcast to servers other than me with signature
+        for (int i = 0; i < numServers; i++) {
+            if(i == this.serverID) continue;
+            AuthenticatedPerfectLink perfectLink = new AuthenticatedPerfectLink(futureStubs[i], 0, serverPublicKeys[i], serverPublicKeys[this.serverID]);
+
+            FutureCallback<Contract.ACK> futureCallback = new FutureCallback<>() {
+                @Override
+                public void onSuccess(Contract.ACK res) {
+
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+
+                }
+            };
+
+            perfectLink.process(request, futureCallback);
         }
     }
 

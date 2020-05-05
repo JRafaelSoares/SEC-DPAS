@@ -276,7 +276,7 @@ public class ByzantineNNRegularRegisterTest {
 
                 //read response
                 long freshness = readFreshnessHandler.getFreshness();
-                String post = "post";
+                String post = "Message";
                 String typeBoard = "1";
                 byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(clientPublicKey), post.getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness), typeBoard.getBytes()), clientPrivateKey);
 

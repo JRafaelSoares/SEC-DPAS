@@ -37,7 +37,7 @@ message ReadRequest {
 }
 
 message EchoRequest {
-    string type = 1;
+    int32 serverID = 1;
     bytes request = 2;
     bytes signature = 3;
 }
@@ -69,6 +69,10 @@ service DPASService {
     rpc postGeneral(PostRequest) returns (ACK);
     rpc read(ReadRequest) returns (ReadResponse);
     rpc readGeneral(ReadRequest) returns (ReadResponse);
+
+    // Authenticated Double Echo Broadcast
+    rpc echo(EchoRequest) returns (ACK);
+    rpc ready(EchoRequest) returns (ACK);
 
     // Testing Functions
     rpc clientRegisteredState(RegisterRequest) returns (TestsResponse);

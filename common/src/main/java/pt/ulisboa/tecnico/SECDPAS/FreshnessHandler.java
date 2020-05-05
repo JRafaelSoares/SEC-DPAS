@@ -16,7 +16,6 @@ public class FreshnessHandler implements Serializable {
     }
 
     public boolean verifyPostFreshness(long freshness) {
-        System.out.println(freshness < sequenceNumber);
         return freshness < sequenceNumber;
     }
 
