@@ -9,14 +9,13 @@ import org.apache.commons.lang3.SerializationUtils;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class AuthenticatedDoubleEchoBroadcast {
-    private Consumer<RequestType> executer;
+    private Consumer<RequestType> executor;
     private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
     private RequestType clientRequest;
     private PublicKey[] serverPublicKeys;
@@ -32,7 +31,7 @@ public class AuthenticatedDoubleEchoBroadcast {
     private final HashSet<Integer> readys;
     private final CountDownLatch readyCountDownLatch;
 
-    public AuthenticatedDoubleEchoBroadcast(RequestType clientRequest, int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys, PrivateKey serverPrivateKey, Consumer<RequestType> executer){
+    public AuthenticatedDoubleEchoBroadcast(RequestType clientRequest, int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys, PrivateKey serverPrivateKey, Consumer<RequestType> executor){
         this.serverID = serverID;
         this.futureStubs = futureStubs;
         this.clientRequest = clientRequest;
@@ -47,7 +46,7 @@ public class AuthenticatedDoubleEchoBroadcast {
         this.echos = new HashSet<>(numServers);
         this.readys = new HashSet<>(numServers);
         this.readyCountDownLatch = new CountDownLatch(1);
-        this.executer = executer;
+        this.executor = executor;
     }
 
     public synchronized void addECHO(int serverID){
@@ -72,7 +71,7 @@ public class AuthenticatedDoubleEchoBroadcast {
 
         if(readys.size() >= minResponses && !hasDelivered.get()){
             hasDelivered.set(true);
-            executer.accept(this.clientRequest);
+            executor.accept(this.clientRequest);
             readyCountDownLatch.countDown();
         }
     }

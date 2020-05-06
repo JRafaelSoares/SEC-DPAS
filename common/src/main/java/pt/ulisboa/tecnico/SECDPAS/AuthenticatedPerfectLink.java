@@ -79,7 +79,7 @@ public class AuthenticatedPerfectLink {
                 }else{
                     if(debug) System.out.println("[APL][REGISTER] Failed check");
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
-                    if(deadline != null && !deadline.isExpired()){
+                    if(deadline == null || !deadline.isExpired()){
                         register(request, listenableFuture);
                     }else{
                         listenableFuture.onFailure(new TimeoutException());
@@ -91,7 +91,7 @@ public class AuthenticatedPerfectLink {
             public void onFailure(Throwable t) {
                 if(debug) System.out.println("[APL][REGISTER] Exception thrown: " + t.getClass());
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
-                if(deadline != null && !deadline.isExpired()){
+                if(deadline == null || !deadline.isExpired()){
                     register(request, listenableFuture);
                 }else{
                     listenableFuture.onFailure(new TimeoutException());
@@ -121,7 +121,7 @@ public class AuthenticatedPerfectLink {
                 }else{
                     if(debug) System.out.println("[APL][POST] Failed check");
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
-                    if(deadline != null && !deadline.isExpired()){
+                    if(deadline == null || !deadline.isExpired()){
                         if(type.equals("PostRequest")){
                             post(request, listenableFuture, "PostRequest");
                         }else{
@@ -139,7 +139,7 @@ public class AuthenticatedPerfectLink {
                 if(debug) System.out.println("[APL][POST] Exception Thrown");
 
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
-                if(deadline != null && !deadline.isExpired()){
+                if(deadline == null || !deadline.isExpired()){
                     if(type.equals("PostRequest")){
                         post(request, listenableFuture, "PostRequest");
                     }else{
@@ -175,7 +175,7 @@ public class AuthenticatedPerfectLink {
                 }else{
                     if(debug) System.out.println("[APL][READ] Failed check");
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
-                    if(deadline != null && !deadline.isExpired()){
+                    if(deadline == null || !deadline.isExpired()){
                         if(type.equals("ReadRequest")){
                             read(request, listenableFuture, "ReadRequest");
                         }else{
@@ -192,7 +192,7 @@ public class AuthenticatedPerfectLink {
                 if(debug) System.out.println("[APL][READ] Exception Thrown");
 
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
-                if(deadline != null && !deadline.isExpired()){
+                if(deadline == null || !deadline.isExpired()){
                     if(type.equals("ReadRequest")){
                         read(request, listenableFuture, "ReadRequest");
                     }else{
@@ -227,9 +227,13 @@ public class AuthenticatedPerfectLink {
                         listenableFuture.onSuccess(ack);
                     } else{
                         if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Failed check");
-                        Deadline deadline = futureStub.getCallOptions().getDeadline();
 
-                        echo(request, listenableFuture, type);
+                        Deadline deadline = futureStub.getCallOptions().getDeadline();
+                        if(deadline == null || !deadline.isExpired()){
+                            echo(request, listenableFuture, type);
+                        }else{
+                            listenableFuture.onFailure(new TimeoutException());
+                        }
                     }
                 }
 
@@ -238,7 +242,7 @@ public class AuthenticatedPerfectLink {
                     if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Exception Thrown");
 
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
-                    if(deadline != null && !deadline.isExpired()){
+                    if(deadline == null || !deadline.isExpired()){
                         echo(request, listenableFuture, type);
                     } else{
                         listenableFuture.onFailure(new TimeoutException());

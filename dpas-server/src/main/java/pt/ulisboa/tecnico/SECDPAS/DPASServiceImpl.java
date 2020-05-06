@@ -134,19 +134,20 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		if(debug != 0) System.out.println("[POST] Post request from client.\n");
+		if(debug != 0) System.out.println("[POST] Post request " + request.getMessage() + " from client.\n");
 
 		/* Verify request */
 		String postString = verifyPostRequest(request, responseObserver);
 
 		/* In case the request is faulty */
 		if(postString == null){
+			if(debug != 0) System.out.println("\t[POST] Post request was faulty.\n");
 			return;
 		}
 
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 
-		RequestType<Contract.PostRequest> clientRequest = new PostRequest(request, "Post");
+		RequestType<Contract.PostRequest> clientRequest = new PostRequest(request, "PostRequest");
 
 		AuthenticatedDoubleEchoBroadcast aDEB;
 
@@ -188,7 +189,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		long writeTimeStamp = request.getFreshness();
 
-		RequestType<Contract.PostRequest> clientRequest = new PostRequest(request, "PostGeneral");
+		RequestType<Contract.PostRequest> clientRequest = new PostRequest(request, "PostGeneralRequest");
 
 		AuthenticatedDoubleEchoBroadcast aDEB;
 
@@ -224,18 +225,25 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(debug != 0) System.out.println("[ECHO] Echo request from server " + request.getServerID() + "\n");
 
 		RequestType clientRequest = SerializationUtils.deserialize(request.getRequest().toByteArray());
-		Consumer<RequestType> executer = verifyEchoOrReady(clientRequest, responseObserver);
+		Consumer<RequestType> executor = verifyEchoOrReady(clientRequest, responseObserver);
+
+		if(executor == null){
+			return;
+		}
 
 		synchronized (authenticatedDoubleEchoBroadcasts){
 			AuthenticatedDoubleEchoBroadcast aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
 
 			if(aDEB == null){
-				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executer);
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executor);
 				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
 			}
 
 			aDEB.addECHO(request.getServerID());
 		}
+
+		responseObserver.onNext(Contract.ACK.newBuilder().build());
+		responseObserver.onCompleted();
 	}
 
 	@Override
@@ -244,18 +252,25 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		if(debug != 0) System.out.println("[READY] Ready request from server " + request.getServerID() + "\n");
 
 		RequestType clientRequest = SerializationUtils.deserialize(request.getRequest().toByteArray());
-		Consumer<RequestType> executer = verifyEchoOrReady(clientRequest, responseObserver);
+		Consumer<RequestType> executor = verifyEchoOrReady(clientRequest, responseObserver);
+
+		if(executor == null){
+			return;
+		}
 
 		synchronized (authenticatedDoubleEchoBroadcasts){
 			AuthenticatedDoubleEchoBroadcast aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
 
 			if(aDEB == null){
-				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executer);
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executor);
 				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
 			}
 
 			aDEB.addReady(request.getServerID());
 		}
+
+		responseObserver.onNext(Contract.ACK.newBuilder().build());
+		responseObserver.onCompleted();
 	}
 
 	@Override
@@ -630,11 +645,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	}
 
     private boolean verifyPostMessage(StreamObserver<Contract.ACK> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness, String board){
-        return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
-                verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
-                verifyPostFreshness(responseObserver, userKey, clientFreshness, board) &&
-                verifyWriteFreshness(responseObserver, userKey, clientFreshness);
-    }
+		return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
+				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
+				verifyPostFreshness(responseObserver, userKey, clientFreshness, board) &&
+				verifyWriteFreshness(responseObserver, userKey, clientFreshness);
+	}
 
     /********************************/
     /*****  POST GENERAL CHECKS *****/
@@ -655,9 +670,9 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
         /* Obtaining the Public Key of the Client */
         PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, freshness);
 
-        /* Verify message freshness and integrity-signature. References exists.*/
+		/* Verify message freshness and integrity-signature. References exists.*/
         if(userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness, board)){
-            return null;
+        	return null;
         }
 
         String[] announcements = verifyAnnouncements(serializedAnnouncements, responseObserver, serializedPublicKey, freshness);
@@ -677,7 +692,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
     private boolean verifyWriteGeneralFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
         synchronized (generalBoard){
-			if(clientFreshness > this.generalBoard.size() ){
+			if(clientFreshness > this.generalBoard.size()){
                 if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
                 responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
                 return false;
@@ -688,7 +703,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness, String board){
 		if(this.clientWriteFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
-			if(debug != 0) System.out.println("\t [POST] Already seen post, returning ACK");
+			if(debug != 0) System.out.println("\t[POST] Already seen post, returning ACK");
 			responseObserver.onNext(buildACKresponse(userKey, board, clientFreshness));
 			responseObserver.onCompleted();
 			return false;
@@ -798,11 +813,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 
 	/************************/
-	/*****  READ CHECKS *****/
+	/*****  ECHO CHECKS *****/
 	/************************/
 
 	private Consumer<RequestType> verifyEchoOrReady(RequestType<?> clientRequest, StreamObserver<Contract.ACK> responseObserver){
-		Consumer<RequestType> executer;
+		Consumer<RequestType> executor;
 
 		switch(clientRequest.getId()){
 			case "RegisterRequest":
@@ -810,46 +825,37 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 				/* Obtaining the Public Key of the Client */
 				PublicKey userKey = verifyPublicKey(registerRequest.getPublicKey().toByteArray(), responseObserver, 0);
-				verifyRegisterRequest(responseObserver, registerRequest, userKey);
+				if(!verifyRegisterRequest(responseObserver, registerRequest, userKey)){
+					return null;
+				}
 
-				executer = new Consumer<RequestType>() {
-					@Override
-					public void accept(RequestType requestType) {
-						executeRegister((Contract.RegisterRequest) requestType.getRequest());
-					}
-				};
+				if(debug != 0) System.out.println("\t[ECHO_OR_READY][REGISTER] Client " + registerRequest.getPublicKey().toByteArray()[42] + "\n");
+
+				executor = requestType -> executeRegister((Contract.RegisterRequest) requestType.getRequest());
 				break;
 			case "PostRequest":
-				verifyPostRequest((Contract.PostRequest) clientRequest.getRequest(), responseObserver);
+				if(debug != 0) System.out.println("\t[ECHO_OR_READY][POST] Client " + ((Contract.PostRequest) clientRequest.getRequest()).getPublicKey().toByteArray()[542] + " Message: " + ((Contract.PostRequest) clientRequest.getRequest()).getMessage() + "\n");
 
-				executer = new Consumer<RequestType>() {
-					@Override
-					public void accept(RequestType requestType) {
-						executePost((Contract.PostRequest) requestType.getRequest());
-					}
-				};
+				if(verifyPostRequest((Contract.PostRequest) clientRequest.getRequest(), responseObserver) == null){
+					return null;
+				}
+
+				executor = requestType -> executePost((Contract.PostRequest) requestType.getRequest());
 				break;
 			case "PostGeneralRequest":
-				verifyPostGeneralRequest((Contract.PostRequest) clientRequest.getRequest(), responseObserver);
+				if(debug != 0) System.out.println("\t[ECHO_OR_READY][POST_GENERAL] Client " + ((Contract.PostRequest) clientRequest.getRequest()).getPublicKey().toByteArray()[542] + " Message: " + ((Contract.PostRequest) clientRequest.getRequest()).getMessage() + "\n");
 
-				executer = new Consumer<RequestType>() {
-					@Override
-					public void accept(RequestType requestType) {
-						executePostGeneral((Contract.PostRequest) requestType.getRequest());
-					}
-				};
+				if(verifyPostGeneralRequest((Contract.PostRequest) clientRequest.getRequest(), responseObserver) == null){
+					return null;
+				}
+
+				executor = requestType -> executePostGeneral((Contract.PostRequest) requestType.getRequest());
 				break;
 			default:
-				executer = new Consumer<RequestType>() {
-					@Override
-					public void accept(RequestType requestType) {
-						//do nothing if request doesn't have correct type
-					}
-				};
-				break;
+				return null;
 		}
 
-		return executer;
+		return executor;
 	}
 
 
@@ -976,5 +982,4 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
 	}
-
 }

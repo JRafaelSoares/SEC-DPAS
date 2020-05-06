@@ -5,5 +5,7 @@ dpas-server/target
 dpas-client/target
 common/target
 client-library/target
+.idea/
 .DS_Store
 *.jar
+*.iml
