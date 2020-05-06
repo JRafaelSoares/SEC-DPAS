@@ -24,6 +24,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
@@ -74,7 +75,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);
+			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);//.withDeadlineAfter(20, TimeUnit.SECONDS);
 
 			//Get certificate
 			try{
@@ -171,6 +172,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		responseObserver.onNext(buildACKresponse(userKey, privateBoardId, this.clientWriteFreshness.get(userKey).getFreshness()));
 		responseObserver.onCompleted();
+		System.out.println("freshness: " + clientWriteFreshness.get(userKey));
 		this.clientWriteFreshness.get(userKey).incrementFreshness();
 	}
 
@@ -465,13 +467,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	/** AUXILIAR FUNCTIONS **/
 	/************************/
 
-	protected void executeRegister(Contract.RegisterRequest request){
+	private void executeRegister(Contract.RegisterRequest request){
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 
 		/* Registering client */
-		this.privateBoard.put(userKey, new ArrayList<>());
 		this.clientReadFreshness.put(userKey, new FreshnessHandler());
 		this.clientWriteFreshness.put(userKey, new FreshnessHandler());
+		this.privateBoard.put(userKey, new ArrayList<>());
 
 		/* Saving posts */
 		try{
@@ -481,7 +483,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 	}
 
-	protected void executePost(Contract.PostRequest request){
+	private void executePost(Contract.PostRequest request){
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 		long writeTimeStamp = request.getFreshness();
@@ -509,7 +511,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 	}
 
-	protected void executePostGeneral(Contract.PostRequest request){
+	private void executePostGeneral(Contract.PostRequest request){
 		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
 		String[] announcements = SerializationUtils.deserialize(request.getAnnouncements().toByteArray());
 		long writeTimeStamp = request.getFreshness();
@@ -585,7 +587,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	/***  REGISTER CHECKS ***/
 	/************************/
 
-	public boolean verifyRegisterRequest(StreamObserver<Contract.ACK> streamObserver, Contract.RegisterRequest request, PublicKey userKey){
+	private boolean verifyRegisterRequest(StreamObserver<Contract.ACK> streamObserver, Contract.RegisterRequest request, PublicKey userKey){
 		return userKey != null &&
 				verifyRegisterSignature(streamObserver, userKey, request.getPublicKey().toByteArray(), request.getSignature().toByteArray()) &&
 				verifyClientIsNotRegistered(userKey, streamObserver, SerializationUtils.serialize(userKey));

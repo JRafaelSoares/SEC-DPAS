@@ -80,6 +80,11 @@ public class AuthenticatedPerfectLink {
                     if(debug) System.out.println("[APL][REGISTER] Failed check");
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
+                        try{
+                            Thread.sleep(20);
+                        }catch (InterruptedException e){
+
+                        }
                         register(request, listenableFuture);
                     }else{
                         listenableFuture.onFailure(new TimeoutException());
@@ -92,6 +97,11 @@ public class AuthenticatedPerfectLink {
                 if(debug) System.out.println("[APL][REGISTER] Exception thrown: " + t.getClass());
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
+                    try{
+                        Thread.sleep(20);
+                    }catch (InterruptedException e){
+
+                    }
                     register(request, listenableFuture);
                 }else{
                     listenableFuture.onFailure(new TimeoutException());
@@ -122,6 +132,11 @@ public class AuthenticatedPerfectLink {
                     if(debug) System.out.println("[APL][POST] Failed check");
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
+                        try{
+                            Thread.sleep(20);
+                        }catch (InterruptedException e){
+
+                        }
                         if(type.equals("PostRequest")){
                             post(request, listenableFuture, "PostRequest");
                         }else{
@@ -140,6 +155,11 @@ public class AuthenticatedPerfectLink {
 
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
+                    try{
+                        Thread.sleep(20);
+                    }catch (InterruptedException e){
+
+                    }
                     if(type.equals("PostRequest")){
                         post(request, listenableFuture, "PostRequest");
                     }else{
@@ -176,6 +196,11 @@ public class AuthenticatedPerfectLink {
                     if(debug) System.out.println("[APL][READ] Failed check");
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
+                        try{
+                            Thread.sleep(20);
+                        }catch (InterruptedException e){
+
+                        }
                         if(type.equals("ReadRequest")){
                             read(request, listenableFuture, "ReadRequest");
                         }else{
@@ -193,6 +218,11 @@ public class AuthenticatedPerfectLink {
 
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
+                    try{
+                        Thread.sleep(20);
+                    }catch (InterruptedException e){
+
+                    }
                     if(type.equals("ReadRequest")){
                         read(request, listenableFuture, "ReadRequest");
                     }else{
@@ -230,6 +260,11 @@ public class AuthenticatedPerfectLink {
 
                         Deadline deadline = futureStub.getCallOptions().getDeadline();
                         if(deadline == null || !deadline.isExpired()){
+                            try{
+                                Thread.sleep(20);
+                            }catch (InterruptedException e){
+
+                            }
                             echo(request, listenableFuture, type);
                         }else{
                             listenableFuture.onFailure(new TimeoutException());
@@ -243,6 +278,11 @@ public class AuthenticatedPerfectLink {
 
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
+                        try{
+                            Thread.sleep(20);
+                        }catch (InterruptedException e){
+
+                        }
                         echo(request, listenableFuture, type);
                     } else{
                         listenableFuture.onFailure(new TimeoutException());

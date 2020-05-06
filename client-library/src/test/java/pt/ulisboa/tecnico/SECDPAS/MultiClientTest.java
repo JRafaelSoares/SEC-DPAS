@@ -17,7 +17,7 @@ public class MultiClientTest {
 
     private static List<ClientLibrary> list = new ArrayList<>();
     private static PublicKey pub1;
-
+/*
     @AfterClass
     public static void cleanUp(){
         for(ClientLibrary lib : list){
@@ -25,7 +25,7 @@ public class MultiClientTest {
             lib.cleanGeneralPosts();
             lib.shutDown();
         }
-    }
+    }*/
 
     @Test
     public void runAllTests(){
@@ -48,7 +48,7 @@ public class MultiClientTest {
 
         @Test
         public void run(){
-            int num = 100;
+            int num = 25;
             Boolean result = true;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -88,7 +88,7 @@ public class MultiClientTest {
 
         @Test
         public void run(){
-            int num = 100;
+            int num = 25;
             Boolean result = true;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -129,7 +129,7 @@ public class MultiClientTest {
         private static ClientLibrary lib;
         @Test
         public void run(){
-            int num = 100;
+            int num = 25;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -161,7 +161,7 @@ public class MultiClientTest {
         private static ClientLibrary lib;
         @Test
         public void run(){
-            int num = 100;
+            int num = 25;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -192,7 +192,7 @@ public class MultiClientTest {
         private static ClientLibrary lib;
         @Test
         public void run(){
-            int num = 100;
+            int num = 25;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -222,7 +222,7 @@ public class MultiClientTest {
         private static ClientLibrary lib;
         @Test
         public void run(){
-            int num = 100;
+            int num = 25;
             Boolean result = true;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
