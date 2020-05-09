@@ -1,6 +1,5 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
-
 import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.util.concurrent.FutureCallback;

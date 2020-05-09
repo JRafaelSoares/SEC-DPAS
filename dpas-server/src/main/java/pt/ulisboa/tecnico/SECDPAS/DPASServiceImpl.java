@@ -24,7 +24,6 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
@@ -89,6 +88,24 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		load();
+	}
+
+	//for tests
+	public DPASServiceImpl(PrivateKey privateKey, int id, int faults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys){
+		Path currentRelativePath = Paths.get("");
+		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
+		this.privateKey = privateKey;
+		this.serverID = id;
+
+		this.numServers = faults*3+1;
+		this.numFaults = faults;
+
+		this.authenticatedDoubleEchoBroadcasts = new HashMap<>();
+
+		this.serverPublicKeys = new PublicKey[numServers];
+		this.futureStubs = futureStubs;
+		this.serverPublicKeys = serverPublicKeys;
+
 	}
 
 	@Override

@@ -17,7 +17,7 @@ public class MultiClientTest {
 
     private static List<ClientLibrary> list = new ArrayList<>();
     private static PublicKey pub1;
-/*
+
     @AfterClass
     public static void cleanUp(){
         for(ClientLibrary lib : list){
@@ -25,7 +25,7 @@ public class MultiClientTest {
             lib.cleanGeneralPosts();
             lib.shutDown();
         }
-    }*/
+    }
 
     @Test
     public void runAllTests(){
@@ -205,7 +205,7 @@ public class MultiClientTest {
 
                 lib.register();
 
-                Thread.sleep(25000);
+                Thread.sleep(num * 1500);
 
                 Announcement[] announcements = lib.readGeneral(0);
 
@@ -215,44 +215,5 @@ public class MultiClientTest {
                 System.out.println("client5: " + e.getMessage());
             }
         }
-    }
-
-    public static class Client6{
-        /* read Client1 */
-        private static ClientLibrary lib;
-        @Test
-        public void run(){
-            int num = 25;
-            Boolean result = true;
-            try{
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.genKeyPair();
-                PublicKey pub = kp.getPublic();
-                PrivateKey priv = kp.getPrivate();
-
-                lib = new ClientLibrary("localhost", 8080, pub, priv);
-                list.add(lib);
-
-                lib.register();
-
-                Thread.sleep(15000);
-
-                Announcement[] announcements = lib.read(pub1, 0);
-
-                assertEquals(num*2, announcements.length);
-
-                for(int i=0; i<announcements.length; i++){
-                    result = ("message" + i).equals(new String(announcements[i].getPost()));
-                    if(!result) break;
-                }
-
-                assertTrue(result);
-
-            } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
-                System.out.println("client6: " + e.getMessage());
-            }
-        }
-
     }
 }
