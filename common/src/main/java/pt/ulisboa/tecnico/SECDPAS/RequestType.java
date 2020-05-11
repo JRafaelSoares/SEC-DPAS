@@ -117,11 +117,11 @@ class RegisterRequest extends RequestType<Contract.RegisterRequest>{
     }
 }
 
-class EchoRequest extends RequestType<Contract.EchoRequest>{
+class EchoRequest extends RequestType<Contract.EchoRequest> {
     private Contract.EchoRequest request;
 
-    public EchoRequest(Contract.EchoRequest request, String id){
-        super(id);
+    public EchoRequest(Contract.EchoRequest request){
+        super("Echo");
         this.request = request;
     }
 
@@ -136,6 +136,37 @@ class EchoRequest extends RequestType<Contract.EchoRequest>{
             return clientRequest.getServerID() == this.request.getServerID() &&
                    Arrays.compare(clientRequest.getRequest().toByteArray(), this.request.getRequest().toByteArray()) == 0 &&
                    Arrays.compare(clientRequest.getSignature().toByteArray(), this.request.getSignature().toByteArray()) == 0;
+        }
+
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return request.hashCode();
+    }
+}
+
+class ReadyRequest extends RequestType<Contract.ReadyRequest> {
+    private Contract.ReadyRequest request;
+
+    public ReadyRequest(Contract.ReadyRequest request){
+        super("Ready");
+        this.request = request;
+    }
+
+    public Contract.ReadyRequest getRequest(){
+        return request;
+    }
+
+    public boolean equals(Object request){
+        if(request instanceof ReadyRequest){
+            Contract.ReadyRequest clientRequest = ((ReadyRequest) request).getRequest();
+
+            return clientRequest.getServerID() == this.request.getServerID() &&
+                    Arrays.compare(clientRequest.getRequest().toByteArray(), this.request.getRequest().toByteArray()) == 0 &&
+                    Arrays.compare(clientRequest.getAnnouncementSignature().toByteArray(), this.request.getAnnouncementSignature().toByteArray()) == 0 &&
+                    Arrays.compare(clientRequest.getSignature().toByteArray(), this.request.getSignature().toByteArray()) == 0;
         }
 
         return false;

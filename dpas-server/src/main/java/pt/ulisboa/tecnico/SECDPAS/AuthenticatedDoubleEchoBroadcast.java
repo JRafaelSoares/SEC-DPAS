@@ -2,19 +2,24 @@ package pt.ulisboa.tecnico.SECDPAS;
 
 import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
+import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Ints;
+import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.protobuf.ByteString;
+import io.grpc.Context;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class AuthenticatedDoubleEchoBroadcast {
-    private Consumer<RequestType> executor;
+    private BiConsumer<RequestType, HashMap<Integer, byte[]>> executor;
     private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
     private RequestType clientRequest;
     private PublicKey[] serverPublicKeys;
@@ -27,10 +32,10 @@ public class AuthenticatedDoubleEchoBroadcast {
     private AtomicBoolean sentReady;
     private AtomicBoolean hasDelivered;
     private final HashSet<Integer> echos;
-    private final HashSet<Integer> readys;
+    private final HashMap<Integer, byte[]> readys;
     private final CountDownLatch readyCountDownLatch;
 
-    public AuthenticatedDoubleEchoBroadcast(RequestType clientRequest, int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys, PrivateKey serverPrivateKey, Consumer<RequestType> executor){
+    public AuthenticatedDoubleEchoBroadcast(RequestType clientRequest, int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys, PrivateKey serverPrivateKey, BiConsumer<RequestType, HashMap<Integer, byte[]>> executor){
         this.serverID = serverID;
         this.futureStubs = futureStubs;
         this.clientRequest = clientRequest;
@@ -43,7 +48,7 @@ public class AuthenticatedDoubleEchoBroadcast {
         this.hasDelivered = new AtomicBoolean(false);
         this.minResponses = (int)Math.ceil(((double)numServers + numFaults)/2);
         this.echos = new HashSet<>(numServers);
-        this.readys = new HashSet<>(numServers);
+        this.readys = new HashMap<>(numServers);
         this.readyCountDownLatch = new CountDownLatch(1);
         this.executor = executor;
     }
@@ -52,58 +57,74 @@ public class AuthenticatedDoubleEchoBroadcast {
         echos.add(serverID);
 
         if(echos.size() >= minResponses && !sentReady.get()){
-            addReady(this.serverID);
+            addReady(this.serverID, getAnnouncementSignature());
 
-            broadcast("Ready");
+            broadcastReady();
         }
     }
 
-    public synchronized void addReady(int serverID){
-        readys.add(serverID);
+    public synchronized void addReady(int serverID, byte[] announcementSignature){
+        readys.put(serverID, announcementSignature);
 
         // If we have received more than f readys, than at least one correct server has received 2f + 1 echos
         if(readys.size() > numFaults && !sentReady.get()){
-            readys.add(this.serverID);
+            readys.put(this.serverID, getAnnouncementSignature());
 
-            broadcast("Ready");
+            broadcastReady();
         }
 
         if(readys.size() >= minResponses && !hasDelivered.get()){
             hasDelivered.set(true);
-            executor.accept(this.clientRequest);
+            executor.accept(this.clientRequest, readys);
             readyCountDownLatch.countDown();
         }
     }
 
-    public void broadcast(String type){
-        switch(type){
-            case "Echo":
-                synchronized (sentEcho){
-                    if(sentEcho.get()) return;
-                    sentEcho.set(true);
-                }
-                break;
-            case "Ready":
-                synchronized (sentReady){
-                    if(sentReady.get()) return;
-                    sentReady.set(true);
-                }
-                break;
+    public void broadcastEcho(){
+        synchronized (sentEcho){
+            if(sentEcho.get()) return;
+            sentEcho.set(true);
         }
 
-        //TODO- Build signature into echo request
-        Contract.EchoRequest echoRequest = Contract.EchoRequest.newBuilder().setServerID(this.serverID).setRequest(ByteString.copyFrom(SerializationUtils.serialize(clientRequest))).setSignature(ByteString.copyFrom(new byte[0])).build();
+        byte[] serializedClientRequest = SerializationUtils.serialize(clientRequest);
 
-        RequestType request = new EchoRequest(echoRequest, type);
+        byte[] signature = SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(serverID), serializedClientRequest), serverPrivateKey);
 
+        //System.out.println(String.format("\nPreparing ECHO: \n\tServerID = %d\n\tServerID Byte Array = %s\n\tSerialized Client Request = %s\n\tSignature = %s\n", serverID, Arrays.toString(Ints.toByteArray(serverID)), Arrays.toString(serializedClientRequest), Arrays.toString(signature)));
+
+        Contract.EchoRequest echoRequest = Contract.EchoRequest.newBuilder().setServerID(serverID).setRequest(ByteString.copyFrom(serializedClientRequest)).setSignature(ByteString.copyFrom(signature)).build();
+
+        RequestType request = new EchoRequest(echoRequest);
+
+        broadcast(request);
+    }
+
+    public void broadcastReady(){
+
+        synchronized (sentReady){
+            if(sentReady.get()) return;
+            sentReady.set(true);
+        }
+
+        byte[] serializedClientRequest = SerializationUtils.serialize(clientRequest);
+        byte[] announcementSignature = getAnnouncementSignature();
+        byte[] signature = SignatureHandler.publicSign(Bytes.concat(Ints.toByteArray(serverID), announcementSignature, serializedClientRequest), serverPrivateKey);
+
+        Contract.ReadyRequest readyRequest = Contract.ReadyRequest.newBuilder().setServerID(this.serverID).setRequest(ByteString.copyFrom(SerializationUtils.serialize(clientRequest))).setAnnouncementSignature(ByteString.copyFrom(announcementSignature)).setSignature(ByteString.copyFrom(signature)).build();
+
+        RequestType request = new ReadyRequest(readyRequest);
+        broadcast(request);
+    }
+
+    private void broadcast(RequestType request){
         // broadcast to servers other than me with signature
         for (int i = 0; i < numServers; i++) {
             if(i == this.serverID) continue;
-            AuthenticatedPerfectLink perfectLink = new AuthenticatedPerfectLink(futureStubs[i], 0, serverPublicKeys[i], serverPublicKeys[this.serverID]);
+            AuthenticatedPerfectLink perfectLink = new AuthenticatedPerfectLink(futureStubs[i], 0, serverPublicKeys[i], serverPublicKeys[this.serverID], i, minResponses);
 
-            FutureCallback<Contract.ACK> futureCallback = new FutureCallback<>() {
+            FutureCallback<Contract.EchoReadyACK> futureCallback = new FutureCallback<>() {
                 @Override
-                public void onSuccess(Contract.ACK res) {
+                public void onSuccess(Contract.EchoReadyACK res) {
 
                 }
 
@@ -113,7 +134,18 @@ public class AuthenticatedDoubleEchoBroadcast {
                 }
             };
 
-            perfectLink.process(request, futureCallback);
+            Context ctx = Context.current().fork();
+            ctx.run(() -> perfectLink.process(request, futureCallback));
+        }
+    }
+
+    private byte[] getAnnouncementSignature(){
+        if(clientRequest.getId().equals("PostRequest") || clientRequest.getId().equals("PostGeneralRequest")){
+            Contract.PostRequest postRequest = (Contract.PostRequest) clientRequest.getRequest();
+            return SignatureHandler.publicSign(Bytes.concat(postRequest.getPublicKey().toByteArray(), postRequest.getMessage().getBytes(), postRequest.getAnnouncements().toByteArray(), Longs.toByteArray(postRequest.getFreshness()), postRequest.getBoard().getBytes()), this.serverPrivateKey);
+        }
+        else{
+            return new byte[0];
         }
     }
 

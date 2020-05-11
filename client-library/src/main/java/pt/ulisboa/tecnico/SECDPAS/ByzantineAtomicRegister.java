@@ -66,7 +66,7 @@ public class ByzantineAtomicRegister {
             Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
             for(Announcement announcement: announcements){
-                if(announcement.getFreshness() > maxWrite){
+                if(announcement.getFreshness() > maxWrite && verifyAnnouncement(announcement)){
                     maxWrite = announcement.getFreshness();
                 }
             }
@@ -131,5 +131,29 @@ public class ByzantineAtomicRegister {
         byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, Ints.toByteArray(number), Longs.toByteArray(freshness)), this.clientPrivateKey);
 
         return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+    }
+
+    private boolean verifyAnnouncement(Announcement announcement){
+        int count = 0;
+        // verifySignature(serverPublicKeys[entry.getKey()], signature, entry.getValue())
+        byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
+        byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
+        byte[] messageBytes = new String(announcement.getPost()).getBytes();
+        byte[] freshness = Longs.toByteArray(announcement.getFreshness());
+        byte[] boardType = announcement.getBoard().getBytes();
+
+        byte[] message = Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements, freshness, boardType);
+
+        for(Map.Entry<Integer, byte[]> entry : announcement.getServerSignatures().entrySet()){
+            if(SignatureHandler.verifyPublicSignature(message, entry.getValue(), this.serverPublicKey[entry.getKey()])){
+                count++;
+            }
+        }
+
+        if(count < minQuorumResponses){
+            return false;
+        }
+
+        return true;
     }
 }

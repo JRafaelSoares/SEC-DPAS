@@ -3,7 +3,9 @@ package pt.ulisboa.tecnico.SECDPAS;
 
 import java.io.Serializable;
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class Announcement implements Serializable {
 
@@ -17,12 +19,13 @@ public class Announcement implements Serializable {
     private String announcementID;
 
     private byte[] signature;
+    private HashMap<Integer, byte[]> serverSignatures;
 
     private long freshness;
 
     private String board;
 
-    public Announcement(char[] post, PublicKey publicKey, String[] references, String announcementID, byte[] signature, long freshness, String board){
+    public Announcement(char[] post, PublicKey publicKey, String[] references, String announcementID, byte[] signature, long freshness, String board, HashMap<Integer, byte[]> serverSignatures){
         this.post = post;
         this.publicKey = publicKey;
         this.references = references;
@@ -30,10 +33,11 @@ public class Announcement implements Serializable {
         this.signature = signature;
         this.freshness = freshness;
         this.board = board;
+        this.serverSignatures = serverSignatures;
     }
 
-    public Announcement(char[] post, PublicKey publicKey, String announcementID, byte[] signature, long freshness, String board){
-        this(post, publicKey, new String[0], announcementID, signature, freshness, board);
+    public Announcement(char[] post, PublicKey publicKey, String announcementID, byte[] signature, long freshness, String board, HashMap<Integer, byte[]> serverSignatures){
+        this(post, publicKey, new String[0], announcementID, signature, freshness, board, serverSignatures);
     }
 
     public char[] getPost(){
@@ -54,6 +58,10 @@ public class Announcement implements Serializable {
 
     public byte[] getSignature() {
         return signature;
+    }
+
+    public HashMap<Integer, byte[]> getServerSignatures(){
+        return serverSignatures;
     }
 
     public long getFreshness() {

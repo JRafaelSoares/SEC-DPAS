@@ -30,7 +30,7 @@ public class AuthenticatedDoubleEchoBroadcastTest {
     private static PrivateKey clientPrivateKey;
 
     @BeforeClass
-    public void setUp() {
+    public static void setUp() {
         /*
         try {
 

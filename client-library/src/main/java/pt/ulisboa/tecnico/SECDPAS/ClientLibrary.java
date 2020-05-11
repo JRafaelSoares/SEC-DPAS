@@ -63,6 +63,8 @@ public class ClientLibrary {
 		this.readFreshnessHandler = new FreshnessHandler();
 		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
+
+
 		Path currentRelativePath = Paths.get("");
 
 		//Stub and certificate for each server
@@ -77,6 +79,7 @@ public class ClientLibrary {
 				FileInputStream is = new FileInputStream (String.format("%s/src/main/security/certificates/server/certServer%d.der", currentRelativePath.toAbsolutePath().toString(), server));
 				X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
 				this.serverPublicKey[server] = cer.getPublicKey();
+
 			} catch (CertificateException | FileNotFoundException e){
 				throw new CertificateInvalidException(e.getMessage());
 			}

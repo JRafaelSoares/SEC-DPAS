@@ -58,27 +58,24 @@ public class ByzantineNNRegularRegister {
         for(Contract.ReadResponse response: responses){
             Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
             for(Announcement announcement: announcements){
-                if(!list.contains(announcement)) {
+                if(!list.contains(announcement) && verifyAnnouncement(announcement)) {
                     list.add(announcement);
                 }
             }
         }
 
-        list.sort(new Comparator<>() {
-            @Override
-            public int compare(Announcement o1, Announcement o2) {
-                if(o1.getFreshness() > o2.getFreshness()){
-                    return 1;
-                }else{
-                    if(o1.getFreshness() == o2.getFreshness()){
-                        if(o1.getPublicKey().toString().compareTo(o2.getPublicKey().toString()) > 0){
-                            return 1;
-                        }else{
-                            return -1;
-                        }
+        list.sort((o1, o2) -> {
+            if(o1.getFreshness() > o2.getFreshness()){
+                return 1;
+            }else{
+                if(o1.getFreshness() == o2.getFreshness()){
+                    if(o1.getPublicKey().toString().compareTo(o2.getPublicKey().toString()) > 0){
+                        return 1;
                     }else{
                         return -1;
                     }
+                }else{
+                    return -1;
                 }
             }
         });
@@ -128,6 +125,30 @@ public class ByzantineNNRegularRegister {
 
         return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
+    }
+
+    private boolean verifyAnnouncement(Announcement announcement){
+        int count = 0;
+        // verifySignature(serverPublicKeys[entry.getKey()], signature, entry.getValue())
+        byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
+        byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
+        byte[] messageBytes = new String(announcement.getPost()).getBytes();
+        byte[] freshness = Longs.toByteArray(announcement.getFreshness());
+        byte[] boardType = announcement.getBoard().getBytes();
+
+        byte[] message = Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements, freshness, boardType);
+
+        for(Map.Entry<Integer, byte[]> entry : announcement.getServerSignatures().entrySet()){
+            if(SignatureHandler.verifyPublicSignature(message, entry.getValue(), this.serverPublicKey[entry.getKey()])){
+                count++;
+            }
+        }
+
+        if(count < minQuorumResponses){
+            return false;
+        }
+
+        return true;
     }
 
 }

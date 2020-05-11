@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.SECDPAS;
 import SECDPAS.grpc.Contract;
 import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -11,10 +12,15 @@ import com.google.protobuf.ByteString;
 import io.grpc.Context;
 import io.grpc.Deadline;
 import io.grpc.StatusRuntimeException;
+import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
@@ -24,6 +30,11 @@ public class AuthenticatedPerfectLink {
     private long freshness;
     private PublicKey serverPublicKey;
     private PublicKey clientPublicKey;
+
+    private int destinationServerID = 0;
+    private int minResponses = 0;
+
+    private MessageDigest messageHasher;
 
     private String privateBoardId = "0";
     private String generalBoardId = "1";
@@ -38,6 +49,16 @@ public class AuthenticatedPerfectLink {
         this.freshness = freshness;
         this.serverPublicKey = serverPublicKey;
         this.clientPublicKey = clientKey;
+
+        try {
+            this.messageHasher = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {}
+    }
+
+    AuthenticatedPerfectLink(DPASServiceGrpc.DPASServiceFutureStub futureStub, long freshness, PublicKey serverPublicKey, PublicKey clientKey, int destinationServerID, int minResponses){
+        this(futureStub, freshness, serverPublicKey, clientKey);
+        this.destinationServerID = destinationServerID;
+        this.minResponses = minResponses;
     }
 
     public void process(RequestType request, FutureCallback<?> listenableFuture){
@@ -58,10 +79,10 @@ public class AuthenticatedPerfectLink {
                 read((Contract.ReadRequest) request.getRequest(), (FutureCallback<Contract.ReadResponse>) listenableFuture, "ReadGeneralRequest");
                 break;
             case "Echo":
-                echo((Contract.EchoRequest) request.getRequest(), (FutureCallback<Contract.ACK>) listenableFuture, "Echo");
+                echo((Contract.EchoRequest) request.getRequest(), (FutureCallback<Contract.EchoReadyACK>) listenableFuture);
                 break;
             case "Ready":
-                echo((Contract.EchoRequest) request.getRequest(), (FutureCallback<Contract.ACK>) listenableFuture, "Ready");
+                ready((Contract.ReadyRequest) request.getRequest(), (FutureCallback<Contract.EchoReadyACK>) listenableFuture);
                 break;
         }
     }
@@ -236,45 +257,23 @@ public class AuthenticatedPerfectLink {
 
     }
 
-    private void echo(Contract.EchoRequest request, FutureCallback<Contract.ACK> listenableFuture, String type) throws StatusRuntimeException {
+    private void echo(Contract.EchoRequest request, FutureCallback<Contract.EchoReadyACK> listenableFuture) throws StatusRuntimeException {
         numIterations++;
 
-        Context ctx = Context.current().fork();
-        ctx.run(() -> {
-            ListenableFuture<Contract.ACK> listenable;
+        ListenableFuture<Contract.EchoReadyACK> listenable;
 
-            if(type.equals("Echo")){
-                listenable = futureStub.echo(request);
-            } else{
-                listenable = futureStub.ready(request);
-            }
+        listenable = futureStub.echo(request);
 
-            Futures.addCallback(listenable, new FutureCallback<>() {
-                @Override
-                public void onSuccess(Contract.@Nullable ACK ack) {
-                    if(verifyEcho(ack)){
-                        if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Passed check");
-                        listenableFuture.onSuccess(ack);
-                    } else{
-                        if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Failed check");
+        byte[] requestHash = messageHasher.digest(request.getRequest().toByteArray());
 
-                        Deadline deadline = futureStub.getCallOptions().getDeadline();
-                        if(deadline == null || !deadline.isExpired()){
-                            try{
-                                Thread.sleep(20);
-                            }catch (InterruptedException e){
-
-                            }
-                            echo(request, listenableFuture, type);
-                        }else{
-                            listenableFuture.onFailure(new TimeoutException());
-                        }
-                    }
-                }
-
-                @Override
-                public void onFailure(Throwable t) {
-                    if(debug) System.out.println("[APL][" + type.toUpperCase() + "] Exception Thrown");
+        Futures.addCallback(listenable, new FutureCallback<>() {
+            @Override
+            public void onSuccess(Contract.@Nullable EchoReadyACK ack) {
+                if(verifyEchoReady(ack, destinationServerID, "Echo", requestHash)){
+                    if(debug) System.out.println("[APL][ECHO] Passed check");
+                    listenableFuture.onSuccess(ack);
+                } else{
+                    if(debug) System.out.println("[APL][ECHO] Failed check");
 
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
@@ -283,13 +282,81 @@ public class AuthenticatedPerfectLink {
                         }catch (InterruptedException e){
 
                         }
-                        echo(request, listenableFuture, type);
-                    } else{
+                        echo(request, listenableFuture);
+                    }else{
                         listenableFuture.onFailure(new TimeoutException());
                     }
                 }
-            }, Executors.newSingleThreadExecutor());
-        });
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                if(debug) System.out.println("[APL][ECHO] Exception Thrown");
+
+                Deadline deadline = futureStub.getCallOptions().getDeadline();
+                if(deadline == null || !deadline.isExpired()){
+                    try{
+                        Thread.sleep(20);
+                    }catch (InterruptedException e){
+
+                    }
+                    echo(request, listenableFuture);
+                } else{
+                    listenableFuture.onFailure(new TimeoutException());
+                }
+            }
+        }, Executors.newSingleThreadExecutor());
+    }
+
+    private void ready(Contract.ReadyRequest request, FutureCallback<Contract.EchoReadyACK> listenableFuture) throws StatusRuntimeException {
+        numIterations++;
+
+        ListenableFuture<Contract.EchoReadyACK> listenable;
+
+        listenable = futureStub.ready(request);
+
+        byte[] requestHash = messageHasher.digest(request.getRequest().toByteArray());
+
+        Futures.addCallback(listenable, new FutureCallback<>() {
+            @Override
+            public void onSuccess(Contract.@Nullable EchoReadyACK ack) {
+                if(verifyEchoReady(ack, destinationServerID, "Ready", requestHash)){
+                    if(debug) System.out.println("[APL][READY] Passed check");
+                    listenableFuture.onSuccess(ack);
+                } else{
+                    if(debug) System.out.println("[APL][READY] Failed check");
+
+                    Deadline deadline = futureStub.getCallOptions().getDeadline();
+                    if(deadline == null || !deadline.isExpired()){
+                        try{
+                            Thread.sleep(20);
+                        }catch (InterruptedException e){
+
+                        }
+                        ready(request, listenableFuture);
+                    }else{
+                        listenableFuture.onFailure(new TimeoutException());
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                if(debug) System.out.println("[APL][READY] Exception Thrown");
+
+                Deadline deadline = futureStub.getCallOptions().getDeadline();
+                if(deadline == null || !deadline.isExpired()){
+                    try{
+                        Thread.sleep(20);
+                    }catch (InterruptedException e){
+
+                    }
+                    ready(request, listenableFuture);
+                } else{
+                    listenableFuture.onFailure(new TimeoutException());
+                }
+            }
+        }, Executors.newSingleThreadExecutor());
     }
 
 
@@ -325,9 +392,13 @@ public class AuthenticatedPerfectLink {
 
     }
 
-    private boolean verifyEcho(Contract.ACK response){
-        // TODO- Properly check if Echo response is correct (Signature)
-        return true;
+    private boolean verifyEchoReady(Contract.EchoReadyACK response, int serverID, String type, byte[] requestHash){
+        byte[] responseRequestHash = response.getRequestHash().toByteArray();
+
+        return response.getServerID() == serverID &&
+                response.getType().equals(type) &&
+                Arrays.equals(responseRequestHash, requestHash) &&
+                SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(response.getServerID()), response.getType().getBytes(), responseRequestHash), response.getSignature().toByteArray(), serverPublicKey);
     }
 
     private byte[] getReadSignature(Contract.ReadResponse response, String board){
@@ -352,7 +423,13 @@ public class AuthenticatedPerfectLink {
 
     private boolean verifyAnnouncementsSignature(byte[] announcementBytes, String board){
 
-        Announcement[] announcements = SerializationUtils.deserialize(announcementBytes);
+        Announcement[] announcements;
+
+        try{
+            announcements = SerializationUtils.deserialize(announcementBytes);
+        } catch (SerializationException e){
+            return false;
+        }
 
         for(Announcement announcement : announcements){
             byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
@@ -367,6 +444,7 @@ public class AuthenticatedPerfectLink {
                 if(debug) System.out.println("[APL][ANNOUNCEMENT] Failed Announcement Signature Check");
                 return false;
             }
+
             //Extra checks - If from correct type of board and if private board, from my own
 
             if(board.equals(this.privateBoardId)){
