@@ -17,24 +17,27 @@ public class DPASClient {
 
 	public static void main(String[] args) throws Exception {
 
-		if(args.length != 5){
+		if(args.length != 6){
 			System.out.println("Invalid number of arguments");
 			return;
 		}
 
 		final String host = args[0];
 		final int port = Integer.parseInt(args[1]);
+		final int clientID = Integer.parseInt(args[5]);
+		final String alias = String.format("%s%d", args[3], clientID);
 		System.out.println("HOST: " + host + " PORT: " + port);
 
 		// Get java key store
 		KeyStore keyStore = KeyStore.getInstance("JKS");
 		Path currentRelativePath = Paths.get("");
-		InputStream keyStoreData = new FileInputStream(currentRelativePath.toAbsolutePath().toString() + "/src/main/security/keys/clientKeyStore.jks");
+		InputStream keyStoreData = new FileInputStream(String.format("%s/src/main/security/keys/clientKeyStore%d.jks", currentRelativePath.toAbsolutePath().toString(), clientID));
 
 		// Obtain private key
-		keyStore.load(keyStoreData, args[2].toCharArray());
-		KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(args[2].toCharArray());
-		KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(args[3], entryPassword);
+		char[] password = String.format("%s%d", args[2], clientID).toCharArray();
+		keyStore.load(keyStoreData, password);
+		KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(password);
+		KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(alias, entryPassword);
 
 		//Obtain my public keys
 		PublicKey myPublicKey = privateKeyEntry.getCertificate().getPublicKey();
