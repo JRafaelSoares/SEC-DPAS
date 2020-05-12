@@ -21,8 +21,9 @@
         <server.host>localhost</server.host>
         <server.port>8080</server.port>
         <keyStore.password>clientKeyStore</keyStore.password>
-        <keyStore.alias>clientKeyPair1</keyStore.alias>
+        <keyStore.alias>clientKeyPair</keyStore.alias>
         <faults>1</faults>
+        <client.id>1</client.id>
     </properties>
 
     <dependencies>
@@ -72,6 +73,7 @@
                         <argument>${keyStore.password}</argument>
                         <argument>${keyStore.alias}</argument>
                         <argument>${faults}</argument>
+                        <argument>${client.id}</argument>
                     </arguments>
                 </configuration>
             </plugin>
