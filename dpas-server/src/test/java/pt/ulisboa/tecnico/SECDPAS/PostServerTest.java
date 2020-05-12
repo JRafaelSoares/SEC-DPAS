@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.SECDPAS;
 
 import SECDPAS.grpc.Contract;
 import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
@@ -155,6 +156,93 @@ public class PostServerTest {
 	}
 
 	@Test
+	public void postCorrectWithReferencesTest() {
+		final boolean[] testCorrect = new boolean[3];
+		final String[] reference = new String[1];
+		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
+			int i = 0;
+
+			@Override
+			public void onNext(Contract.ACK ack) {
+				testCorrect[i] =true;
+				i+=2;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[i]=false;
+				i+=2;
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+
+		StreamObserver<Contract.ReadResponse> readObserver = new StreamObserver<Contract.ReadResponse>() {
+			@Override
+			public void onNext(Contract.ReadResponse response) {
+				Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+				reference[0] = announcements[0].getAnnouncementID();
+				testCorrect[1] = true;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[1] = false;
+
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+
+		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		assertTrue(testCorrect[0]);
+
+		server.read(getReadRequest(clientPublicKey, clientPrivateKey, clientPublicKey, 1, 0), readObserver);
+		assertTrue(testCorrect[1]);
+
+		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), reference, 1), observer);
+		assertTrue(testCorrect[2]);
+	}
+
+	@Test
+	public void postWrongReferenceTest() {
+		final boolean[] testCorrect = new boolean[1];
+
+		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
+			@Override
+			public void onNext(Contract.ACK ack) {
+				testCorrect[0] =true;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[0]=false;
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+		String[] references = {"WrongReference"};
+		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), references, 0), observer);
+		assertFalse(testCorrect[0]);
+	}
+
+	/*****************************/
+	/** Freshness Related Tests **/
+	/*****************************/
+
+	@Test
 	public void postReplyAttackTest() {
 		final boolean[] testCorrect = new boolean[2];
 
@@ -214,6 +302,16 @@ public class PostServerTest {
 		assertTrue(testCorrect[0]);
 		assertFalse(testCorrect[1]);
 
+	}
+
+	private Contract.ReadRequest getReadRequest(PublicKey clientPublicKey, PrivateKey clientPrivateKey, PublicKey clientTargetKey, int number, long freshness){
+		byte[] targetPublicKey = SerializationUtils.serialize(clientTargetKey);
+		byte[] userPublicKey = SerializationUtils.serialize(clientPublicKey);
+
+		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, Ints.toByteArray(number), Longs.toByteArray(freshness)), clientPrivateKey);
+
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
 	private Contract.PostRequest getPostRequest(PublicKey clientPublicKey, PrivateKey clientPrivateKey, char[] message, String[] references, long freshness) {
