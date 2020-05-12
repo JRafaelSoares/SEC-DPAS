@@ -120,6 +120,49 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 	}
 
+	//Test Constructor 2
+	public DPASServiceImpl(PrivateKey privateKey, int faults){
+		Path currentRelativePath = Paths.get("");
+		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
+		this.privateKey = privateKey;
+		this.serverID = 0;
+
+		this.numServers = faults*3+1;
+		this.numFaults = faults;
+
+		this.authenticatedDoubleEchoBroadcasts = new HashMap<>();
+
+		this.serverPublicKeys = new PublicKey[numServers];
+
+		try {
+			this.messageHasher = MessageDigest.getInstance("SHA-256");
+		} catch (NoSuchAlgorithmException e) {
+		}
+
+		ManagedChannel[] channel = new ManagedChannel[numServers];
+		this.serverPublicKeys = new PublicKey[numServers];
+		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+
+		//Stub and certificate for each server
+		for(int server = 0; server < numServers; server++){
+			String target = host + ":" + (port+server);
+			channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
+			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);//.withDeadlineAfter(20, TimeUnit.SECONDS);
+
+			//Get certificate
+			try{
+				CertificateFactory fact = CertificateFactory.getInstance("X.509");
+				FileInputStream is = new FileInputStream (String.format("%s/src/main/security/certificates/certServer%d.der", currentRelativePath.toAbsolutePath().toString(), server));
+				X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
+				this.serverPublicKeys[server] = cer.getPublicKey();
+			} catch (CertificateException | FileNotFoundException e){
+				System.out.println("Certificate for server " + server + " could not be loaded.");
+				//throw new CertificateInvalidException(e.getMessage());
+			}
+		}
+
+	}
+
 	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Contract.ACK> responseObserver) {
 		if(debug != 0) System.out.println("[REGISTER] Client registering.\n");
