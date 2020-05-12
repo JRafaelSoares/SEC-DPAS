@@ -26,6 +26,7 @@ public class ByzantineRegularRegister {
 
         try{
             qr.waitForQuorum();
+
             return new ArrayList<>(qr.getSuccesses().values());
 
         }catch (InterruptedException e){

@@ -60,13 +60,19 @@ public class ByzantineAtomicRegister {
 
     private Announcement[] getHighestReads(ArrayList<Contract.ReadResponse> responses, int numberAnnouncements){
 
+        ArrayList<Announcement> announcements = new ArrayList<>();
+
         long maxWrite = -1;
 
         for(Contract.ReadResponse response: responses){
-            Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+            Announcement[] ann = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
 
-            for(Announcement announcement: announcements){
-                if(announcement.getFreshness() > maxWrite && verifyAnnouncement(announcement)){
+            for(Announcement announcement: ann){
+                if(!verifyAnnouncement(announcement)){
+                    continue;
+                }
+                announcements.add(announcement);
+                if(announcement.getFreshness() > maxWrite){
                     maxWrite = announcement.getFreshness();
                 }
             }
@@ -82,24 +88,19 @@ public class ByzantineAtomicRegister {
 
         //Inefficient AND ugly but works
         int numAnnouncements = 0;
-        for(Contract.ReadResponse response2: responses){
-            Announcement[] announcements = SerializationUtils.deserialize(response2.getAnnouncements().toByteArray());
 
-            for(Announcement announcement: announcements){
-                long position = announcement.getFreshness() - slide;
-                if(announcement.getFreshness() - slide >= 0 && response[(int)position] == null){
-                    response[(int)position] = announcement;
-                    numAnnouncements++;
-                }
-
-                if(numAnnouncements == numAnnouncementsToGet){
-                    break;
-                }
+        for(Announcement announcement: announcements){
+            long position = announcement.getFreshness() - slide;
+            if(announcement.getFreshness() - slide >= 0 && response[(int)position] == null){
+                response[(int)position] = announcement;
+                numAnnouncements++;
             }
+
             if(numAnnouncements == numAnnouncementsToGet){
                 break;
             }
         }
+
         return response;
     }
 

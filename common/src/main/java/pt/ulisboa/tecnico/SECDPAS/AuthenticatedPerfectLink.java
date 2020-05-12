@@ -463,6 +463,4 @@ public class AuthenticatedPerfectLink {
         numIterations = 0;
         return aux;
     }
-
-    //TODO - Add timeout from too much trying (use numIterations?)
 }
