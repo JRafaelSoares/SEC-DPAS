@@ -25,13 +25,14 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.*;
 
-public class ByzantineNNRegularRegisterTest {
+    public class ByzantineNNRegularRegisterTest {
 
     private static ByzantineNNRegularRegister regularRegister;
     private static int numServers;
     private static int numFaults;
     private static DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
     private static PublicKey[] serverPublicKeys;
+    private static PrivateKey[] serverPrivateKeys;
     private static FreshnessHandler readFreshnessHandler;
     private static PublicKey clientPublicKey;
     private static PrivateKey clientPrivateKey;
@@ -53,13 +54,20 @@ public class ByzantineNNRegularRegisterTest {
 
             futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
             serverPublicKeys = new PublicKey[numServers];
+            serverPrivateKeys = new PrivateKey[numServers];
             readFreshnessHandler = new FreshnessHandler();
+
+            for(int i = 0; i < numServers; i++) {
+                kp = kpg.generateKeyPair();
+                serverPublicKeys[i] = kp.getPublic();
+                serverPrivateKeys[i] = kp.getPrivate();
+            }
 
         }catch (Exception e){
             System.out.println("Unable to step up test");
         }
     }
-/*
+
     @Test
     public void successReadTest(){
         try{
@@ -67,16 +75,11 @@ public class ByzantineNNRegularRegisterTest {
             //set up test
 
             for(int i = 0; i < numServers; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
 
                 //read response
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", i, numServers);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
@@ -111,34 +114,24 @@ public class ByzantineNNRegularRegisterTest {
             //set up test
             readFreshnessHandler = new FreshnessHandler();
 
-            for(int i = 0; i < numServers-numFaults; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = numFaults; i < numServers; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
 
                 //read response
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", i, numServers-numFaults);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
             }
 
-            for(int i = numServers-numFaults; i < numServers; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = 0; i < numFaults; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
                 when(futureStubs[i].getCallOptions()).thenReturn(CallOptions.DEFAULT.withDeadline(deadline));
 
                 //read response
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness()-1, "1", privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness()-5, "1", i, numServers-numFaults);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
@@ -156,11 +149,11 @@ public class ByzantineNNRegularRegisterTest {
             Assert.assertEquals("Message", new String(announcements[0].getPost()));
             Assert.assertEquals(0, announcements[0].getFreshness());
 
-            for(int i=0; i < numServers-numFaults; i++){
+            for(int i=numServers-numFaults; i < numServers; i++){
                 verify(futureStubs[i], times(1)).readGeneral(any());
             }
 
-            for(int i=numServers-numFaults; i < numServers; i++){
+            for(int i=0; i < numServers-numFaults; i++){
                 verify(futureStubs[i], atLeast(1)).readGeneral(any());
             }
 
@@ -177,28 +170,18 @@ public class ByzantineNNRegularRegisterTest {
             //set up test
             readFreshnessHandler = new FreshnessHandler();
 
-            for(int i = 0; i < numServers-numFaults; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = numFaults; i < numServers; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
 
                 //read response
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", i, numServers-numFaults);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
             }
 
-            for(int i = numServers-numFaults; i < numServers; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = 0; i < numFaults; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
                 when(futureStubs[i].getCallOptions()).thenReturn(CallOptions.DEFAULT.withDeadline(deadline));
@@ -212,7 +195,7 @@ public class ByzantineNNRegularRegisterTest {
                 byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
 
                 byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), typeBoard.getBytes());
-                byte[] signature = SignatureHandler.publicSign(message, privServer);
+                byte[] signature = SignatureHandler.publicSign(message, serverPrivateKeys[i]);
 
                 Contract.ReadResponse correctReadResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -250,27 +233,17 @@ public class ByzantineNNRegularRegisterTest {
             readFreshnessHandler = new FreshnessHandler();
 
             for(int i = 0; i < numServers-numFaults; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
 
                 //read response
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), "1", i, numServers-numFaults);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
             }
 
             for(int i = numServers-numFaults; i < numServers; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
                 when(futureStubs[i].getCallOptions()).thenReturn(CallOptions.DEFAULT.withDeadline(deadline));
@@ -291,7 +264,7 @@ public class ByzantineNNRegularRegisterTest {
                 byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
 
                 byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), typeBoard.getBytes());
-                byte[] signature = SignatureHandler.publicSign(message, privServer);
+                byte[] signature = SignatureHandler.publicSign(message, serverPrivateKeys[i]);
 
                 Contract.ReadResponse correctReadResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -335,32 +308,35 @@ public class ByzantineNNRegularRegisterTest {
             PublicKey newClientKey = kp.getPublic();
             PrivateKey newClientPrivateKey = kp.getPrivate();
 
+            HashMap<Integer, byte[]> hashMap0 = getHashMapAnnouncements(clientPublicKey, "post0", freshness, typeBoard, numServers);
+            HashMap<Integer, byte[]> hashMap1 = getHashMapAnnouncements(clientPublicKey, "post1", freshness+1, typeBoard, numServers);
+            HashMap<Integer, byte[]> hashMap2 = getHashMapAnnouncements(clientPublicKey, "post2", freshness+2, typeBoard, numServers);
+            HashMap<Integer, byte[]> hashMap3 = getHashMapAnnouncements(newClientKey, "post3", freshness+2, typeBoard, numServers);
+
+
             byte[] messageSignature1 = SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(clientPublicKey), "post0".getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness), typeBoard.getBytes()), clientPrivateKey);
             byte[] messageSignature2 = SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(clientPublicKey), "post1".getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness+1), typeBoard.getBytes()), clientPrivateKey);
             byte[] messageSignature3 = SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(clientPublicKey), "post2".getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness+2), typeBoard.getBytes()), clientPrivateKey);
             byte[] messageSignature4 = SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(newClientKey), "post3".getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness+2), typeBoard.getBytes()), newClientPrivateKey);
 
-            for(int i = 0; i < numServers-numFaults; i++){
-                kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = numFaults; i < numServers; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
 
                 //read response
                 Announcement[] announcements = new Announcement[4];
 
-                announcements[0] = new Announcement("post0".toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness, typeBoard), messageSignature1, freshness, typeBoard, new HashMap<>());
-                announcements[1] = new Announcement("post1".toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness+1, typeBoard), messageSignature2, freshness+1, typeBoard, new HashMap<>());
-                announcements[2] = new Announcement("post2".toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness+2, typeBoard), messageSignature3, freshness+2, typeBoard, new HashMap<>());
-                announcements[3] = new Announcement("post3".toCharArray(), newClientKey, new String[0], getAnnouncementId(newClientKey, freshness+2, typeBoard), messageSignature4, freshness+2, typeBoard, new HashMap<>());
+                announcements[0] = new Announcement("post0".toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness, typeBoard), messageSignature1, freshness, typeBoard, hashMap0);
+                announcements[1] = new Announcement("post1".toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness+1, typeBoard), messageSignature2, freshness+1, typeBoard, hashMap1);
+                announcements[2] = new Announcement("post2".toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness+2, typeBoard), messageSignature3, freshness+2, typeBoard, hashMap2);
+                announcements[3] = new Announcement("post3".toCharArray(), newClientKey, new String[0], getAnnouncementId(newClientKey, freshness+2, typeBoard), messageSignature4, freshness+2, typeBoard, hashMap3);
 
                 long responseFreshness = readFreshnessHandler.getFreshness();
 
                 byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
 
                 byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(responseFreshness), typeBoard.getBytes());
-                byte[] signature = SignatureHandler.publicSign(message, privServer);
+                byte[] signature = SignatureHandler.publicSign(message, serverPrivateKeys[i]);
 
                 Contract.ReadResponse correctReadResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(responseFreshness).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -368,10 +344,7 @@ public class ByzantineNNRegularRegisterTest {
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
             }
 
-            for(int i = numServers-numFaults; i < numServers; i++){
-                kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = 0; i < numFaults; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
                 when(futureStubs[i].getCallOptions()).thenReturn(CallOptions.DEFAULT.withDeadline(deadline));
@@ -387,7 +360,7 @@ public class ByzantineNNRegularRegisterTest {
                 byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
 
                 byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), typeBoard.getBytes());
-                byte[] signature = SignatureHandler.publicSign(message, privServer);
+                byte[] signature = SignatureHandler.publicSign(message, serverPrivateKeys[i]);
 
                 Contract.ReadResponse correctReadResponse = Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
 
@@ -436,25 +409,20 @@ public class ByzantineNNRegularRegisterTest {
             //set up
 
             for(int i = 0; i < numServers; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
 
                 //read response
                 String typeBoard = "1";
 
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), typeBoard, privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), typeBoard, i, numServers-numFaults);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
 
                 //post response
 
-                Contract.ACK correctPostResponse = buildACKResponse(typeBoard, privServer, readFreshnessHandler.getFreshness()+1);
+                Contract.ACK correctPostResponse = buildACKResponse(typeBoard, serverPrivateKeys[i], readFreshnessHandler.getFreshness()+1);
 
                 ListenableFuture<Contract.ACK> successFuturePostAnswer = Futures.immediateFuture(correctPostResponse);
                 when(futureStubs[i].postGeneral(isA(Contract.PostRequest.class))).thenReturn(successFuturePostAnswer);
@@ -486,57 +454,47 @@ public class ByzantineNNRegularRegisterTest {
 
             //set up
 
+            String typeBoard = "1";
+
             for(int i=0; i<10; i++){
                 readFreshnessHandler.incrementFreshness();
             }
 
-            for(int i = 0; i < numServers-numFaults; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = numFaults; i < numServers; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
 
                 //read response
-                String typeBoard = "1";
 
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), typeBoard, privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness(), typeBoard, i, numServers-numFaults);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
 
                 //post response
 
-                Contract.ACK correctPostResponse = buildACKResponse(typeBoard, privServer, readFreshnessHandler.getFreshness()+1);
+                Contract.ACK correctPostResponse = buildACKResponse(typeBoard, serverPrivateKeys[i], readFreshnessHandler.getFreshness()+1);
 
                 ListenableFuture<Contract.ACK> successFuturePostAnswer = Futures.immediateFuture(correctPostResponse);
                 when(futureStubs[i].postGeneral(isA(Contract.PostRequest.class))).thenReturn(successFuturePostAnswer);
 
             }
 
-            for(int i = numServers-numFaults; i < numServers; i++){
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.generateKeyPair();
-                serverPublicKeys[i] = kp.getPublic();
-                PrivateKey privServer = kp.getPrivate();
+            for(int i = 0; i < numFaults; i++){
 
                 futureStubs[i] = mock(DPASServiceGrpc.DPASServiceFutureStub.class);
                 when(futureStubs[i].getCallOptions()).thenReturn(CallOptions.DEFAULT.withDeadline(deadline));
 
                 //read response
-                String typeBoard = "1";
 
-                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness()-1, typeBoard, privServer);
+                Contract.ReadResponse correctReadResponse = buildReadResponse("Message", readFreshnessHandler.getFreshness()-1, typeBoard, i, numServers-numFaults);
 
                 ListenableFuture<Contract.ReadResponse> successFutureReadAnswer = Futures.immediateFuture(correctReadResponse);
                 when(futureStubs[i].readGeneral(isA(Contract.ReadRequest.class))).thenReturn(successFutureReadAnswer);
 
                 //post response
 
-                Contract.ACK correctPostResponse = buildACKResponse(typeBoard, privServer, readFreshnessHandler.getFreshness());
+                Contract.ACK correctPostResponse = buildACKResponse(typeBoard, serverPrivateKeys[i], readFreshnessHandler.getFreshness());
 
                 ListenableFuture<Contract.ACK> successFuturePostAnswer = Futures.immediateFuture(correctPostResponse);
                 when(futureStubs[i].postGeneral(isA(Contract.PostRequest.class))).thenReturn(successFuturePostAnswer);
@@ -553,12 +511,12 @@ public class ByzantineNNRegularRegisterTest {
 
             regularRegister.write("hi there".toCharArray(), new String[0]);
 
-            for(int i=0; i < numServers-numFaults; i++){
+            for(int i=numFaults; i < numServers; i++){
                 verify(futureStubs[i], times(1)).readGeneral(any());
                 verify(futureStubs[i], times(1)).postGeneral(any());
             }
 
-            for(int i=numServers-numFaults; i < numServers; i++){
+            for(int i=0; i < numFaults; i++){
                 verify(futureStubs[i], atLeast(1)).readGeneral(any());
                 verify(futureStubs[i], atLeast(1)).postGeneral(any());
             }
@@ -573,18 +531,20 @@ public class ByzantineNNRegularRegisterTest {
         return user.toString() + freshness + id;
     }
 
-    private Contract.ReadResponse buildReadResponse(String post, long freshness, String typeBoard, PrivateKey privServer){
-        byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(clientPublicKey), post.getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness), typeBoard.getBytes()), clientPrivateKey);
+        private Contract.ReadResponse buildReadResponse(String post, long freshness, String typeBoard, int idServer, int numServers){
+            byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(clientPublicKey), post.getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness), typeBoard.getBytes()), clientPrivateKey);
 
-        Announcement[] announcements = new Announcement[1];
-        announcements[0] = new Announcement(post.toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness, typeBoard), messageSignature, freshness, typeBoard, new HashMap<>());
-        byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
+            HashMap<Integer, byte[]> hashMap = getHashMapAnnouncements(clientPublicKey, post, freshness, typeBoard, numServers);
 
-        byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), typeBoard.getBytes());
-        byte[] signature = SignatureHandler.publicSign(message, privServer);
+            Announcement[] announcements = new Announcement[1];
+            announcements[0] = new Announcement(post.toCharArray(), clientPublicKey, new String[0], getAnnouncementId(clientPublicKey, freshness, typeBoard), messageSignature, freshness, typeBoard, hashMap);
+            byte[] serializedAnnouncements = SerializationUtils.serialize(announcements);
 
-        return Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
-    }
+            byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), serializedAnnouncements, Longs.toByteArray(freshness), typeBoard.getBytes());
+            byte[] signature = SignatureHandler.publicSign(message, serverPrivateKeys[idServer]);
+
+            return Contract.ReadResponse.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setAnnouncements(ByteString.copyFrom(serializedAnnouncements)).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+        }
 
     private Contract.ACK buildACKResponse(String typeBoard, PrivateKey privServer, long freshness){
         byte[] message = Bytes.concat(SerializationUtils.serialize(clientPublicKey), Longs.toByteArray(freshness), typeBoard.getBytes());
@@ -592,5 +552,15 @@ public class ByzantineNNRegularRegisterTest {
 
         return Contract.ACK.newBuilder().setPublicKey(ByteString.copyFrom(SerializationUtils.serialize(clientPublicKey))).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
     }
-*/
+
+    private HashMap<Integer, byte[]> getHashMapAnnouncements(PublicKey clientPublicKey, String post, long freshness, String typeBoard, int numServers){
+        HashMap<Integer, byte[]> hashMap = new HashMap<>(numServers);
+
+        for(int i = 0; i < numServers; i++){
+            hashMap.put(i, SignatureHandler.publicSign(Bytes.concat(SerializationUtils.serialize(clientPublicKey), post.getBytes(), SerializationUtils.serialize(new String[0]), Longs.toByteArray(freshness), typeBoard.getBytes()), serverPrivateKeys[i]));
+        }
+
+        return hashMap;
+    }
+
 }

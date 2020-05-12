@@ -57,6 +57,7 @@ public class ByzantineNNRegularRegister {
 
         for(Contract.ReadResponse response: responses){
             Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+
             for(Announcement announcement: announcements){
                 if(!list.contains(announcement) && verifyAnnouncement(announcement)) {
                     list.add(announcement);
