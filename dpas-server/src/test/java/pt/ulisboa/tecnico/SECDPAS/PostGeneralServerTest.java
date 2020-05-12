@@ -21,11 +21,14 @@ import java.security.PublicKey;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class PostServerTest {
+public class PostGeneralServerTest {
 
 	private static DPASServiceImpl server;
 	private static PublicKey clientPublicKey;
 	private static PrivateKey clientPrivateKey;
+
+	private static PublicKey clientPublicKey2;
+	private static PrivateKey clientPrivateKey2;
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
@@ -40,6 +43,10 @@ public class PostServerTest {
 
 			clientPublicKey = kp.getPublic();
 			clientPrivateKey = kp.getPrivate();
+
+			kp = kpg.genKeyPair();
+			clientPublicKey2 = kp.getPublic();
+			clientPrivateKey2 = kp.getPrivate();
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
 		}
@@ -70,6 +77,22 @@ public class PostServerTest {
 
 				}
 			});
+			server.register(getRegisterRequest(clientPublicKey2, clientPrivateKey2), new StreamObserver<Contract.ACK>() {
+				@Override
+				public void onNext(Contract.ACK ack) {
+
+				}
+
+				@Override
+				public void onError(Throwable throwable) {
+
+				}
+
+				@Override
+				public void onCompleted() {
+
+				}
+			});
 		} catch (Exception e){
 			System.out.println("Failed to restart server");
 		}
@@ -77,7 +100,7 @@ public class PostServerTest {
 	}
 
 	@Test
-	public void postCorrectTest() {
+	public void postGeneralCorrectTest() {
 		final boolean[] testCorrect = new boolean[1];
 
 		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
@@ -97,7 +120,7 @@ public class PostServerTest {
 			}
 		};
 
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
 		assertTrue(testCorrect[0]);
 	}
 
@@ -126,8 +149,8 @@ public class PostServerTest {
 			}
 		};
 
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 1), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 1), observer);
 		assertTrue(testCorrect[0]);
 		assertTrue(testCorrect[1]);
 	}
@@ -179,13 +202,13 @@ public class PostServerTest {
 		};
 
 
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
 		assertTrue(testCorrect[0]);
 
-		server.read(getReadRequest(clientPublicKey, clientPrivateKey, clientPublicKey, 1, 0), readObserver);
+		server.readGeneral(getReadGeneralRequest(clientPublicKey, clientPrivateKey, 1, 0), readObserver);
 		assertTrue(testCorrect[1]);
 
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), reference, 1), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), reference, 1), observer);
 		assertTrue(testCorrect[2]);
 	}
 
@@ -211,13 +234,75 @@ public class PostServerTest {
 		};
 
 		String[] references = {"WrongReference"};
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), references, 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), references, 0), observer);
 		assertFalse(testCorrect[0]);
 	}
 
-	/*****************************/
-	/** Freshness Related Tests **/
-	/*****************************/
+	/*********************/
+	/** Freshness Tests **/
+	/*********************/
+
+	@Test
+	public void postConcurrentWriteTest() {
+		final boolean[] testCorrect = new boolean[2];
+
+		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
+			int i = 0;
+			@Override
+			public void onNext(Contract.ACK ack) {
+				testCorrect[i] =true;
+				i++;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[i]=false;
+				i++;
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey2, clientPrivateKey2, "test".toCharArray(), new String[0], 0), observer);
+		assertTrue(testCorrect[0]);
+		assertTrue(testCorrect[1]);
+	}
+
+	@Test
+	public void postConcurrentFurtherWriteTest() {
+		final boolean[] testCorrect = new boolean[3];
+
+		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
+			int i = 0;
+			@Override
+			public void onNext(Contract.ACK ack) {
+				testCorrect[i] =true;
+				i++;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[i]=false;
+				i++;
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 1), observer);
+		server.postGeneral(getPostRequest(clientPublicKey2, clientPrivateKey2, "test".toCharArray(), new String[0], 0), observer);
+		assertTrue(testCorrect[0]);
+		assertTrue(testCorrect[1]);
+		assertTrue(testCorrect[2]);
+	}
 
 	@Test
 	public void postReplyAttackTest() {
@@ -243,11 +328,10 @@ public class PostServerTest {
 			}
 		};
 
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
 		assertTrue(testCorrect[0]);
 		assertTrue(testCorrect[1]);
-
 	}
 
 	@Test
@@ -274,33 +358,32 @@ public class PostServerTest {
 			}
 		};
 
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
-		server.post(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 2), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 2), observer);
 		assertTrue(testCorrect[0]);
 		assertFalse(testCorrect[1]);
-
 	}
 
-	private Contract.ReadRequest getReadRequest(PublicKey clientPublicKey, PrivateKey clientPrivateKey, PublicKey clientTargetKey, int number, long freshness){
-		byte[] targetPublicKey = SerializationUtils.serialize(clientTargetKey);
-		byte[] userPublicKey = SerializationUtils.serialize(clientPublicKey);
+	private Contract.ReadRequest getReadGeneralRequest(PublicKey clientPublicKey, PrivateKey clientPrivateKey, int number, long freshness){
+		byte[] publicKey = SerializationUtils.serialize(clientPublicKey);
+		byte[] numberBytes = Ints.toByteArray(number);
 
-		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(keys, Ints.toByteArray(number), Longs.toByteArray(freshness)), clientPrivateKey);
+		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, numberBytes, Longs.toByteArray(freshness)), clientPrivateKey);
 
-		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(freshness).setSignature(ByteString.copyFrom(signature)).build();
+
 	}
 
 	private Contract.PostRequest getPostRequest(PublicKey clientPublicKey, PrivateKey clientPrivateKey, char[] message, String[] references, long freshness) {
-		String privateBoardId = "0";
+		String generalBoardId = "1";
 
 		byte[] publicKey = SerializationUtils.serialize(clientPublicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
 
-		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, post.getBytes(), announcements, Longs.toByteArray(freshness), privateBoardId.getBytes()), clientPrivateKey);
+		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, post.getBytes(), announcements, Longs.toByteArray(freshness), generalBoardId.getBytes()), clientPrivateKey);
 
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(privateBoardId).setFreshness(freshness).build();
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(generalBoardId).setFreshness(freshness).build();
 	}
 
 	private static Contract.RegisterRequest getRegisterRequest(PublicKey clientPublicKeyKey, PrivateKey clientPrivateKey){
