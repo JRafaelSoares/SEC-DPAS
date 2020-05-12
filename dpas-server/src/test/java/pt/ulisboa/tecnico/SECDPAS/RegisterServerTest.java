@@ -23,6 +23,9 @@ public class RegisterServerTest {
 	private static PublicKey clientPublicKey;
 	private static PrivateKey clientPrivateKey;
 
+	private static PublicKey clientPublicKey2;
+	private static PrivateKey clientPrivateKey2;
+
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
@@ -41,6 +44,10 @@ public class RegisterServerTest {
 			kp = kpg.genKeyPair();
 			clientPublicKey = kp.getPublic();
 			clientPrivateKey = kp.getPrivate();
+
+			kp = kpg.genKeyPair();
+			clientPublicKey2 = kp.getPublic();
+			clientPrivateKey2 = kp.getPrivate();
 
 		}catch (Exception e){
 			System.out.println("Unable to obtain public key for testing");
@@ -72,14 +79,39 @@ public class RegisterServerTest {
 		assertTrue(testCorrect[0]);
 	}
 
-	/*
+
 	@Test
 	public void registerTwiceCorrectTest() {
-		lib2.register();
-		lib2.register();
-		assertTrue(lib2.clientRegisteredState());
+		final boolean[] testCorrect = new boolean[2];
+
+		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
+			int response = 0;
+			@Override
+			public void onNext(Contract.ACK ack) {
+				testCorrect[response] =true;
+				response++;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[response]=false;
+				response++;
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+		server.register(getRegisterRequest(clientPublicKey, clientPrivateKey), observer);
+		server.register(getRegisterRequest(clientPublicKey, clientPrivateKey), observer);
+
+		assertTrue(testCorrect[0]);
+		assertTrue(testCorrect[1]);
+
 	}
-	*/
+
 
 	public Contract.RegisterRequest getRegisterRequest(PublicKey clientPublicKeyKey, PrivateKey clientPrivateKey){
 		/* Serializes key and changes to ByteString */
