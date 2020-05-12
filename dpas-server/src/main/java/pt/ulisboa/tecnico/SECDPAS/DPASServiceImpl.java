@@ -55,7 +55,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private int numServers;
 	private int numFaults;
 	/* for debugging change to 1 */
-	private int debug = 0;
+	private int debug = 1;
 
 	public DPASServiceImpl(PrivateKey privateKey, int id, int faults) throws DatabaseException{
 		Path currentRelativePath = Paths.get("");
@@ -772,10 +772,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
         /* Obtaining the Public Key of the Client */
         PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, freshness);
 
-		/* Verify message freshness and integrity-signature. References exists.*/
-        if(userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness)){
-        	return null;
-        }
+		synchronized (generalBoard) {
+
+			/* Verify message freshness and integrity-signature. References exists.*/
+			if (userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness)) {
+				if(debug != 0) System.out.println("[POST-GENERAL] Check Failed");
+				return null;
+			}
+		}
 
         String[] announcements = verifyAnnouncements(serializedAnnouncements, responseObserver, serializedPublicKey, freshness);
 
@@ -801,10 +805,12 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		/* Obtaining the Public Key of the Client */
 		PublicKey userKey = verifyPublicKey(serializedPublicKey, responseObserver, freshness);
-
-		/* Verify message freshness and integrity-signature. References exists.*/
-		if(userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness, type, requestHash)){
-			return null;
+		synchronized (generalBoard) {
+			/* Verify message freshness and integrity-signature. References exists.*/
+			if (userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness, type, requestHash)) {
+				if(debug != 0) System.out.println("[POST-GENERAL] Check Failed");
+				return null;
+			}
 		}
 
 		String[] announcements = verifyAnnouncements(serializedAnnouncements, responseObserver, serializedPublicKey, freshness);
@@ -825,32 +831,77 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private boolean verifyPostGeneralMessage(StreamObserver<Contract.EchoReadyACK> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness, String type, byte[] requestHash){
 		return verifySignature(responseObserver, supposedMessage, signature, userKey, clientFreshness) &&
 				verifyClientIsRegistered(userKey, responseObserver, SerializationUtils.serialize(userKey), clientFreshness) &&
-				verifyWriteGeneralFreshness(responseObserver, clientFreshness, type, requestHash);
+				verifyWriteGeneralFreshness(responseObserver, userKey, clientFreshness, type, requestHash);
 	}
 
     private boolean verifyWriteGeneralFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness){
-        synchronized (generalBoard){
-			if(clientFreshness > this.generalBoard.size()){
+    	//Checks if freshness is lower, if there are no posts from him with that value.
+		if(this.generalBoard.size() == 0){
+			return true;
+		}
+		long highestFreshness = this.generalBoard.get(this.generalBoard.size()-1).getFreshness();
+
+		if(clientFreshness <= highestFreshness){
+			if(checkPostWithSameFreshness(userKey, clientFreshness)){
+				return true;
+			}
+			else{
 				if(debug != 0) System.out.println("\t[POST_GENERAL] Already seen post, returning ACK");
 				responseObserver.onNext(buildACKresponse(userKey, generalBoardId, clientFreshness));
 				responseObserver.onCompleted();
 				return false;
-            }
-            return true;
-        }
+			}
+
+		}
+
+		else if(clientFreshness != highestFreshness+1){
+			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
+			return false;
+		}
+		return true;
     }
 
-	private boolean verifyWriteGeneralFreshness(StreamObserver<Contract.EchoReadyACK> responseObserver, long clientFreshness, String type, byte[] requestHash){
-		synchronized (generalBoard){
-			//TODO- Correct the freshness check
-			if(clientFreshness > this.generalBoard.size()){
+	private boolean verifyWriteGeneralFreshness(StreamObserver<Contract.EchoReadyACK> responseObserver, PublicKey userKey, long clientFreshness, String type, byte[] requestHash){
+		if(this.generalBoard.size() == 0){
+			return true;
+		}
+
+		long highestFreshness = this.generalBoard.get(this.generalBoard.size()-1).getFreshness();
+
+		if(clientFreshness <= highestFreshness){
+			if(checkPostWithSameFreshness(userKey, clientFreshness)){
+				return true;
+			}
+			else{
 				if(debug != 0) System.out.println("\t[POST_GENERAL] Already seen post, returning ACK");
 				responseObserver.onNext(buildEchoReadyACKresponse(type, requestHash));
 				responseObserver.onCompleted();
 				return false;
 			}
-			return true;
+
 		}
+
+		else if( clientFreshness != highestFreshness+1){
+			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
+			return false;
+		}
+		return true;
+	}
+
+	private boolean checkPostWithSameFreshness(PublicKey client, long writeFreshness){
+		for(int i = this.generalBoard.size()-1; i >= 0; i--){
+			Announcement post = this.generalBoard.get(i);
+			if(post.getFreshness() < writeFreshness){
+				return true;
+			}
+			else if(post.getFreshness() == writeFreshness && post.getPublicKey().equals(client)){
+				return false;
+			}
+		}
+		//Case the board is empty
+		return true;
 	}
 
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness){
@@ -877,6 +928,8 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			return SerializationUtils.deserialize(serializedAnnouncements);
 		} catch(SerializationException e){
+			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Unable to deserialize announcement.");
+
 			responseObserver.onError(buildException(Status.Code.INVALID_ARGUMENT, "PublicKey", serializedClientKey, clientFreshness));
 			return null;
 		}
@@ -885,6 +938,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private boolean verifyReferences(String[] references, StreamObserver<?> responseObserver, byte[] serializedClientKey, long clientFreshness){
 		for(String reference: references){
 			if(!announcementIDs.containsKey(reference)){
+				if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Invalid References.");
 				responseObserver.onError(buildException(Status.Code.INVALID_ARGUMENT, "NonExistentAnnouncementReference", serializedClientKey, clientFreshness));
 				return false;
 			}
