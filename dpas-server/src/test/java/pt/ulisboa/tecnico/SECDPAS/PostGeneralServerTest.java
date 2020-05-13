@@ -5,6 +5,7 @@ import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
+import com.sun.source.tree.AssertTree;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
 import org.junit.Before;
@@ -18,8 +19,7 @@ import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class PostGeneralServerTest {
 
@@ -244,8 +244,8 @@ public class PostGeneralServerTest {
 
 	@Test
 	public void postConcurrentWriteTest() {
-		final boolean[] testCorrect = new boolean[2];
-
+		final boolean[] testCorrect = new boolean[3];
+		final Announcement[][] announcements = new Announcement[1][];
 		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
 			int i = 0;
 			@Override
@@ -265,16 +265,40 @@ public class PostGeneralServerTest {
 
 			}
 		};
+		StreamObserver<Contract.ReadResponse> readObserver = new StreamObserver<Contract.ReadResponse>() {
+			@Override
+			public void onNext(Contract.ReadResponse response) {
+				announcements[0] = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+				testCorrect[2] = true;
+			}
 
-		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
-		server.postGeneral(getPostRequest(clientPublicKey2, clientPrivateKey2, "test".toCharArray(), new String[0], 0), observer);
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[2] = false;
+
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test1".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey2, clientPrivateKey2, "test2".toCharArray(), new String[0], 0), observer);
+		server.readGeneral(getReadGeneralRequest(clientPublicKey, clientPrivateKey, 0, 0), readObserver);
+
 		assertTrue(testCorrect[0]);
 		assertTrue(testCorrect[1]);
+		assertTrue(testCorrect[2]);
+		assertEquals(2, announcements[0].length);
+		assertNotEquals(new String(announcements[0][0].getPost()), new String(announcements[0][1].getPost()));
 	}
 
 	@Test
 	public void postConcurrentFurtherWriteTest() {
-		final boolean[] testCorrect = new boolean[3];
+		final boolean[] testCorrect = new boolean[4];
+
+		final Announcement[][] announcements = new Announcement[1][];
 
 		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
 			int i = 0;
@@ -296,12 +320,41 @@ public class PostGeneralServerTest {
 			}
 		};
 
-		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
-		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 1), observer);
-		server.postGeneral(getPostRequest(clientPublicKey2, clientPrivateKey2, "test".toCharArray(), new String[0], 0), observer);
+		StreamObserver<Contract.ReadResponse> readObserver = new StreamObserver<Contract.ReadResponse>() {
+			@Override
+			public void onNext(Contract.ReadResponse response) {
+				announcements[0] = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
+				testCorrect[3] = true;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[3] = false;
+
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test1".toCharArray(), new String[0], 0), observer);
+		server.postGeneral(getPostRequest(clientPublicKey, clientPrivateKey, "test2".toCharArray(), new String[0], 1), observer);
+		server.postGeneral(getPostRequest(clientPublicKey2, clientPrivateKey2, "test3".toCharArray(), new String[0], 0), observer);
+		server.readGeneral(getReadGeneralRequest(clientPublicKey, clientPrivateKey, 0, 0), readObserver);
+
 		assertTrue(testCorrect[0]);
 		assertTrue(testCorrect[1]);
 		assertTrue(testCorrect[2]);
+		assertTrue(testCorrect[3]);
+
+		assertEquals(3, announcements[0].length);
+		assertNotEquals(new String(announcements[0][0].getPost()), new String(announcements[0][1].getPost()));
+		assertNotEquals(new String(announcements[0][1].getPost()), new String(announcements[0][2].getPost()));
+		assertNotEquals(new String(announcements[0][0].getPost()), new String(announcements[0][2].getPost()));
+
+
 	}
 
 	@Test
