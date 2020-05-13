@@ -2,6 +2,12 @@
 
 The current setup is ready for 4 simulatenous servers, tolerating 1 fault.
 
+First, you must delete the content of the servers Databases.
+
+To do that, go to *dpas-server/src/database* folder and run the script:
+    
+    ./cleanDatabase
+    
 To run every server, open four new terminals in the dpas-server folder and run in each server:
     
     mvn exec:java -Dserver.id=X
