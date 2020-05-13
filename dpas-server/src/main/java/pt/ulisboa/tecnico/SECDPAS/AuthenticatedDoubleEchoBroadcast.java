@@ -1,7 +1,6 @@
 package pt.ulisboa.tecnico.SECDPAS;
 
 import SECDPAS.grpc.Contract;
-import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
@@ -12,6 +11,7 @@ import org.apache.commons.lang3.SerializationUtils;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
@@ -20,7 +20,7 @@ import java.util.function.BiConsumer;
 
 public class AuthenticatedDoubleEchoBroadcast {
     private BiConsumer<RequestType, HashMap<Integer, byte[]>> executor;
-    private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
+    private AuthenticatedPerfectLink[] perfectLinks;
     private RequestType clientRequest;
     private PublicKey[] serverPublicKeys;
     private PrivateKey serverPrivateKey;
@@ -28,16 +28,17 @@ public class AuthenticatedDoubleEchoBroadcast {
     private int numServers;
     private int minResponses;
     private int serverID;
-    private AtomicBoolean sentEcho;
-    private AtomicBoolean sentReady;
+    private final AtomicBoolean sentEcho;
+    private final AtomicBoolean sentReady;
     private AtomicBoolean hasDelivered;
     private final HashSet<Integer> echos;
     private final HashMap<Integer, byte[]> readys;
     private final CountDownLatch readyCountDownLatch;
 
-    public AuthenticatedDoubleEchoBroadcast(RequestType clientRequest, int serverID, int numServers, int numFaults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys, PrivateKey serverPrivateKey, BiConsumer<RequestType, HashMap<Integer, byte[]>> executor){
+    private boolean debug = false;
+
+    public AuthenticatedDoubleEchoBroadcast(RequestType clientRequest, int serverID, int numServers, int numFaults, AuthenticatedPerfectLink[] perfectLinks, PublicKey[] serverPublicKeys, PrivateKey serverPrivateKey, BiConsumer<RequestType, HashMap<Integer, byte[]>> executor){
         this.serverID = serverID;
-        this.futureStubs = futureStubs;
         this.clientRequest = clientRequest;
         this.serverPublicKeys = serverPublicKeys;
         this.serverPrivateKey = serverPrivateKey;
@@ -51,12 +52,16 @@ public class AuthenticatedDoubleEchoBroadcast {
         this.readys = new HashMap<>(numServers);
         this.readyCountDownLatch = new CountDownLatch(1);
         this.executor = executor;
+        this.perfectLinks = perfectLinks;
     }
 
     public synchronized void addECHO(int serverID){
         echos.add(serverID);
 
+        if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Adding echo from server " + serverID);
+
         if(echos.size() >= minResponses && !sentReady.get()){
+            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received required number of echos: " + Arrays.toString(echos.toArray()));
             addReady(this.serverID, getAnnouncementSignature());
 
             broadcastReady();
@@ -68,6 +73,7 @@ public class AuthenticatedDoubleEchoBroadcast {
 
         // If we have received more than f readys, than at least one correct server has received 2f + 1 echos
         if(readys.size() > numFaults && !sentReady.get()){
+            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received more than f readys, sending ready: " + Arrays.toString(echos.toArray()));
             readys.put(this.serverID, getAnnouncementSignature());
 
             broadcastReady();
@@ -76,6 +82,7 @@ public class AuthenticatedDoubleEchoBroadcast {
         if(readys.size() >= minResponses && !hasDelivered.get()){
             hasDelivered.set(true);
             executor.accept(this.clientRequest, readys);
+            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received required readys: " + Arrays.toString(readys.keySet().toArray()));
             readyCountDownLatch.countDown();
         }
     }
@@ -120,7 +127,8 @@ public class AuthenticatedDoubleEchoBroadcast {
         // broadcast to servers other than me with signature
         for (int i = 0; i < numServers; i++) {
             if(i == this.serverID) continue;
-            AuthenticatedPerfectLink perfectLink = new AuthenticatedPerfectLink(futureStubs[i], 0, serverPublicKeys[i], serverPublicKeys[this.serverID], i, minResponses);
+
+            AuthenticatedPerfectLink perfectLink = this.perfectLinks[i];
 
             FutureCallback<Contract.EchoReadyACK> futureCallback = new FutureCallback<>() {
                 @Override
@@ -155,5 +163,13 @@ public class AuthenticatedDoubleEchoBroadcast {
 
     public void waitForReadys() throws InterruptedException {
         readyCountDownLatch.await();
+    }
+
+    public int getNumEchos() {
+        return echos.size();
+    }
+
+    public int getNumReadys() {
+        return readys.size();
     }
 }
