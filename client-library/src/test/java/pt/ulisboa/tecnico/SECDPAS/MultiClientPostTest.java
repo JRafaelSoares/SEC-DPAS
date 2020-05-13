@@ -7,9 +7,11 @@ import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 
+import java.net.StandardSocketOptions;
 import java.security.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -18,9 +20,16 @@ public class MultiClientPostTest {
 
     private static List<ClientLibrary> list = new ArrayList<>();
     private static PublicKey pub1;
+    private static CountDownLatch latch = new CountDownLatch(2);
+
 
     @AfterClass
     public static void cleanUp(){
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         for(ClientLibrary lib : list){
             lib.cleanPosts();
             lib.cleanGeneralPosts();
@@ -66,9 +75,8 @@ public class MultiClientPostTest {
                 for(int i=0; i<num; i++){
                     lib.post(("message" + i).toCharArray());
                 }
-
+                latch.countDown();
                 Announcement[] announcements = lib.read(pub1, 0);
-
                 assertEquals(num, announcements.length);
 
                 for(int i=0; i<announcements.length; i++){
@@ -106,6 +114,7 @@ public class MultiClientPostTest {
                 for(int i=0; i<num; i++){
                     lib.post(("message" + i).toCharArray());
                 }
+                latch.countDown();
 
                 Announcement[] announcements = lib.read(pub, 0);
 
@@ -143,11 +152,10 @@ public class MultiClientPostTest {
 
                 lib.register();
 
-                Thread.sleep(3000);
                 for(int i=0; i<num; i++){
                     lib.read(pub1, 0);
                 }
-
+                latch.await();
                 Announcement[] announcements = lib.read(pub1, 0);
 
                 assertEquals(num, announcements.length);

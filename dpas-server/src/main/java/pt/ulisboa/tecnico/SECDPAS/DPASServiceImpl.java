@@ -55,7 +55,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private int numServers;
 	private int numFaults;
 	/* for debugging change to 1 */
-	private int debug = 0;
+	private int debug = 1;
 
 	/* Test variables */
 	private ManagedChannel[] channel;
@@ -404,18 +404,22 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		if(debug != 0) System.out.println(String.format("[" + serverID + "]" + "[READ] Read request from client %s to client board %s\n", clientUserKey, targetUserKey));
 
-		/* Prepare announcements */
-		ArrayList<Announcement> announcementList = this.privateBoard.get(targetUserKey);
-
 		byte[] responseAnnouncements;
-		if(numPosts == 0 || numPosts > announcementList.size()){
-			responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
-		}
-		else{
-			List<Announcement> toSend =  announcementList.subList(announcementList.size() - numPosts, announcementList.size());
-			Announcement[] announcements = toSend.toArray(new Announcement[0]);
 
-			responseAnnouncements = SerializationUtils.serialize(announcements);
+		synchronized (this.privateBoard.get(targetUserKey)){
+
+			/* Prepare announcements */
+			ArrayList<Announcement> announcementList = this.privateBoard.get(targetUserKey);
+
+			if(numPosts == 0 || numPosts > announcementList.size()){
+				responseAnnouncements = SerializationUtils.serialize(announcementList.toArray(new Announcement[0]));
+			}
+			else{
+				List<Announcement> toSend =  announcementList.subList(announcementList.size() - numPosts, announcementList.size());
+				Announcement[] announcements = toSend.toArray(new Announcement[0]);
+
+				responseAnnouncements = SerializationUtils.serialize(announcements);
+			}
 		}
 
 
@@ -601,12 +605,15 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		/* create post */
 		char[] post = postString.toCharArray();
-		ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
+		String announcementID;
+		Announcement announcement;
+		synchronized (this.privateBoard.get(userKey)) {
 
-		String announcementID = getAnnouncementId(userKey, request.getFreshness(), privateBoardId);
-		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, privateBoardId, signatures);
+			ArrayList<Announcement> announcementList = this.privateBoard.get(userKey);
 
-		synchronized (this.privateBoard) {
+			announcementID = getAnnouncementId(userKey, request.getFreshness(), privateBoardId);
+			announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, privateBoardId, signatures);
+
 			announcementList.add(announcement);
 		}
 
