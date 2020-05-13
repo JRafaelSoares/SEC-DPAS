@@ -11,9 +11,10 @@ import java.security.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-public class MultiClientTest {
+public class MultiClientPostTest {
 
     private static List<ClientLibrary> list = new ArrayList<>();
     private static PublicKey pub1;
@@ -29,7 +30,7 @@ public class MultiClientTest {
 
     @Test
     public void runAllTests(){
-        Class<?>[] classes = {Client3.class, Client4.class, Client5.class};
+        Class<?>[] classes = {Client1.class, Client2.class, Client3.class};
 
         Result result = JUnitCore.runClasses(new ParallelComputer(true, true), classes);
 
@@ -129,7 +130,7 @@ public class MultiClientTest {
         private static ClientLibrary lib;
         @Test
         public void run(){
-            int num = 25;
+            int num = 50;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -143,76 +144,15 @@ public class MultiClientTest {
                 lib.register();
 
                 for(int i=0; i<num; i++){
-                    lib.postGeneral(("message" + i).toCharArray());
+                    lib.read(pub1, 0);
                 }
 
-                Announcement[] announcements = lib.readGeneral(num);
+                Announcement[] announcements = lib.read(pub1, 0);
 
-                assertEquals(num, announcements.length);
+                assertEquals(num/2, announcements.length);
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client3: " + e.getMessage());
-            }
-        }
-    }
-
-    public static class Client4{
-        /* post general */
-        private static ClientLibrary lib;
-        @Test
-        public void run(){
-            int num = 25;
-            try{
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.genKeyPair();
-                PublicKey pub = kp.getPublic();
-                PrivateKey priv = kp.getPrivate();
-
-                lib = new ClientLibrary("localhost", 8080, pub, priv);
-                list.add(lib);
-
-                lib.register();
-
-                for(int i=0; i<num; i++){
-                    lib.postGeneral(("message" + i).toCharArray());
-                }
-                Announcement[] announcements = lib.readGeneral(num);
-
-                assertEquals(num, announcements.length);
-
-            } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
-                System.out.println("client4: " + e.getMessage());
-            }
-        }
-    }
-
-    public static class Client5{
-        /* read general */
-        private static ClientLibrary lib;
-        @Test
-        public void run(){
-            int num = 25;
-            try{
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.genKeyPair();
-                PublicKey pub = kp.getPublic();
-                PrivateKey priv = kp.getPrivate();
-
-                lib = new ClientLibrary("localhost", 8080, pub, priv);
-                list.add(lib);
-
-                lib.register();
-
-                Thread.sleep(num * 1500);
-
-                Announcement[] announcements = lib.readGeneral(0);
-
-                assertEquals(num*2, announcements.length);
-
-            } catch (InterruptedException | NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
-                System.out.println("client5: " + e.getMessage());
             }
         }
     }

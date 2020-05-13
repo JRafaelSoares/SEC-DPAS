@@ -55,7 +55,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private int numServers;
 	private int numFaults;
 	/* for debugging change to 1 */
-	private int debug = 0;
+	private int debug = 1;
 
 	public DPASServiceImpl(PrivateKey privateKey, int id, int faults) throws DatabaseException{
 		Path currentRelativePath = Paths.get("");
@@ -1114,7 +1114,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				/* Obtaining the Public Key of the Client */
 				PublicKey userKey = verifyPublicKey(registerRequest.getPublicKey().toByteArray(), responseObserver, 0);
 				if(!verifyRegisterRequest(responseObserver, registerRequest, userKey, type, requestHash)){
-					System.out.println("[" + this.serverID + "]" + " Register request from " + serverID + " was invalid");
+					if(debug != 0) System.out.println("[" + this.serverID + "]" + " Register request from " + serverID + " was invalid");
 					return null;
 				}
 
