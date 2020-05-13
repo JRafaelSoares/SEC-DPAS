@@ -281,6 +281,38 @@ public class PostServerTest {
 
 	}
 
+	@Test
+	public void postWrongSignatureTest() {
+		final boolean[] testCorrect = new boolean[2];
+
+		StreamObserver<Contract.ACK> observer = new StreamObserver<Contract.ACK>() {
+			int i = 0;
+			@Override
+			public void onNext(Contract.ACK ack) {
+				testCorrect[i] =true;
+				i++;
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				testCorrect[i]=false;
+				i++;
+			}
+
+			@Override
+			public void onCompleted() {
+
+			}
+		};
+
+		server.post(getPostRequestWrongSignature(clientPublicKey, clientPrivateKey, "test".toCharArray(), new String[0], 0), observer);
+		assertFalse(testCorrect[0]);
+
+	}
+
+	/*****************************/
+	/***** Request Builders	******/
+	/*****************************/
 	private Contract.ReadRequest getReadRequest(PublicKey clientPublicKey, PrivateKey clientPrivateKey, PublicKey clientTargetKey, int number, long freshness){
 		byte[] targetPublicKey = SerializationUtils.serialize(clientTargetKey);
 		byte[] userPublicKey = SerializationUtils.serialize(clientPublicKey);
@@ -310,6 +342,22 @@ public class PostServerTest {
 
 		/* Prepare request */
 		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
+	}
+
+	/*************************************/
+	/******* Fake Request Builders	******/
+	/*************************************/
+
+	private Contract.PostRequest getPostRequestWrongSignature(PublicKey clientPublicKey, PrivateKey clientPrivateKey, char[] message, String[] references, long freshness) {
+		String privateBoardId = "0";
+
+		byte[] publicKey = SerializationUtils.serialize(clientPublicKey);
+		String post = new String(message);
+		byte[] announcements = SerializationUtils.serialize(references);
+
+		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, post.getBytes(), announcements, Longs.toByteArray(freshness)), clientPrivateKey);
+
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(privateBoardId).setFreshness(freshness).build();
 	}
 }
 
