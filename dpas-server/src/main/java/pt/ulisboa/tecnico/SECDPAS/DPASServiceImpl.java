@@ -676,7 +676,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	/************************/
 
 	private String getAnnouncementId(PublicKey user, long freshness, String id){
-		return user.toString() + freshness + id;
+		return Base64.getEncoder().encodeToString(user.getEncoded()) + freshness + id;
 	}
 
 	private PublicKey verifyPublicKey(byte[] serializedPublicKey, StreamObserver<?> responseObserver, long clientFreshness){
