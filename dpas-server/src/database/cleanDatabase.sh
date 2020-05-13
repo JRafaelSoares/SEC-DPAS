@@ -1,0 +1,14 @@
+cd announcementsID
+rm *.txt
+cd ..
+cd clientReadFreshness
+rm *.txt
+cd ..
+cd clientWriteFreshness
+rm *.txt
+cd ..
+cd generalPosts
+rm *.txt
+cd ..
+cd posts
+rm *.txt

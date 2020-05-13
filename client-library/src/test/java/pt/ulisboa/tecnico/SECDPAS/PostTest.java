@@ -7,6 +7,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.security.*;
+import java.util.Arrays;
 
 import static org.junit.Assert.*;
 
@@ -54,21 +55,24 @@ public class PostTest {
 		lib2.shutDown();
 	}
 
-
 	@Test
-	public void postCorrectNoAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void postCorrectNoAnnouncementsTest() throws InvalidArgumentException {
 		String s = "NoAnnouncement";
 		lib1.post(s.toCharArray());
 
 		assertTrue(lib1.postState(s.toCharArray()));
 	}
 
+	//TODO when read quorum is completed
+
 	@Test
-	public void postCorrectWithAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void postCorrectWithAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "NoAnnouncement";
 
 		lib1.post(s1.toCharArray());
-		String[] announcements = { Integer.toString(lib1.read(pub1, 1)[0].getAnnouncementID()) };
+
+		Announcement announcement = lib1.read(pub1, 1)[0];
+		String[] announcements = {  announcement.getAnnouncementID() };
 
 		String s2 = "WithAnnouncement";
 		lib1.post(s2.toCharArray(), announcements);
@@ -78,22 +82,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postAnnouncementsDoesNotExistTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
-		String[] announcements = { Integer.toString(12345678) };
-
-		String s2 = "WithAnnouncement";
-
-		try{
-			lib1.post(s2.toCharArray(), announcements);
-			fail("Communication exception - There is a non-existent announcement referenced in this post - should have been thrown.");
-
-		}catch (ComunicationException e){
-			assertEquals("There is a non-existent announcement referenced in this post", e.getMessage());
-		}
-	}
-
-	@Test
-	public void postMessageLimitTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void postMessageLimitTest() throws InvalidArgumentException {
 		char[] messageLimit = new char[255];
 		for (int i = 0; i<255; i++){
 			messageLimit[i] = 'a';
@@ -104,7 +93,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageEmptyTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void postMessageEmptyTest() throws InvalidArgumentException {
 		char[] emptyMessage = new char[0];
 		lib1.post(emptyMessage);
 
@@ -112,18 +101,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postClientNotRegisteredTest() throws InvalidArgumentException, ComunicationException {
-		try{
-			lib2.post("Client Not Registered".toCharArray());
-			fail("Exception ClientNotRegisteredException should have been thrown");
-
-		}catch (ClientNotRegisteredException e){
-			assertFalse(lib2.postState("Client Not Registered".toCharArray()));
-		}
-	}
-
-	@Test
-	public void postMessageTooLongTest() throws ClientNotRegisteredException, ComunicationException {
+	public void postMessageTooLongTest() {
 		char[] messageTooLong = new char[256];
 		for (int i = 0; i< 256; i++){
 			messageTooLong[i] = 'a';
@@ -139,7 +117,7 @@ public class PostTest {
 	}
 
 	@Test
-	public void postMessageNullTest() throws ClientNotRegisteredException, ComunicationException {
+	public void postMessageNullTest() {
 
 		try {
 			lib1.post(null);

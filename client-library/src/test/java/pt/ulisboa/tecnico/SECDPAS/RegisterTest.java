@@ -52,16 +52,16 @@ public class RegisterTest {
 	}
 
 	@Test
-	public void registerCorrectTest() throws ClientAlreadyRegisteredException, ComunicationException {
+	public void registerCorrectTest() {
 		lib1.register();
 		assertTrue(lib1.clientRegisteredState());
 	}
 
 	@Test
-	public void registerClientAlreadyRegisteredTest() throws ClientAlreadyRegisteredException, ComunicationException {
+	public void registerTwiceCorrectTest() {
 		lib2.register();
-		thrown.expect(ClientAlreadyRegisteredException.class);
 		lib2.register();
+		assertTrue(lib2.clientRegisteredState());
 	}
 
 }

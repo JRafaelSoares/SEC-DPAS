@@ -6,44 +6,45 @@ import SECDPAS.grpc.DPASServiceGrpc;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Empty;
 
 import com.google.protobuf.ByteString;
 import io.grpc.*;
 import org.apache.commons.lang3.SerializationUtils;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
-import java.util.concurrent.ExecutionException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class ClientLibrary {
 
-	private String host = "localhost";
-	private int port = 8080;
-
 	private ManagedChannel[] channel;
-	private DPASServiceGrpc.DPASServiceFutureStub[] futureStub;
 	private DPASServiceGrpc.DPASServiceBlockingStub stub;
+	private FreshnessHandler readFreshnessHandler;
 
-	private MessageHandler[] messageHandler;
+	private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
 
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private PublicKey[] serverPublicKey;
 
+	private int numServers;
+	private int minQuorumResponses;
+
+
+	private String privateBoardId = "0";
+	private String generalBoardId = "1";
+
+	private ByzantineAtomicRegister atomicRegister;
+	private ByzantineNNRegularRegister regularNNRegister;
 	/* for debugging change to 1 */
 	private int debug = 0;
 
@@ -55,671 +56,131 @@ public class ClientLibrary {
 		this.privateKey = privateKey;
 
 		//Byzantine Quorum number
-		int numServers = faults*3+1;
+		this.numServers = faults*3+1;
+		this.minQuorumResponses = (int)Math.ceil(((double)numServers + faults)/2);
 		this.serverPublicKey = new PublicKey[numServers];
 		this.channel = new ManagedChannel[numServers];
-		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
-		this.messageHandler = new MessageHandler[numServers];
+		this.readFreshnessHandler = new FreshnessHandler();
+		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+
+
 
 		Path currentRelativePath = Paths.get("");
-
 
 		//Stub and certificate for each server
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			this.channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStub[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
-			this.messageHandler[server] = new MessageHandler(null);
+			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(this.channel[server]).withDeadlineAfter(40, TimeUnit.SECONDS);
+
 			//Get certificate
 			try{
 				CertificateFactory fact = CertificateFactory.getInstance("X.509");
 				FileInputStream is = new FileInputStream (String.format("%s/src/main/security/certificates/server/certServer%d.der", currentRelativePath.toAbsolutePath().toString(), server));
 				X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
 				this.serverPublicKey[server] = cer.getPublicKey();
+
 			} catch (CertificateException | FileNotFoundException e){
 				throw new CertificateInvalidException(e.getMessage());
 			}
 		}
 
+		this.atomicRegister = new ByzantineAtomicRegister(this.futureStubs, this.serverPublicKey, this.publicKey, this.privateKey, this.minQuorumResponses, this.readFreshnessHandler);
+		this.regularNNRegister = new ByzantineNNRegularRegister(this.futureStubs, this.serverPublicKey, this.publicKey, this.privateKey, this.minQuorumResponses, this.readFreshnessHandler);
+
 		//Test server
 		this.stub = DPASServiceGrpc.newBlockingStub(this.channel[0]);
 	}
 
+
 	//Testing single client purposes
 	public ClientLibrary(String host, int port, PublicKey publicKey, PrivateKey privateKey) throws InvalidArgumentException, CertificateInvalidException{
-		this(host, port, publicKey, privateKey, 0);
+		this(host, port, publicKey, privateKey, 1);
 	}
 
-	/* constructor only for tests */
-	public ClientLibrary(DPASServiceGrpc.DPASServiceFutureStub futureStub, PublicKey publicKeyClient, PrivateKey privateKeyClient, PublicKey publicKeyServer) {
-		this.futureStub = new DPASServiceGrpc.DPASServiceFutureStub[]{futureStub};
+	public void register() {
+		if(debug != 0) System.out.println("[REGISTER] RequestType from client.\n");
 
-		this.messageHandler = new MessageHandler[]{ new MessageHandler(null)};
-		this.publicKey = publicKeyClient;
-		this.privateKey = privateKeyClient;
-		this.serverPublicKey = new PublicKey[]{publicKeyServer};
-	}
-
-	public void register() throws ComunicationException, ClientAlreadyRegisteredException {
-		if(debug != 0) System.out.println("[REGISTER] Request from client.\n");
-
-		/* Serializes key and changes to ByteString */
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey), privateKey);
-
-		/* Prepare request */
-		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
+		/* Create quorum */
+		Quorum<PublicKey, Contract.ACK> qr = Quorum.create(getLinks(-1, null), new RegisterRequest(getRegisterRequest()), minQuorumResponses);
 
 		try{
-			ListenableFuture<Contract.ACK> listenable = futureStub[0].register(request);
-			Contract.ACK response = listenable.get();
+			qr.waitForQuorum();
 
-			/* Verify response signature */
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ServerSignatureInvalid \n");
-				throw new ComunicationException("Server signature was invalid");
-			}
-
-		} catch (StatusRuntimeException e){
-			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
-			handleRegistrationError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyExceptionNoFreshnessCheck(exception.getStatus(), exception.getTrailers());
-				handleRegistrationError(exception.getStatus());
-			}
-
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
+		}catch (InterruptedException e){
+			System.out.println(e.getMessage());
 		}
+
 	}
 
-	protected void setupConnection() throws ClientNotRegisteredException, ComunicationException {
-		if(debug != 0) System.out.println("[SETUP CONNECTION] Request from client.\n");
-
-		/* Create Diffie-Hellman agreement */
-		DiffieHellmanClient diffieHellmanClient = new DiffieHellmanClient();
-
-		byte[] clientAgreement = null;
-
-		try {
-			clientAgreement = diffieHellmanClient.prepareAgreement();
-		} catch (SignatureException e) {
-			//TODO- Proper exceptions for client side
-			e.printStackTrace();
-		}
-
-		/* Prepare request for server */
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] challenge = FreshnessHandler.generateRandomBytes(8);
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, clientAgreement, challenge), privateKey);
-
-		Contract.DHExchangeRequest request = Contract.DHExchangeRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientAgreement(ByteString.copyFrom(clientAgreement)).setClientChallenge(ByteString.copyFrom(challenge)).setSignature(ByteString.copyFrom(signature)).build();
-
-		Contract.DHExchangeResponse response = null;
-		try{
-			ListenableFuture<Contract.DHExchangeResponse> listenable = futureStub[0].diffieHellmanExchange(request);
-			response = listenable.get();
-		} catch (StatusRuntimeException e){
-			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
-
-			/* Verify if message is fresh */
-
-			Metadata.Key<byte[]> serverFreshnessKey = Metadata.Key.of("serverFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-			byte[] serverFreshness = e.getTrailers().get(serverFreshnessKey);
-
-			if(!Arrays.equals(challenge, serverFreshness)){
-				if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Server response was not fresh \n");
-				throw new ComunicationException("Server response was not fresh");
-			}
-
-			handleSetupConnectionError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException(e.getMessage());
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyExceptionNoFreshnessCheck(exception.getStatus(), exception.getTrailers());
-				handleSetupConnectionError(exception.getStatus());
-			}
-
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException(e.getMessage());
-		}
-
-		byte[] serverAgreement = response.getServerAgreement().toByteArray();
-
-		/* Obtain shared key */
-		diffieHellmanClient.execute(serverAgreement);
-
-
-		/* Verify if message is fresh */
-		byte[] serverResponse = response.getServerResponse().toByteArray();
-
-		if(!Arrays.equals(challenge, serverResponse)){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Server response was not fresh \n");
-			throw new ComunicationException("Server response was not fresh");
-		}
-
-		/* Verify if the signature is valid */
-		byte[] serverSignature = response.getSignature().toByteArray();
-		byte[] serverChallenge = response.getServerChallenge().toByteArray();
-
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serverAgreement, serverResponse, serverChallenge), serverSignature, this.serverPublicKey[0])){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Server signature was not valid \n");
-			throw new ComunicationException("Server signature was not valid");
-		}
-
-		/* Set shared key, since at this point only the server doesn't know if the client is fresh*/
-		messageHandler[0].resetHMAC(diffieHellmanClient.getSharedHMACKey());
-
-		byte[] hmac = messageHandler[0].calculateHMAC(publicKey, serverChallenge);
-
-		Contract.ClientHandshakeRequest handshakeRequest = Contract.ClientHandshakeRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setClientResponse(response.getServerChallenge()).setSignature(ByteString.copyFrom(hmac)).build();
-
-		Contract.ACK handshakeResponse = null;
-		try{
-			ListenableFuture<Contract.ACK> listenable = futureStub[0].clientHandshake(handshakeRequest);
-			handshakeResponse = listenable.get();
-		} catch (StatusRuntimeException e){
-			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
-			handleSetupConnectionError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException(e.getMessage());
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyExceptionNoFreshnessCheck(exception.getStatus(), exception.getTrailers());
-				handleSetupConnectionError(exception.getStatus());
-			}
-
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException(e.getMessage());
-		}
-
-		try {
-			messageHandler[0].verifyIntegrity(new byte[0], handshakeResponse.getFreshness().toByteArray(), handshakeResponse.getSignature().toByteArray());
-		} catch (SignatureNotValidException e) {
-			messageHandler[0].resetHMAC(null);
-			throw new ComunicationException("Server response was not fresh");
-		}
-	}
-
-	public void post(char[] message) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		checkMessage(message);
-
+	public void post(char[] message) throws InvalidArgumentException {
 		/* A post without announcements */
 		post(message, new String[0]);
 	}
 
-	public void post(char[] message, String[] references) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[POST] Request from client.\n");
+	public void post(char[] message, String[] references) throws InvalidArgumentException {
+		if(debug != 0) System.out.println("[POST] RequestType from client.\n");
 		checkMessage(message);
 
-		/* Check if client is in session */
-		if(!messageHandler[0].isInSession()){
-			setupConnection();
-		}
-
-		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].post(getPostRequest(message, references));
-			Contract.ACK response = listenableFuture.get();
-			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handlePostError(exception.getStatus());
-			}
-
-			throw new ComunicationException("Received invalid exception, please try again.");
-		}
+		this.atomicRegister.write(message, references);
 	}
 
-	public void postGeneral(char[] message) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		checkMessage(message);
-
+	public void postGeneral(char[] message) throws InvalidArgumentException {
 		/* A post without announcements */
 		postGeneral(message, new String[0]);
 	}
 
-	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[POST GENERAL] Request from client.\n");
+	public void postGeneral(char[] message, String[] references) throws InvalidArgumentException {
+		if(debug != 0) System.out.println("[POST GENERAL] RequestType from client.\n");
 		checkMessage(message);
-
-		/* Check if client is in session */
-		if(!messageHandler[0].isInSession()){
-			setupConnection();
-		}
-
-		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].postGeneral(getPostRequest(message, references));
-			Contract.ACK response = listenableFuture.get();
-			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handlePostError(exception.getStatus());
-			}
-
-			throw new ComunicationException("Received invalid exception, please try again.");
-		}
+		this.regularNNRegister.write(message, references);
 	}
 
-	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[READ] Request from client.\n");
+	public Announcement[] read(PublicKey client, int number) throws InvalidArgumentException {
+		if(debug != 0) System.out.println("[READ] RequestType from client.\n");
 		checkNumber(number);
-
-		/* Check if client is in session */
-		if(!messageHandler[0].isInSession()){
-			setupConnection();
-		}
-
-		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].read(getReadRequest(client, number));
-			Contract.ReadResponse response = listenableFuture.get();
-			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-
-			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-
-			for(Announcement announcement : announcements){
-				byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
-				byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
-				byte[] messageBytes = new String(announcement.getPost()).getBytes();
-
-				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
-					throw new ComunicationException("An announcement was not properly signed");
-				}
-			}
-
-			return announcements;
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handleReadError(exception.getStatus());
-			}
-
-			throw new ComunicationException("Received invalid exception, please try again.");
-		}
+		return this.atomicRegister.read(client, number);
 	}
 
-	public Announcement[] readGeneral(int number) throws InvalidArgumentException, ComunicationException, ClientNotRegisteredException {
-		if(debug != 0) System.out.println("[READ GENERAL] Request from client.\n");
+	public Announcement[] readGeneral(int number) throws InvalidArgumentException {
+		if(debug != 0) System.out.println("[READ GENERAL] RequestType from client.\n");
 		checkNumber(number);
-
-		/* Check if client is in session */
-		if(!messageHandler[0].isInSession()){
-			setupConnection();
-		}
-
-		try {
-			ListenableFuture<Contract.ReadResponse> listenableFuture = futureStub[0].readGeneral(getReadGeneralRequest(number));
-			Contract.ReadResponse response = listenableFuture.get();
-			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-
-			Announcement[] announcements = SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-			for(Announcement announcement : announcements){
-				byte[] serializedAnnouncements = SerializationUtils.serialize(announcement.getAnnouncements());
-				byte[] serializedPublicKey = SerializationUtils.serialize(announcement.getPublicKey());
-				byte[] messageBytes = new String(announcement.getPost()).getBytes();
-
-				if(!SignatureHandler.verifyPublicSignature(Bytes.concat(serializedPublicKey, messageBytes, serializedAnnouncements), announcement.getSignature(), announcement.getPublicKey())){
-					throw new ComunicationException("An announcement was not properly signed");
-				}
-			}
-
-			return announcements;
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				handleReadError(exception.getStatus());
-			}
-
-			throw new ComunicationException("Received invalid exception, please try again.");
-		}
-
+		return this.regularNNRegister.read(number);
 	}
 
-	public void closeConnection() throws ComunicationException, ClientNotRegisteredException, InvalidArgumentException {
-		if(debug != 0) System.out.println("[CLOSE CONNECTION] Request from client.\n");
+	/*********************************/
+	/***** QUORUM AUX FUNCTIONS ******/
+	/*********************************/
 
-		/* Check if client is in session */
-		if(!messageHandler[0].isInSession()){
-			throw new InvalidArgumentException("Session already closed");
+	public Map<PublicKey, AuthenticatedPerfectLink> getLinks(long freshness, PublicKey targetClientKey){
+		Map<PublicKey, AuthenticatedPerfectLink> links = new HashMap<>();
+
+		for(int server = 0; server < numServers; server++){
+			links.put(serverPublicKey[server], new AuthenticatedPerfectLink(futureStubs[server], freshness, serverPublicKey[server], targetClientKey));
 		}
 
-		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].closeSession(getCloseSessionRequest());
-			Contract.ACK response = listenableFuture.get();
-			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-			messageHandler[0].resetHMAC(null);
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleCloseConnectionError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				verifyException(exception.getStatus(), exception.getTrailers());
-				if ("SessionNotInitiated".equals(exception.getStatus().getDescription())) {
-					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
-					return;
-				}
-				handleCloseConnectionError(exception.getStatus());
-			}
-
-			throw new ComunicationException("Received invalid exception, please try again.");
-		}
+		return links;
 	}
 
-	/*************************/
-	/**** AUX FUNCTIONS ******/
-	/*************************/
+	/**********************************/
+	/***** REQUESTS AUX FUNCTIONS *****/
+	/**********************************/
 
-	public Contract.PostRequest getPostRequest(char[] message, String[] references) {
+	public Contract.PostRequest getTestPostRequest(char[] message, String[] references, String board) {
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
 		String post = new String(message);
 		byte[] announcements = SerializationUtils.serialize(references);
 
-		byte[] postBytes = post.getBytes();
-
-		byte[] encryptedMessage = null;
-		try {
-			Cipher encrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-			encrypt.init(Cipher.ENCRYPT_MODE, this.serverPublicKey[0]);
-			encryptedMessage = encrypt.doFinal(post.getBytes(StandardCharsets.UTF_8));
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
-			System.out.println("Unexpected error while encrypting message");
-			e.printStackTrace();
-		}
-
-		byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, postBytes, announcements), privateKey);
-		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
-		byte[] integrity = messageHandler[0].calculateHMAC(Bytes.concat(publicKey, encryptedMessage, messageSignature, announcements), freshness);
-
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(encryptedMessage)).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(integrity)).build();
-	}
-
-	public Contract.PostRequest getTestPostRequest(char[] message, String[] references) {
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		String post = new String(message);
-		byte[] announcements = SerializationUtils.serialize(references);
-
-		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(ByteString.copyFrom(post.getBytes())).setAnnouncements(ByteString.copyFrom(announcements)).build();
-	}
-
-	public Contract.ReadRequest getReadRequest(PublicKey clientKey, int number){
-		byte[] targetPublicKey = SerializationUtils.serialize(clientKey);
-		byte[] userPublicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] numberBytes = Ints.toByteArray(number);
-		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
-
-		byte[] keys = Bytes.concat(targetPublicKey, userPublicKey);
-		byte[] signature = messageHandler[0].calculateHMAC(Bytes.concat(keys, numberBytes), freshness);
-		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(userPublicKey)).setTargetPublicKey(ByteString.copyFrom(targetPublicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
-	}
-
-	public Contract.ReadRequest getReadGeneralRequest(int number){
-		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] numberBytes = Ints.toByteArray(number);
-
-		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
-		byte[] signature = messageHandler[0].calculateHMAC(Bytes.concat(publicKey, numberBytes), freshness);
-
-		return Contract.ReadRequest.newBuilder().setClientPublicKey(ByteString.copyFrom(publicKey)).setNumber(number).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-
+		return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(board).build();
 	}
 
 	public Contract.RegisterRequest getRegisterRequest(){
+		/* Serializes key and changes to ByteString */
 		byte[] publicKey = SerializationUtils.serialize(this.publicKey);
-		byte[] freshness = new byte[0];
-		byte[] signature = SignatureHandler.publicSign(Bytes.concat(publicKey, freshness), privateKey);
+		byte[] signature = SignatureHandler.publicSign(publicKey, privateKey);
 
-		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-	}
-
-	public Contract.CloseSessionRequest getCloseSessionRequest(){
-		byte[] serializedPublicKey = SerializationUtils.serialize(publicKey);
-
-		byte[] freshness = Longs.toByteArray(messageHandler[0].getFreshness());
-		byte[] signature = messageHandler[0].calculateHMAC(serializedPublicKey, freshness);
-
-		return Contract.CloseSessionRequest.newBuilder().setPublicKey(ByteString.copyFrom(serializedPublicKey)).setFreshness(ByteString.copyFrom(freshness)).setSignature(ByteString.copyFrom(signature)).build();
-	}
-
-	/********************/
-	/** TEST FUNCTIONS **/
-	/********************/
-
-	public boolean clientRegisteredState() {
-		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(this.publicKey));
-		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
-
-		Contract.TestsResponse response = stub.clientRegisteredState(request);
-
-		return response.getTestResult();
-	}
-
-	public boolean postState(char[] message, String[] references) {
-		try{
-			checkMessage(message);
-
-			Contract.TestsResponse response = stub.postState(getTestPostRequest(message, references));
-			return response.getTestResult();
-		} catch (InvalidArgumentException e){
-			return false;
-		}
-	}
-
-	public boolean postState(char[] message) {
-		try{
-			checkMessage(message);
-
-			return postState(message, new String[0]);
-		}catch (InvalidArgumentException e){
-			return false;
-		}
-	}
-
-	public boolean postGeneralState(char[] message, String[] references) {
-		try{
-			checkMessage(message);
-
-			Contract.TestsResponse response = stub.postGeneralState(getTestPostRequest(message, references));
-			return response.getTestResult();
-		} catch (InvalidArgumentException e){
-			return false;
-		}
-	}
-
-	public boolean postGeneralState(char[] message) {
-		try{
-			checkMessage(message);
-
-			return postGeneralState(message, new String[0]);
-		}catch (InvalidArgumentException e){
-			return false;
-		}
-	}
-
-	public void postRequest(Contract.PostRequest request) throws ComunicationException {
-
-		try{
-			Contract.ACK response = stub.post(request);
-			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		}
-	}
-
-	public void postGeneralRequest(Contract.PostRequest request) throws ComunicationException {
-		try{
-			Contract.ACK response = stub.postGeneral(request);
-			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handlePostError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		}
-	}
-
-	public Announcement[] readRequest(Contract.ReadRequest request) throws ComunicationException {
-		try {
-			Contract.ReadResponse response = stub.read(request);
-			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		}
-
-    }
-
-	public Announcement[] readGeneralRequest(Contract.ReadRequest request) throws ComunicationException {
-		try {
-			Contract.ReadResponse response = stub.readGeneral(request);
-			messageHandler[0].verifyMessage(response.getAnnouncements().toByteArray(), Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-			return SerializationUtils.deserialize(response.getAnnouncements().toByteArray());
-		} catch (StatusRuntimeException e){
-			verifyException(e.getStatus(), e.getTrailers());
-			handleReadError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		}
-
-	}
-
-	public void registerRequest(Contract.RegisterRequest request) throws ClientAlreadyRegisteredException, ComunicationException {
-		try{
-			Contract.ACK response = stub.register(request);
-
-			if(!SignatureHandler.verifyPublicSignature(response.getFreshness().toByteArray(), response.getSignature().toByteArray(), this.serverPublicKey[0])){
-				throw new ComunicationException("Server signature was invalid");
-			}
-		} catch (StatusRuntimeException e){
-			verifyExceptionNoFreshnessCheck(e.getStatus(), e.getTrailers());
-			handleRegistrationError(e.getStatus());
-			if(debug != 0) System.out.println("\t ERROR: UNKNOWN - " + e.getMessage() + "\n");
-			throw new ComunicationException("Received invalid exception, please try again.");
-
-		}
-	}
-
-	public void closeConnectionRequest(Contract.CloseSessionRequest request) throws ComunicationException, ClientNotRegisteredException, InvalidArgumentException {
-		if(debug != 0) System.out.println("[CLOSE CONNECTION] Request from client.\n");
-
-		/* Check if client is in session */
-		if(!messageHandler[0].isInSession()){
-			throw new InvalidArgumentException("Session already closed");
-		}
-
-		try{
-			ListenableFuture<Contract.ACK> listenableFuture = futureStub[0].closeSession(request);
-			Contract.ACK response = listenableFuture.get();
-			messageHandler[0].verifyMessage(new byte[0], Longs.fromByteArray(response.getFreshness().toByteArray()), response.getSignature().toByteArray());
-			messageHandler[0].resetHMAC(null);
-		} catch (StatusRuntimeException e){
-			handleCloseConnectionError(e.getStatus());
-		} catch (SignatureNotValidException e) {
-			throw new ComunicationException("The integrity of the server response was violated");
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server response was not fresh");
-		} catch (InterruptedException | ExecutionException e){
-			if(e.getCause() instanceof StatusRuntimeException){
-				StatusRuntimeException exception = (StatusRuntimeException) e.getCause();
-				handleCloseConnectionError(exception.getStatus());
-			}
-
-			throw new ComunicationException(e.getMessage());
-		}
-	}
-
-	public void cleanPosts(){
-		stub.cleanPosts(Empty.newBuilder().build());
-	}
-
-	public void cleanGeneralPosts(){
-		stub.cleanGeneralPosts(Empty.newBuilder().build());
+		/* Prepare request */
+		return Contract.RegisterRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setSignature(ByteString.copyFrom(signature)).build();
 	}
 
 	/*********************/
@@ -751,160 +212,74 @@ public class ClientLibrary {
 		}
 	}
 
-	/******************************/
-	/** ERROR HANDLING FUNCTIONS **/
-	/******************************/
 
-	private void handleRegistrationError(Status status) throws ClientAlreadyRegisteredException, ComunicationException {
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				switch(status.getDescription()){
-					case "PublicKey":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-						throw new ComunicationException("The public key could not be deserialised on the server");
-					case "ClientAlreadyRegistered":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - This client was already registered \n");
-						throw new ClientAlreadyRegisteredException("This client was already registered");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "ClientSignatureInvalid":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The signature of the request wasn't valid \n");
-						throw new ComunicationException("The signature of the request wasn't valid");
-				}
+	/********************/
+	/** TEST FUNCTIONS **/
+	/********************/
+
+	public boolean clientRegisteredState() {
+		ByteString publicKey = ByteString.copyFrom(SerializationUtils.serialize(this.publicKey));
+		Contract.RegisterRequest request = Contract.RegisterRequest.newBuilder().setPublicKey(publicKey).build();
+
+		Contract.TestsResponse response = stub.clientRegisteredState(request);
+
+		return response.getTestResult();
+	}
+
+	public boolean postState(char[] message, String[] references) {
+		try{
+			checkMessage(message);
+
+			Contract.TestsResponse response = stub.postState(getTestPostRequest(message, references, privateBoardId));
+			return response.getTestResult();
+		} catch (InvalidArgumentException e){
+			return false;
 		}
 	}
 
-	private void handleSetupConnectionError(Status status) throws ComunicationException, ClientNotRegisteredException {
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				if ("PublicKey".equals(status.getDescription())) {
-					if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-					throw new ComunicationException("The public key could not be deserialised on the server");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "ClientNotRegistered":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The client wasn't registered yet \n");
-						throw new ClientNotRegisteredException("The client wasn't registered yet");
-					case "ClientRequestNotFresh":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The request received from the client wasn't fresh \n");
-						throw new ComunicationException("The request received from the client wasn't fresh");
-					case "ClientSignatureInvalid":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The signature of the request wasn't valid \n");
-						throw new ComunicationException("The signature of the request wasn't valid");
-				}
-			case UNAUTHENTICATED:
-				if ("SessionNotInitiated".equals(status.getDescription())) {
-					if(debug != 0) System.out.println("\t ERROR: UNAUTHENTICATED - The client hasn't initiated a session with the server yet (or it is invalid \n");
-					return;
-				}
+	public boolean postState(char[] message) {
+		try{
+			checkMessage(message);
+
+			return postState(message, new String[0]);
+		}catch (InvalidArgumentException e){
+			return false;
 		}
 	}
 
-	private void handlePostError(Status status) throws ComunicationException {
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				switch (status.getDescription()){
-					case "PublicKey":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - The public key could not be deserialised on the server \n");
-						throw new ComunicationException("The public key could not be deserialised on the server");
-					case "NonExistentAnnouncementReference":
-						if(debug != 0) System.out.println("\t ERROR: INVALID_ARGUMENT - There is a non-existent announcement referenced in this post \n");
-						throw new ComunicationException("There is a non-existent announcement referenced in this post");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "ClientRequestNotFresh":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The request received from the client wasn't fresh \n");
-						throw new ComunicationException("The request received from the client wasn't fresh");
-					case "ClientIntegrityViolation":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the request was violated \n");
-						throw new ComunicationException("The integrity of the request was violated");
-					case "AnnouncementSignatureInvalid":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - An announcement was not properly signed \n");
-						throw new ComunicationException("An announcement was not properly signed");
-				}
+	public boolean postGeneralState(char[] message, String[] references) {
+		try{
+			checkMessage(message);
+
+			Contract.TestsResponse response = stub.postGeneralState(getTestPostRequest(message, references, generalBoardId));
+			return response.getTestResult();
+		} catch (InvalidArgumentException e){
+			return false;
 		}
 	}
 
-	private void handleReadError(Status status) throws ComunicationException{
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				if ("PublicKey".equals(status.getDescription())) {
-					throw new ComunicationException("The public key could not be deserialised on the server");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "TargetClientNotRegistered":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The target wasn't registered yet \n");
-						throw new ComunicationException("The read target client wasn't registered yet");
-					case "ClientRequestNotFresh":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The request received from the client wasn't fresh \n");
-						throw new ComunicationException("The request received from the client wasn't fresh");
-					case "ClientIntegrityViolation":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the request was violated \n");
-						throw new ComunicationException("The integrity of the request was violated");
-				}
+	public boolean postGeneralState(char[] message) {
+		try{
+			checkMessage(message);
+
+			return postGeneralState(message, new String[0]);
+		}catch (InvalidArgumentException e){
+			return false;
 		}
 	}
 
-	private void handleCloseConnectionError(Status status) throws ComunicationException, ClientNotRegisteredException {
-		switch(status.getCode()){
-			case INVALID_ARGUMENT:
-				if ("PublicKey".equals(status.getDescription())) {
-					throw new ComunicationException("The public key could not be deserialised on the server");
-				}
-			case PERMISSION_DENIED:
-				switch(status.getDescription()){
-					case "ClientNotRegistered":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The client wasn't registered yet \n");
-						throw new ClientNotRegisteredException("The client wasn't registered yet");
-					case "ClientRequestNotFresh":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The request received from the client wasn't fresh \n");
-						throw new ComunicationException("The request received from the client wasn't fresh");
-					case "ClientIntegrityViolation":
-						if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - The integrity of the request was violated \n");
-						throw new ComunicationException("The integrity of the request was violated");
-				}
+	public void cleanPosts(){
+		for(DPASServiceGrpc.DPASServiceFutureStub stub : futureStubs){
+			stub.cleanPosts(Empty.newBuilder().build());
 		}
 	}
 
-	private void verifyException(Status status, Metadata metadata) throws ComunicationException {
-		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
-
-		byte[] serializedClientKey = metadata.get(clientKey);
-		byte[] clientFreshness = metadata.get(clientFreshnessKey);
-		byte[] signature = metadata.get(signatureKey);
-
-
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey[0])){
-			throw new ComunicationException("Server exception signature invalid");
-		}
-
-		try {
-			this.messageHandler[0].verifyExceptionFreshness(Longs.fromByteArray(clientFreshness));
-		} catch (MessageNotFreshException e) {
-			throw new ComunicationException("Server exception not fresh");
+	public void cleanGeneralPosts(){
+		for(DPASServiceGrpc.DPASServiceFutureStub stub : futureStubs){
+			stub.cleanGeneralPosts(Empty.newBuilder().build());
 		}
 	}
 
-	private void verifyExceptionNoFreshnessCheck(Status status, Metadata metadata) throws ComunicationException {
-		Metadata.Key<byte[]> clientKey = Metadata.Key.of("clientKey-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> clientFreshnessKey = Metadata.Key.of("clientFreshness-bin", Metadata.BINARY_BYTE_MARSHALLER);
-		Metadata.Key<byte[]> signatureKey = Metadata.Key.of("signature-bin", Metadata.BINARY_BYTE_MARSHALLER);
-
-		byte[] serializedClientKey = metadata.get(clientKey);
-		byte[] clientFreshness = metadata.get(clientFreshnessKey);
-		byte[] signature = metadata.get(signatureKey);
-
-		if(!SignatureHandler.verifyPublicSignature(Bytes.concat(Ints.toByteArray(status.getCode().value()), status.getDescription().getBytes(), serializedClientKey, clientFreshness), signature, this.serverPublicKey[0])){
-			throw new ComunicationException("Server exception signature invalid");
-		}
-
-	}
 
 	/***********************/
 	/** Channel Shut Down **/

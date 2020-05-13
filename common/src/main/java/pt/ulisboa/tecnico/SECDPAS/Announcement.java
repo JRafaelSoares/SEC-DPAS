@@ -3,7 +3,9 @@ package pt.ulisboa.tecnico.SECDPAS;
 
 import java.io.Serializable;
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class Announcement implements Serializable {
 
@@ -14,27 +16,35 @@ public class Announcement implements Serializable {
 
     private PublicKey publicKey;
 
-    private int announcementID;
+    private String announcementID;
 
     private byte[] signature;
+    private HashMap<Integer, byte[]> serverSignatures;
 
-    public Announcement(char[] post, PublicKey publicKey, String[] references, int announcementID, byte[] signature){
+    private long freshness;
+
+    private String board;
+
+    public Announcement(char[] post, PublicKey publicKey, String[] references, String announcementID, byte[] signature, long freshness, String board, HashMap<Integer, byte[]> serverSignatures){
         this.post = post;
         this.publicKey = publicKey;
         this.references = references;
         this.announcementID = announcementID;
         this.signature = signature;
+        this.freshness = freshness;
+        this.board = board;
+        this.serverSignatures = serverSignatures;
     }
 
-    public Announcement(char[] post, PublicKey publicKey, int announcementID, byte[] signature){
-        this(post, publicKey, new String[0], announcementID, signature);
+    public Announcement(char[] post, PublicKey publicKey, String announcementID, byte[] signature, long freshness, String board, HashMap<Integer, byte[]> serverSignatures){
+        this(post, publicKey, new String[0], announcementID, signature, freshness, board, serverSignatures);
     }
 
     public char[] getPost(){
         return this.post;
     }
 
-    public int getAnnouncementID(){
+    public String getAnnouncementID(){
         return announcementID;
     }
 
@@ -50,36 +60,27 @@ public class Announcement implements Serializable {
         return signature;
     }
 
+    public HashMap<Integer, byte[]> getServerSignatures(){
+        return serverSignatures;
+    }
+
+    public long getFreshness() {
+        return freshness;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if(obj.getClass() != this.getClass()){
             return false;
-        }
-        else{
-
+        }else{
             Announcement announcement = (Announcement) obj;
 
-            if(announcement.getPublicKey() == null && this.publicKey == null){
-                return true;
-            }
-
-            if (announcement.getAnnouncements().length != this.references.length){
-                return false;
-            }
-            if(announcement.getAnnouncements().length == 0 && this.references.length == 0){
-                return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey));
-            }
-
-            else {
-                boolean equalArray = true;
-                for(int i = 0; i < this.references.length; i++){
-                    if(!this.references[i].equals(announcement.references[i])){
-                        equalArray = false;
-                        break;
-                    }
-                }
-                return (Arrays.equals(this.post, announcement.post) && this.publicKey.equals(announcement.publicKey) && equalArray);
-            }
+            return announcement.getAnnouncementID().equals(announcementID);
         }
+    }
+
+
+    public String getBoard() {
+        return board;
     }
 }

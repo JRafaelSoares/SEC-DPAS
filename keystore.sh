@@ -26,23 +26,22 @@ keytool -genkeypair \
         -keyalg RSA \
         -keysize 4096 \
         -validity 365 \
-        -storepass serverKeyStore \
-        -keystore serverKeyStore.jks
+        -storepass serverKeyStore$server \
+        -keystore serverKeyStore$server.jks
 
 keytool -exportcert \
         -file certServer$server.der \
-        -keystore serverKeyStore.jks \
-        -storepass serverKeyStore \
+        -keystore serverKeyStore$server.jks \
+        -storepass serverKeyStore$server \
         -alias serverKeyPair$server
 
 cp certServer$server.der dpas-server/src/main/security/certificates/
 cp certServer$server.der dpas-client/src/main/security/certificates/server/
 mv certServer$server.der client-library/src/main/security/certificates/server/
+mv serverKeyStore$server.jks dpas-server/src/main/security/keys/
 done
 
 #Generate certificates
-
-mv serverKeyStore.jks dpas-server/src/main/security/keys/
 
 #generate client KeyStore
 
@@ -56,16 +55,17 @@ keytool -genkeypair \
         -keyalg RSA \
         -keysize 4096 \
         -validity 365 \
-        -storepass clientKeyStore \
-        -keystore clientKeyStore.jks
+        -storepass clientKeyStore$client \
+        -keystore clientKeyStore$client.jks
 
 keytool -exportcert \
         -file certClient$client.der \
-        -keystore clientKeyStore.jks \
-        -storepass clientKeyStore \
+        -keystore clientKeyStore$client.jks \
+        -storepass clientKeyStore$client \
         -alias clientKeyPair$client
 
 mv certClient$client.der dpas-client/src/main/security/certificates/clients/
+mv clientKeyStore$client.jks dpas-client/src/main/security/keys/
 done
 
-mv clientKeyStore.jks dpas-client/src/main/security/keys/
+

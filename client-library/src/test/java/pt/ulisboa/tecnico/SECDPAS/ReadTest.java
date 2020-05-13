@@ -65,7 +65,7 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void readTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
@@ -80,30 +80,30 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readAllAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void readAllAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
-		//lib1.post(s1.toCharArray());
+		lib1.post(s1.toCharArray());
 		lib1.post(s2.toCharArray());
 
 		Announcement[] announcement = lib1.read(pub,0);
 
-		assertEquals(announcement.length, 2);
+		assertEquals(2, announcement.length);
 
 		assertEquals(s1, new String(announcement[0].getPost()));
 		assertEquals(s2, new String(announcement[1].getPost()));
 	}
 
 	@Test
-	public void readAAOnlyMyAnnouncementsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
+	public void readOnlyMyAnnouncementsTest() throws InvalidArgumentException {
 		String s1 = "post1";
 		String s2 = "post2";
 
 		lib1.post(s1.toCharArray());
 		lib2.post(s2.toCharArray());
 
-		Announcement[] announcement = lib1.read(pub,0);
+		Announcement[] announcement = lib1.read(pub,1);
 
 		assertEquals(announcement.length, 1);
 
@@ -111,55 +111,13 @@ public class ReadTest {
 	}
 
 	@Test
-	public void readAzNumberBiggerThanPostsTest() throws InvalidArgumentException, ClientNotRegisteredException, ComunicationException {
-		String s1 = "post1";
-		String s2 = "post2";
-
-		//lib1.post(s1.toCharArray());
-		//lib1.post(s2.toCharArray());
-
-		Announcement[] announcement = lib1.read(pub,3);
-
-		assertEquals(announcement.length, 2);
-
-		assertEquals(s1, new String(announcement[0].getPost()));
-		assertEquals(s2, new String(announcement[1].getPost()));
-	}
-
-	@Test
-	public void readInvalidNumberTest() throws ClientNotRegisteredException, ComunicationException {
+	public void readInvalidNumberTest() {
 		Announcement[] announcements = null;
 		try{
 			announcements = lib1.read(pub,-1);
 			fail("Exception InvalidArguments should have been thrown");
 
 		}catch(InvalidArgumentException e){
-			assertNull(announcements);
-		}
-	}
-
-
-	@Test
-	public void readClientNotExistsTest() throws InvalidArgumentException, ComunicationException {
-		Announcement[] announcements = null;
-		try{
-			announcements = lib3.read(pub,1);
-			fail("Exception ClientNotRegisteredException should have been thrown");
-
-		}catch(ClientNotRegisteredException e){
-			assertNull(announcements);
-		}
-	}
-
-
-	@Test
-	public void readAllClientNotExistsTest() throws InvalidArgumentException, ComunicationException {
-		Announcement[] announcements = null;
-		try{
-			announcements = lib3.read(pub,0);
-			fail("Exception ClientNotRegisteredException should have been thrown");
-
-		}catch(ClientNotRegisteredException e){
 			assertNull(announcements);
 		}
 	}
