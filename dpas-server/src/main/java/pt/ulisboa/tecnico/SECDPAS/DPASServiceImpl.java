@@ -55,7 +55,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private int numServers;
 	private int numFaults;
 	/* for debugging change to 1 */
-	private int debug = 1;
+	private int debug = 0;
 
 	public DPASServiceImpl(PrivateKey privateKey, int id, int faults) throws DatabaseException{
 		Path currentRelativePath = Paths.get("");
@@ -1289,5 +1289,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 		responseObserver.onNext(Empty.newBuilder().build());
 		responseObserver.onCompleted();
+	}
+
+	public void registerTestClient(Contract.RegisterRequest request){
+		PublicKey userKey = SerializationUtils.deserialize(request.getPublicKey().toByteArray());
+
+		/* Registering client */
+		this.clientReadFreshness.put(userKey, new FreshnessHandler());
+		this.clientWriteFreshness.put(userKey, new FreshnessHandler());
+		this.privateBoard.put(userKey, new ArrayList<>());
+	}
+
+	public AuthenticatedDoubleEchoBroadcast getADEB(RequestType request){
+		return authenticatedDoubleEchoBroadcasts.get(request);
 	}
 }
