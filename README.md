@@ -1,3 +1,10 @@
+# Installing the Project
+
+In the base folder of the project, we must first install the project by running:
+
+	mvn clean install -DskipTests
+
+
 # Running multiple servers
 
 The current setup is ready for 4 simulatenous servers, tolerating 1 fault.
@@ -34,9 +41,9 @@ After having all desired instances of the server running, in the project base fo
     mvn test
     
 DISCLAIMERS:
-In MultiClientTest, depending of the speed of the computer, clients can finish their tests and verify the number of posted announcements before other clients have finished writing, leading to an error in this test. In our personal machines it works fine and we assume that in any other machine, as long as the failure is due to an Assertion error, the concurrency is correct.
+In MultiClientPostGeneralTest, depending of the speed of the computer, clients can finish their tests and verify the number of posted announcements before other clients have finished writing, leading to an error in this test. In our personal machines it works fine and we assume that in any other machine, as long as the failure is due to an Assertion error, the concurrency is correct.
 
-Due to the Bizantine Quorum in the distributed alghoritms, usually one server tends to be left behind, as the Quorum only needs (for the case of 1 fault) 3 servers to answer. As such, this server will be overloaded by requests that he cannot answer yet, taking some time for him to take all updates in the correct order. So by the end of the MultiClientTest, a server usually will still be running updates, but that is fine, as we have confirmed that eventually he finishes taking in all updates necessary.
+Due to the Bizantine Quorum in the distributed alghoritms, usually one server tends to be left behind, as the Quorum only needs (for the case of 1 fault) 3 servers to answer. As such, this server may be overloaded by requests that he cannot answer yet, taking some time for him to take all updates in the correct order. So by the end of the concurrency tests, a server usually will still be running updates, but that is fine, as we have confirmed that eventually he finishes taking in all updates necessary, but Java may run out of memory in the meanwhile.
 
 # Testing directly with client
 
