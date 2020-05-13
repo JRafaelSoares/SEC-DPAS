@@ -40,7 +40,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private ConcurrentHashMap<String, Announcement> announcementIDs = new ConcurrentHashMap<>();
 
-	private DPASServiceGrpc.DPASServiceFutureStub[] futureStubs;
+	private AuthenticatedPerfectLink[] serverPerfectLinks;
 	private PublicKey[] serverPublicKeys;
 	private HashMap<RequestType, AuthenticatedDoubleEchoBroadcast> authenticatedDoubleEchoBroadcasts;
 
@@ -75,13 +75,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		ManagedChannel[] channel = new ManagedChannel[numServers];
 		this.serverPublicKeys = new PublicKey[numServers];
-		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+		DPASServiceGrpc.DPASServiceFutureStub[] stubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
 		//Stub and certificate for each server
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);//.withDeadlineAfter(20, TimeUnit.SECONDS);
+			stubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);//.withDeadlineAfter(20, TimeUnit.SECONDS);
 
 			//Get certificate
 			try{
@@ -95,11 +95,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			}
 		}
 
+		this.serverPerfectLinks = new AuthenticatedPerfectLink[numServers];
+
+		for (int i = 0; i < numServers; i++) {
+			if (i == this.serverID) continue;
+			this.serverPerfectLinks[i] = new AuthenticatedPerfectLink(stubs[i], 0, serverPublicKeys[i], serverPublicKeys[this.serverID], i, numServers + numFaults);
+		}
+
 		load();
 	}
 
 	//for tests
-	public DPASServiceImpl(PrivateKey privateKey, int id, int faults, DPASServiceGrpc.DPASServiceFutureStub[] futureStubs, PublicKey[] serverPublicKeys){
+	public DPASServiceImpl(PrivateKey privateKey, int id, int faults, AuthenticatedPerfectLink[] serverPerfectLinks, PublicKey[] serverPublicKeys){
 		Path currentRelativePath = Paths.get("");
 		this.databasePath = currentRelativePath.toAbsolutePath().toString() + "/src/database";
 		this.privateKey = privateKey;
@@ -111,7 +118,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		this.authenticatedDoubleEchoBroadcasts = new HashMap<>();
 
 		this.serverPublicKeys = new PublicKey[numServers];
-		this.futureStubs = futureStubs;
+		this.serverPerfectLinks = serverPerfectLinks;
 		this.serverPublicKeys = serverPublicKeys;
 
 		try {
@@ -141,13 +148,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		ManagedChannel[] channel = new ManagedChannel[numServers];
 		this.serverPublicKeys = new PublicKey[numServers];
-		this.futureStubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
+		DPASServiceGrpc.DPASServiceFutureStub[] stubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
 		//Stub and certificate for each server
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);//.withDeadlineAfter(20, TimeUnit.SECONDS);
+			stubs[server] = DPASServiceGrpc.newFutureStub(channel[server]);//.withDeadlineAfter(20, TimeUnit.SECONDS);
 
 			//Get certificate
 			try{
@@ -161,11 +168,18 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			}
 		}
 
+		this.serverPerfectLinks = new AuthenticatedPerfectLink[numServers];
+
+		for (int i = 0; i < numServers; i++) {
+			if (i == this.serverID) continue;
+			this.serverPerfectLinks[i] = new AuthenticatedPerfectLink(stubs[i], 0, serverPublicKeys[i], serverPublicKeys[this.serverID], i, numServers + numFaults);
+		}
+
 	}
 
 	@Override
 	public void register(Contract.RegisterRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		if(debug != 0) System.out.println("[REGISTER] Client registering.\n");
+		if(debug != 0) System.out.println("[" + serverID + "]" + "[REGISTER] Client registering.\n");
 
 		byte[] encodedClientKey = request.getPublicKey().toByteArray();
 
@@ -184,7 +198,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
 
 			if(aDEB == null){
-				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, (r, s) -> executeRegister((Contract.RegisterRequest) r.getRequest()));
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, serverPerfectLinks, serverPublicKeys, this.privateKey, (r, s) -> executeRegister((Contract.RegisterRequest) r.getRequest()));
 				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
 			}
 		}
@@ -198,7 +212,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			System.out.println(e.getMessage());
 		}
 
-		if(debug != 0) System.out.println(String.format("[REGISTER] Client %s registered", userKey));
+		if(debug != 0) System.out.println(String.format("[" + serverID + "]" + "[REGISTER] Client %s registered", userKey));
 		byte[] signature = SignatureHandler.publicSign(encodedClientKey, this.privateKey);
 
 		responseObserver.onNext(buildRegisterResponse(encodedClientKey));
@@ -207,14 +221,14 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void post(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		if(debug != 0) System.out.println("[POST] Post request " + request.getMessage() + " from client.\n");
+		if(debug != 0) System.out.println("[" + serverID + "]" + "[POST] Post request " + request.getMessage() + " from client.\n");
 
 		/* Verify request */
 		String postString = verifyPostRequest(request, responseObserver);
 
 		/* In case the request is faulty */
 		if(postString == null){
-			if(debug != 0) System.out.println("\t[POST] Post request was faulty.\n");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[POST] Post request was faulty.\n");
 			return;
 		}
 
@@ -228,7 +242,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
 
 			if(aDEB == null){
-				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, (r, s) -> executePost((Contract.PostRequest) r.getRequest(), s));
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, serverPerfectLinks, serverPublicKeys, this.privateKey, (r, s) -> executePost((Contract.PostRequest) r.getRequest(), s));
 				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
 			}
 		}
@@ -249,7 +263,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	@Override
 	public void postGeneral(Contract.PostRequest request, StreamObserver<Contract.ACK> responseObserver) {
-		if(debug != 0) System.out.println("[POST_GENERAL] PostGeneral request from client\n");
+		if(debug != 0) System.out.println("[" + serverID + "]" + "[POST_GENERAL] PostGeneral request from client\n");
 
 		/* Verify request */
 		String postString = verifyPostGeneralRequest(request, responseObserver);
@@ -270,7 +284,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
 
 			if(aDEB == null){
-				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, (r, s) -> executePostGeneral((Contract.PostRequest) r.getRequest(), s));
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, serverPerfectLinks, serverPublicKeys, this.privateKey, (r, s) -> executePostGeneral((Contract.PostRequest) r.getRequest(), s));
 				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
 			}
 		}
@@ -295,7 +309,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void echo(Contract.EchoRequest request, StreamObserver<Contract.EchoReadyACK> responseObserver) {
 
-		if(debug != 0) System.out.println("[ECHO] Echo request from server " + request.getServerID() + "\n");
+		if(debug != 0) System.out.println("[" + serverID + "]" + "[ECHO] Echo request from server " + request.getServerID() + "\n");
 
 		byte[] serializedRequest = request.getRequest().toByteArray();
 		byte[] requestHash = messageHasher.digest(serializedRequest);
@@ -305,7 +319,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		BiConsumer<RequestType, HashMap<Integer, byte[]>> executor = verifyEchoOrReady(clientRequest, responseObserver, request.getServerID(), null, serializedRequest, "Echo", requestHash, request.getSignature().toByteArray());
 
 		if(executor == null){
-			if(debug != 0) System.out.println("\t[ECHO] Echo request was faulty.\n");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[ECHO] Echo request was faulty.\n");
 			return;
 		}
 
@@ -313,7 +327,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			AuthenticatedDoubleEchoBroadcast aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
 
 			if(aDEB == null){
-				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executor);
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, serverPerfectLinks, serverPublicKeys, this.privateKey, executor);
 				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
 			}
 
@@ -329,7 +343,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	@Override
 	public void ready(Contract.ReadyRequest request, StreamObserver<Contract.EchoReadyACK> responseObserver) {
 
-		if(debug != 0) System.out.println("[READY] Ready request from server " + request.getServerID() + "\n");
+		if(debug != 0) System.out.println("[" + serverID + "]" + "[READY] Ready request from server " + request.getServerID() + "\n");
 
 		byte[] serializedRequest = request.getRequest().toByteArray();
 		byte[] requestHash = messageHasher.digest(serializedRequest);
@@ -340,7 +354,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		BiConsumer<RequestType, HashMap<Integer, byte[]>> executor = verifyEchoOrReady(clientRequest, responseObserver, request.getServerID(), announcementSignature, serializedRequest, "Ready", requestHash, request.getSignature().toByteArray());
 
 		if(executor == null){
-			if(debug != 0) System.out.println("\t[READY] Ready request was faulty.\n");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[READY] Ready request was faulty.\n");
 			return;
 		}
 
@@ -348,7 +362,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			AuthenticatedDoubleEchoBroadcast aDEB = authenticatedDoubleEchoBroadcasts.get(clientRequest);
 
 			if(aDEB == null){
-				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, futureStubs, serverPublicKeys, this.privateKey, executor);
+				aDEB = new AuthenticatedDoubleEchoBroadcast(clientRequest, this.serverID, this.numServers, this.numFaults, serverPerfectLinks, serverPublicKeys, this.privateKey, executor);
 				authenticatedDoubleEchoBroadcasts.put(clientRequest, aDEB);
 			}
 
@@ -378,7 +392,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		if(debug != 0) System.out.println(String.format("[READ] Read request from client %s to client board %s\n", clientUserKey, targetUserKey));
+		if(debug != 0) System.out.println(String.format("[" + serverID + "]" + "[READ] Read request from client %s to client board %s\n", clientUserKey, targetUserKey));
 
 		/* Prepare announcements */
 		ArrayList<Announcement> announcementList = this.privateBoard.get(targetUserKey);
@@ -411,7 +425,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			return;
 		}
 
-		if(debug != 0) System.out.println(String.format("[READ GENERAL] Read request from client %s\n", clientUserKey));
+		if(debug != 0) System.out.println(String.format("[" + serverID + "]" + "[READ GENERAL] Read request from client %s\n", clientUserKey));
 
 		/* Prepare announcements */
 		byte[] responseAnnouncements;
@@ -700,7 +714,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyClientIsNotRegistered(PublicKey userKey, StreamObserver<Contract.ACK> responseObserver, byte[] serializedClientKey){
 		if(this.privateBoard.get(userKey) != null){
-			if(debug != 0) System.out.println("\t [REGISTER] Client already registered, sending ACK.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[REGISTER] Client already registered, sending ACK.");
 			responseObserver.onNext(buildRegisterResponse(serializedClientKey));
 			responseObserver.onCompleted();
 			return false;
@@ -710,7 +724,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyClientIsNotRegistered(PublicKey userKey, StreamObserver<Contract.EchoReadyACK> responseObserver, String type, byte[] requestHash){
 		if(this.privateBoard.get(userKey) != null){
-			if(debug != 0) System.out.println("\t [REGISTER] Client already registered, sending ACK.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[REGISTER] Client already registered, sending ACK.");
 			responseObserver.onNext(buildEchoReadyACKresponse(type, requestHash));
 			responseObserver.onCompleted();
 			return false;
@@ -819,7 +833,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 			/* Verify message freshness and integrity-signature. References exists.*/
 			if (userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness)) {
-				if(debug != 0) System.out.println("[POST-GENERAL] Check Failed");
+				if(debug != 0) System.out.println("[" + serverID + "]" + "[POST-GENERAL] Check Failed");
 				return null;
 			}
 		}
@@ -851,7 +865,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		synchronized (generalBoard) {
 			/* Verify message freshness and integrity-signature. References exists.*/
 			if (userKey == null || !verifyPostGeneralMessage(responseObserver, packet, messageSignature, userKey, freshness, type, requestHash)) {
-				if(debug != 0) System.out.println("[POST-GENERAL] Check Failed");
+				if(debug != 0) System.out.println("[" + serverID + "]" + "[POST-GENERAL] Check Failed");
 				return null;
 			}
 		}
@@ -889,7 +903,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				return true;
 			}
 			else{
-				if(debug != 0) System.out.println("\t[POST_GENERAL] Already seen post, returning ACK");
+				if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[POST_GENERAL] Already seen post, returning ACK");
 				responseObserver.onNext(buildACKresponse(userKey, generalBoardId, clientFreshness));
 				responseObserver.onCompleted();
 				return false;
@@ -898,7 +912,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		else if(clientFreshness != highestFreshness+1){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
 			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
 			return false;
 		}
@@ -917,7 +931,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				return true;
 			}
 			else{
-				if(debug != 0) System.out.println("\t[POST_GENERAL] Already seen post, returning ACK");
+				if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[POST_GENERAL] Already seen post, returning ACK");
 				responseObserver.onNext(buildEchoReadyACKresponse(type, requestHash));
 				responseObserver.onCompleted();
 				return false;
@@ -926,7 +940,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		}
 
 		else if( clientFreshness != highestFreshness+1){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
 			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
 			return false;
 		}
@@ -949,7 +963,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyPostFreshness(StreamObserver<Contract.ACK> responseObserver, PublicKey userKey, long clientFreshness){
 		if(this.clientWriteFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
-			if(debug != 0) System.out.println("\t[POST] Already seen post, returning ACK");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[POST] Already seen post, returning ACK");
 			responseObserver.onNext(buildACKresponse(userKey, privateBoardId, clientFreshness));
 			responseObserver.onCompleted();
 			return false;
@@ -959,7 +973,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyPostFreshness(StreamObserver<Contract.EchoReadyACK> responseObserver, PublicKey userKey, long clientFreshness, String type, byte[] requestHash){
 		if(this.clientWriteFreshness.get(userKey).verifyPostFreshness(clientFreshness)){
-			if(debug != 0) System.out.println("\t[POST] Already seen post, returning ACK");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[POST] Already seen post, returning ACK");
 			responseObserver.onNext(buildEchoReadyACKresponse(type, requestHash));
 			responseObserver.onCompleted();
 			return false;
@@ -971,7 +985,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		try{
 			return SerializationUtils.deserialize(serializedAnnouncements);
 		} catch(SerializationException e){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Unable to deserialize announcement.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "ERROR: PERMISSION_DENIED - Unable to deserialize announcement.");
 
 			responseObserver.onError(buildException(Status.Code.INVALID_ARGUMENT, "PublicKey", serializedClientKey, clientFreshness));
 			return null;
@@ -981,7 +995,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private boolean verifyReferences(String[] references, StreamObserver<?> responseObserver, byte[] serializedClientKey, long clientFreshness){
 		for(String reference: references){
 			if(!announcementIDs.containsKey(reference)){
-				if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - Invalid References.");
+				if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "ERROR: PERMISSION_DENIED - Invalid References.");
 				responseObserver.onError(buildException(Status.Code.INVALID_ARGUMENT, "NonExistentAnnouncementReference", serializedClientKey, clientFreshness));
 				return false;
 			}
@@ -991,7 +1005,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyWriteFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
 		if(!this.clientWriteFreshness.get(userKey).verifyFreshness(clientFreshness)){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
 			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
 			return false;
 		}
@@ -1000,7 +1014,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifyReadFreshness(StreamObserver<?> responseObserver, PublicKey userKey, long clientFreshness){
 		if(!this.clientReadFreshness.get(userKey).verifyFreshness(clientFreshness)){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "ERROR: PERMISSION_DENIED - ClientRequestNotFresh.");
 			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientRequestNotFresh", SerializationUtils.serialize(userKey), clientFreshness));
 			return false;
 		}
@@ -1009,7 +1023,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 	private boolean verifySignature(StreamObserver<?> responseObserver, byte[] supposedMessage, byte[] signature, PublicKey userKey, long clientFreshness){
 		if(!SignatureHandler.verifyPublicSignature(supposedMessage, signature, userKey)){
-			if(debug != 0) System.out.println("\t ERROR: PERMISSION_DENIED - ClientIntegrityViolation.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "ERROR: PERMISSION_DENIED - ClientIntegrityViolation.");
 			responseObserver.onError(buildException(Status.Code.PERMISSION_DENIED, "ClientIntegrityViolation", SerializationUtils.serialize(userKey), clientFreshness));
 			return false;
 		}
@@ -1080,15 +1094,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		if(type.equals("Echo")){
 			message = Bytes.concat(Ints.toByteArray(serverID), serializedClientRequest);
-			//System.out.println(String.format("\nReceived ECHO: \n\tServerID = %d\n\tServerID Byte Array = %s\n\tSerialized Client Request = %s\n\tSignature = %s\n", serverID, Arrays.toString(Ints.toByteArray(serverID)), Arrays.toString(serializedClientRequest), Arrays.toString(signature)));
-			//System.out.println();
 		}
 		else{
 			message = Bytes.concat(Ints.toByteArray(serverID), announcementSignature, serializedClientRequest);
 		}
 
 		if(serverID < 0 || serverID >= this.numServers || !SignatureHandler.verifyPublicSignature(message, signature, this.serverPublicKeys[serverID])){
-			if(debug != 0) System.out.println("\t[ECHO_OR_READY] Signature was invalid.");
+			if(debug != 0) System.out.println("\t" + "[" + serverID + "]" + "[ECHO_OR_READY] Signature was invalid.");
 			responseObserver.onError(buildException(Status.Code.UNAUTHENTICATED, "Echo request signature invalid", new byte[0], 0));
 			return null;
 		}
@@ -1102,20 +1114,21 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 				/* Obtaining the Public Key of the Client */
 				PublicKey userKey = verifyPublicKey(registerRequest.getPublicKey().toByteArray(), responseObserver, 0);
 				if(!verifyRegisterRequest(responseObserver, registerRequest, userKey, type, requestHash)){
+					System.out.println("[" + this.serverID + "]" + " Register request from " + serverID + " was invalid");
 					return null;
 				}
 
-				if(debug != 0) System.out.println("\t[ECHO_OR_READY][REGISTER] Client " + registerRequest.getPublicKey().toByteArray()[442] + "\n");
+				if(debug != 0) System.out.println("\t" + "[" + this.serverID + "]" + "[ECHO_OR_READY][REGISTER] Client " + registerRequest.getPublicKey().toByteArray()[442] + "\n");
 
 				executor = (request, signatures) -> executeRegister((Contract.RegisterRequest) request.getRequest());
 				break;
 			case "PostRequest":
 				Contract.PostRequest postRequest = (Contract.PostRequest) clientRequest.getRequest();
 
-				if(debug != 0) System.out.println("\t[ECHO_OR_READY][POST] Client " + postRequest.getPublicKey().toByteArray()[442] + " Message: " + postRequest.getMessage() + "\n");
+				if(debug != 0) System.out.println("\t" + "[" + this.serverID + "]" + "[ECHO_OR_READY][POST] Client " + postRequest.getPublicKey().toByteArray()[442] + " Message: " + postRequest.getMessage() + "\n");
 
 				if(type.equals("Ready") && !SignatureHandler.verifyPublicSignature(Bytes.concat(postRequest.getPublicKey().toByteArray(), postRequest.getMessage().getBytes(), postRequest.getAnnouncements().toByteArray(), Longs.toByteArray(postRequest.getFreshness()), postRequest.getBoard().getBytes()), announcementSignature, serverPublicKeys[serverID])){
-					if(debug != 0) System.out.println("\t[ECHO_OR_READY] Announcement signature was invalid.");
+					if(debug != 0) System.out.println("\t" + "[" + this.serverID + "]" + "[ECHO_OR_READY] Announcement signature was invalid.");
 					return null;
 				}
 
@@ -1128,10 +1141,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			case "PostGeneralRequest":
 				Contract.PostRequest postGeneralRequest = (Contract.PostRequest) clientRequest.getRequest();
 
-				if(debug != 0) System.out.println("\t[ECHO_OR_READY][POST_GENERAL] Client " + postGeneralRequest.getPublicKey().toByteArray()[442] + " Message: " + postGeneralRequest.getMessage() + "\n");
+				if(debug != 0) System.out.println("\t" + "[" + this.serverID + "]" + "[ECHO_OR_READY][POST_GENERAL] Client " + postGeneralRequest.getPublicKey().toByteArray()[442] + " Message: " + postGeneralRequest.getMessage() + "\n");
 
 				if(type.equals("Ready") && !SignatureHandler.verifyPublicSignature(Bytes.concat(postGeneralRequest.getPublicKey().toByteArray(), postGeneralRequest.getMessage().getBytes(), postGeneralRequest.getAnnouncements().toByteArray(), Longs.toByteArray(postGeneralRequest.getFreshness()), postGeneralRequest.getBoard().getBytes()), announcementSignature, serverPublicKeys[serverID])){
-					if(debug != 0) System.out.println("\t[ECHO_OR_READY] Announcement signature was invalid.");
+					if(debug != 0) System.out.println("\t" + "[ECHO_OR_READY] Announcement signature was invalid.");
 					return null;
 				}
 
