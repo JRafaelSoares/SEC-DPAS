@@ -13,7 +13,7 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-public class MultiClientTest {
+public class MultiClientPostGeneralTest {
 
     private static List<ClientLibrary> list = new ArrayList<>();
     private static PublicKey pub1;

@@ -52,7 +52,9 @@ public class PostServerTest {
 			kpg.initialize(2048);
 			KeyPair kp = kpg.genKeyPair();
 			PrivateKey priv = kp.getPrivate();
-
+			if(server != null){
+				server.shutDown();
+			}
 			server = new DPASServiceImpl(priv, 0);
 			server.register(getRegisterRequest(clientPublicKey, clientPrivateKey), new StreamObserver<Contract.ACK>() {
 				@Override

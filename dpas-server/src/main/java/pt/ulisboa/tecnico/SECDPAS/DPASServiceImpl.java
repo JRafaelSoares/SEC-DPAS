@@ -55,7 +55,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private int numServers;
 	private int numFaults;
 	/* for debugging change to 1 */
-	private int debug = 1;
+	private int debug = 0;
+
+	/* Test variables */
+	private ManagedChannel[] channel;
 
 	public DPASServiceImpl(PrivateKey privateKey, int id, int faults) throws DatabaseException{
 		Path currentRelativePath = Paths.get("");
@@ -146,7 +149,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		} catch (NoSuchAlgorithmException e) {
 		}
 
-		ManagedChannel[] channel = new ManagedChannel[numServers];
+		channel = new ManagedChannel[numServers];
 		this.serverPublicKeys = new PublicKey[numServers];
 		DPASServiceGrpc.DPASServiceFutureStub[] stubs = new DPASServiceGrpc.DPASServiceFutureStub[numServers];
 
@@ -175,6 +178,13 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			this.serverPerfectLinks[i] = new AuthenticatedPerfectLink(stubs[i], 0, serverPublicKeys[i], serverPublicKeys[this.serverID], i, numServers + numFaults);
 		}
 
+	}
+
+	//For test shutdown only
+	public void shutDown(){
+		for (ManagedChannel channel : channel){
+			channel.shutdownNow();
+		}
 	}
 
 	@Override
