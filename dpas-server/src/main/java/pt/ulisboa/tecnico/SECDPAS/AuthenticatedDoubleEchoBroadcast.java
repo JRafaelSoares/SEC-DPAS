@@ -58,10 +58,10 @@ public class AuthenticatedDoubleEchoBroadcast {
     public synchronized void addECHO(int serverID){
         echos.add(serverID);
 
-        if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Adding echo from server " + serverID);
+        if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Adding echo from server " + serverID + " to client request " + clientRequest.getId());
 
         if(echos.size() >= minResponses && !sentReady.get()){
-            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received required number of echos: " + Arrays.toString(echos.toArray()));
+            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received required number of echos: " + Arrays.toString(echos.toArray()) + " to client request " + clientRequest.getId());
             addReady(this.serverID, getAnnouncementSignature());
 
             broadcastReady();
@@ -73,7 +73,7 @@ public class AuthenticatedDoubleEchoBroadcast {
 
         // If we have received more than f readys, than at least one correct server has received 2f + 1 echos
         if(readys.size() > numFaults && !sentReady.get()){
-            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received more than f readys, sending ready: " + Arrays.toString(echos.toArray()));
+            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received more than f readys, sending ready: " + Arrays.toString(echos.toArray()) + " to client request " + clientRequest.getId());
             readys.put(this.serverID, getAnnouncementSignature());
 
             broadcastReady();
@@ -82,7 +82,7 @@ public class AuthenticatedDoubleEchoBroadcast {
         if(readys.size() >= minResponses && !hasDelivered.get()){
             hasDelivered.set(true);
             executor.accept(this.clientRequest, readys);
-            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received required readys: " + Arrays.toString(readys.keySet().toArray()));
+            if(debug) System.out.println("[" + this.serverID + "]" + "[ADEB] Received required readys: " + Arrays.toString(readys.keySet().toArray()) + " to client request " + clientRequest.getId());
             readyCountDownLatch.countDown();
         }
     }

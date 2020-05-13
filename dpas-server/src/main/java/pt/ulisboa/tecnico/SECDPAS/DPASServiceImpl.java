@@ -55,7 +55,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 	private int numServers;
 	private int numFaults;
 	/* for debugging change to 1 */
-	private int debug = 1;
+	private int debug = 0;
 
 	/* Test variables */
 	private ManagedChannel[] channel;
@@ -266,9 +266,11 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 			System.out.println(e.getMessage());
 		}
 
-		responseObserver.onNext(buildACKresponse(userKey, privateBoardId, this.clientWriteFreshness.get(userKey).getFreshness()));
-		responseObserver.onCompleted();
+		long writeFreshness = this.clientWriteFreshness.get(userKey).getFreshness();
 		this.clientWriteFreshness.get(userKey).incrementFreshness();
+
+		responseObserver.onNext(buildACKresponse(userKey, privateBoardId, writeFreshness));
+		responseObserver.onCompleted();
 	}
 
 	@Override
@@ -432,24 +434,27 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		byte[] serializedClientPublicKey = request.getClientPublicKey().toByteArray();
 		int numPosts = request.getNumber();
 		long freshness = request.getFreshness();
+		byte[] responseAnnouncements;
 
 		PublicKey clientUserKey = verifyPublicKey(serializedClientPublicKey, responseObserver, freshness);
 
-		if(clientUserKey == null || !verifyReadRequest(request, responseObserver, false)){
-			return;
-		}
+		synchronized (generalBoard){
 
-		if(debug != 0) System.out.println(String.format("[" + serverID + "]" + "[READ GENERAL] Read request from client %s\n", clientUserKey));
+			if(clientUserKey == null || !verifyReadRequest(request, responseObserver, false)){
+				return;
+			}
 
-		/* Prepare announcements */
-		byte[] responseAnnouncements;
+			if(debug != 0) System.out.println(String.format("[" + serverID + "]" + "[READ GENERAL] Read request from client %s\n", clientUserKey));
 
-		if(numPosts == 0 || numPosts > this.generalBoard.size()){
-			responseAnnouncements = SerializationUtils.serialize(this.generalBoard.toArray(new Announcement[0]));
-		}
-		else{
-			List<Announcement> toSent =  this.generalBoard.subList(this.generalBoard.size() - numPosts, this.generalBoard.size());
-			responseAnnouncements = SerializationUtils.serialize(toSent.toArray(new Announcement[0]));
+			/* Prepare announcements */
+
+			if(numPosts == 0 || numPosts > this.generalBoard.size()){
+				responseAnnouncements = SerializationUtils.serialize(this.generalBoard.toArray(new Announcement[0]));
+			}
+			else{
+				List<Announcement> toSent =  this.generalBoard.subList(this.generalBoard.size() - numPosts, this.generalBoard.size());
+				responseAnnouncements = SerializationUtils.serialize(toSent.toArray(new Announcement[0]));
+			}
 		}
 
 		responseObserver.onNext(buildReadResponse(clientUserKey, responseAnnouncements, generalBoardId));
@@ -639,6 +644,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		String announcementID = getAnnouncementId(userKey, request.getFreshness(), generalBoardId);
 		if(announcementIDs.containsKey(announcementID)){
+			if (debug != 0) System.out.println("[POST-GENERAL] Repeated announcement ID");
 			return;
 		}
 		Announcement announcement = new Announcement(post, userKey, announcements, announcementID, request.getMessageSignature().toByteArray(), writeTimeStamp, generalBoardId, signatures);
@@ -655,19 +661,23 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 					}
 
 					if(generalBoard.get(i).getFreshness() == announcement.getFreshness()){
-						if(generalBoard.get(i).getPublicKey().toString().compareTo(announcement.getPublicKey().toString()) > 0){
+
+						String publicKey1 = Base64.getEncoder().encodeToString(generalBoard.get(i).getPublicKey().getEncoded());
+						String publicKey2 = Base64.getEncoder().encodeToString(announcement.getPublicKey().getEncoded());
+
+						if(publicKey1.compareTo(publicKey2) > 0){
 							this.generalBoard.add(i, announcement);
 						}else{
 							this.generalBoard.add(i+1, announcement);
 						}
 						break;
 					}
-
 				}
 			}
 		}
 
 		this.announcementIDs.put(announcementID, announcement);
+
 		if(debug != 0) System.out.println(String.format("[POST_GENERAL] Post %s with announcementID %s from Client %s posted", new String(post), announcementID, userKey));
 
 		/* Save posts */
@@ -676,6 +686,7 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 		} catch (DatabaseException e){
 			e.getCause();
 		}
+
 	}
 
 	/************************/

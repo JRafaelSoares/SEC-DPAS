@@ -70,7 +70,11 @@ public class ByzantineNNRegularRegister {
                 return 1;
             }else{
                 if(o1.getFreshness() == o2.getFreshness()){
-                    if(o1.getPublicKey().toString().compareTo(o2.getPublicKey().toString()) > 0){
+
+                    String publicKey1 = Base64.getEncoder().encodeToString(o1.getPublicKey().getEncoded());
+                    String publicKey2 = Base64.getEncoder().encodeToString(o2.getPublicKey().getEncoded());
+
+                    if(publicKey1.compareTo(publicKey2) > 0){
                         return 1;
                     }else{
                         return -1;
@@ -86,7 +90,8 @@ public class ByzantineNNRegularRegister {
         if(numAnnouncementsToGet == 0){
             return new Announcement[0];
         }
-        list = list.subList(0, numAnnouncementsToGet);
+
+        list = list.subList(list.size()-numAnnouncementsToGet, list.size());
 
         Announcement[] response = new Announcement[list.size()];
 

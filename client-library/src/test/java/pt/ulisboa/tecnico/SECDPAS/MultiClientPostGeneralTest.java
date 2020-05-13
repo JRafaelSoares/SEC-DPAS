@@ -10,6 +10,7 @@ import org.junit.runner.notification.Failure;
 import java.security.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import static org.junit.Assert.*;
 
@@ -17,6 +18,7 @@ public class MultiClientPostGeneralTest {
 
     private static List<ClientLibrary> list = new ArrayList<>();
     private static PublicKey pub1;
+    private static CountDownLatch latch = new CountDownLatch(2);
 
     @AfterClass
     public static void cleanUp(){
@@ -63,7 +65,7 @@ public class MultiClientPostGeneralTest {
                 for(int i=0; i<num; i++){
                     lib.postGeneral(("message" + i).toCharArray());
                 }
-
+                latch.countDown();
                 Announcement[] announcements = lib.readGeneral(num);
 
                 assertEquals(num, announcements.length);
@@ -95,6 +97,7 @@ public class MultiClientPostGeneralTest {
                 for(int i=0; i<num; i++){
                     lib.postGeneral(("message" + i).toCharArray());
                 }
+                latch.countDown();
                 Announcement[] announcements = lib.readGeneral(num);
 
                 assertEquals(num, announcements.length);
@@ -123,7 +126,7 @@ public class MultiClientPostGeneralTest {
 
                 lib.register();
 
-                Thread.sleep(num * 1100);
+                latch.await();
 
                 Announcement[] announcements = lib.readGeneral(0);
 
