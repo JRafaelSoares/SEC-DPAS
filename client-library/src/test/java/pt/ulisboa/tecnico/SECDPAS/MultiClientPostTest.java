@@ -126,11 +126,11 @@ public class MultiClientPostTest {
     }
 
     public static class Client3{
-        /* post general */
+        /* read posts */
         private static ClientLibrary lib;
         @Test
         public void run(){
-            int num = 50;
+            int num = 25;
             try{
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
                 kpg.initialize(2048);
@@ -143,16 +143,19 @@ public class MultiClientPostTest {
 
                 lib.register();
 
+                Thread.sleep(3000);
                 for(int i=0; i<num; i++){
                     lib.read(pub1, 0);
                 }
 
                 Announcement[] announcements = lib.read(pub1, 0);
 
-                assertEquals(num/2, announcements.length);
+                assertEquals(num, announcements.length);
 
             } catch (NoSuchAlgorithmException | InvalidArgumentException | CertificateInvalidException e){
                 System.out.println("client3: " + e.getMessage());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }

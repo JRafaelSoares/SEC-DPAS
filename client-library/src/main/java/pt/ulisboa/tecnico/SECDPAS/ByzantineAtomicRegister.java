@@ -53,7 +53,7 @@ public class ByzantineAtomicRegister {
         readFreshnessHandler.incrementFreshness();
         if(announcements != null && announcements.length > 0){
             Announcement lastAnnouncement = announcements[announcements.length-1];
-            new ByzantineRegularRegister().write(getLinks(lastAnnouncement.getFreshness(), this.clientKey), new PostRequest(getPostRequest(lastAnnouncement.getPost(), lastAnnouncement.getAnnouncements(), lastAnnouncement.getFreshness()), "PostRequest"), this.minQuorumResponses);
+            new ByzantineRegularRegister().write(getLinks(lastAnnouncement.getFreshness(), lastAnnouncement.getPublicKey()), new PostRequest(getWritebackPostRequest(lastAnnouncement.getPublicKey(), lastAnnouncement.getPost(), lastAnnouncement.getAnnouncements(), lastAnnouncement.getFreshness(), lastAnnouncement.getSignature()), "PostRequest"), this.minQuorumResponses);
         }
         return announcements;
     }
@@ -82,9 +82,6 @@ public class ByzantineAtomicRegister {
 
         long slide = maxWrite - numAnnouncementsToGet +1;
         Announcement[] response = new Announcement[numAnnouncementsToGet];
-
-        //TODO - This probably wont work for client + server bizantine.
-        //TODO - Announcement will need to be signed by f+1 servers?
 
         //Inefficient AND ugly but works
         int numAnnouncements = 0;
@@ -122,6 +119,14 @@ public class ByzantineAtomicRegister {
         byte[] messageSignature = SignatureHandler.publicSign(Bytes.concat(publicKey, post.getBytes(), announcements, Longs.toByteArray(freshness), privateBoardId.getBytes()), this.clientPrivateKey);
 
         return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(messageSignature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(this.privateBoardId).setFreshness(freshness).build();
+    }
+
+    private Contract.PostRequest getWritebackPostRequest(PublicKey clientTargetPublicKey, char[] message, String[] references, long freshness, byte[] signature) {
+        byte[] publicKey = SerializationUtils.serialize(clientTargetPublicKey);
+        String post = new String(message);
+        byte[] announcements = SerializationUtils.serialize(references);
+
+        return Contract.PostRequest.newBuilder().setPublicKey(ByteString.copyFrom(publicKey)).setMessage(post).setMessageSignature(ByteString.copyFrom(signature)).setAnnouncements(ByteString.copyFrom(announcements)).setBoard(this.privateBoardId).setFreshness(freshness).build();
     }
 
     private Contract.ReadRequest getReadRequest(PublicKey clientTargetKey, int number, long freshness){

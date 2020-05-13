@@ -1047,12 +1047,10 @@ public class DPASServiceImpl extends DPASServiceGrpc.DPASServiceImplBase {
 
 		byte[] signature = request.getSignature().toByteArray();
 
-
-
 		PublicKey clientUserKey = verifyPublicKey(serializedClientPublicKey, responseObserver, freshness);
 
-		boolean readGeneralCheck = clientUserKey != null && verifyMessage(responseObserver, packet, signature, clientUserKey, freshness);
-		boolean readCheck = true;
+		boolean readCheck = clientUserKey != null && verifyMessage(responseObserver, packet, signature, clientUserKey, freshness);
+		boolean readGeneralCheck = true;
 		if(readType){
 			PublicKey targetUserKey = verifyPublicKey(serializedTargetPublicKey, responseObserver, freshness);
 
