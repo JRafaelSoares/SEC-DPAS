@@ -102,7 +102,7 @@ public class AuthenticatedPerfectLink {
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
                         try{
-                            Thread.sleep(20);
+                            Thread.sleep(200);
                         }catch (InterruptedException e){
 
                         }
@@ -119,7 +119,7 @@ public class AuthenticatedPerfectLink {
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
                     try{
-                        Thread.sleep(20);
+                        Thread.sleep(200);
                     }catch (InterruptedException e){
 
                     }
@@ -154,7 +154,7 @@ public class AuthenticatedPerfectLink {
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
                         try{
-                            Thread.sleep(20);
+                            Thread.sleep(200);
                         }catch (InterruptedException e){
 
                         }
@@ -177,7 +177,7 @@ public class AuthenticatedPerfectLink {
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
                     try{
-                        Thread.sleep(20);
+                        Thread.sleep(200);
                     }catch (InterruptedException e){
 
                     }
@@ -218,7 +218,7 @@ public class AuthenticatedPerfectLink {
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
                         try{
-                            Thread.sleep(20);
+                            Thread.sleep(200);
                         }catch (InterruptedException e){
 
                         }
@@ -240,7 +240,7 @@ public class AuthenticatedPerfectLink {
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
                     try{
-                        Thread.sleep(20);
+                        Thread.sleep(200);
                     }catch (InterruptedException e){
 
                     }
@@ -278,7 +278,7 @@ public class AuthenticatedPerfectLink {
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
                         try{
-                            Thread.sleep(20);
+                            Thread.sleep(200);
                         }catch (InterruptedException e){
 
                         }
@@ -296,7 +296,7 @@ public class AuthenticatedPerfectLink {
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
                     try{
-                        Thread.sleep(20);
+                        Thread.sleep(200);
                     }catch (InterruptedException e){
 
                     }
@@ -329,7 +329,7 @@ public class AuthenticatedPerfectLink {
                     Deadline deadline = futureStub.getCallOptions().getDeadline();
                     if(deadline == null || !deadline.isExpired()){
                         try{
-                            Thread.sleep(20);
+                            Thread.sleep(200);
                         }catch (InterruptedException e){
 
                         }
@@ -347,7 +347,7 @@ public class AuthenticatedPerfectLink {
                 Deadline deadline = futureStub.getCallOptions().getDeadline();
                 if(deadline == null || !deadline.isExpired()){
                     try{
-                        Thread.sleep(20);
+                        Thread.sleep(200);
                     }catch (InterruptedException e){
 
                     }

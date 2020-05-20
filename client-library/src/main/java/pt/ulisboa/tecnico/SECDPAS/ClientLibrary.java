@@ -71,7 +71,7 @@ public class ClientLibrary {
 		for(int server = 0; server < numServers; server++){
 			String target = host + ":" + (port+server);
 			this.channel[server] = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(this.channel[server]).withDeadlineAfter(40, TimeUnit.SECONDS);
+			this.futureStubs[server] = DPASServiceGrpc.newFutureStub(this.channel[server]);
 
 			//Get certificate
 			try{
